@@ -149,6 +149,14 @@ async function updatePlanStep(planId, stepId, payload, options = {}) {
   );
 }
 
+// FAZA 11: event bridge — backend -> UI events (artifact.created, tool.*,
+// backend.ready, permission.confirmation_required). The UI polls /events with a
+// `since` timestamp cursor to receive new events in order.
+async function listEvents(since, options = {}) {
+  const query = since ? `?since=${encodeURIComponent(since)}` : "";
+  return await requestJson(`/events${query}`, options);
+}
+
 module.exports = {
   DEFAULT_BACKEND_URL,
   approveConfirmation,
@@ -160,6 +168,7 @@ module.exports = {
   getHealth,
   getPlan,
   listConfirmations,
+  listEvents,
   listPlans,
   listPendingConfirmations,
   listTools,

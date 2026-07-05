@@ -14,8 +14,10 @@ const {
   cancelConfirmation,
   createConfirmation,
   createPlan,
+  executeTool,
   getPlan,
   listConfirmations,
+  listEvents,
   listPlans,
   listPendingConfirmations,
   rejectConfirmation,
@@ -482,6 +484,56 @@ function requiresConfirmation(args) {
   return args.confirmed !== true && (args.risk === "may_send_or_modify" || args.risk === "private_or_sensitive");
 }
 
+// FAZA 11: tool names whose execution is delegated to the Python backend.
+// Low-risk memory tools (notes/records/artifacts) + system tools that require
+// computer_mode (screen_snapshot/ui_inspect). Legacy Electron handlers below
+// remain as fallback.
+const PHASE11_DELEGATED_TOOLS = new Set([
+  "note_add",
+  "note_search",
+  "note_list",
+  "records_create",
+  "records_search",
+  "records_update",
+  "records_delete",
+  "artifact_create",
+  "artifact_get",
+  "artifact_list",
+  "artifact_show",
+  "screen_snapshot",
+  "ui_inspect",
+]);
+
+// Adapt a Python ToolExecutionResponse into the legacy {ok, artifact, ...}
+// shape that App.tsx and the Realtime function-call flow expect. Python handlers
+// embed an `artifact` inside `result`; surface it so the artifact panel updates.
+function adaptPythonToolResponse(response, toolName) {
+  if (!response || typeof response !== "object") {
+    return { ok: false, error: `Empty response from backend for ${toolName}.` };
+  }
+  if (response.ok === false) {
+    return {
+      ok: false,
+      error: response.error?.message || `Tool ${toolName} failed.`,
+      errorCode: response.error?.code,
+      execution_id: response.execution_id,
+      tool_state: response.tool_state,
+    };
+  }
+  const result = response.result || {};
+  const artifact = result.artifact;
+  // Spread remaining result fields (note, record, notes, records, image_path,
+  // active_window, ...) so legacy callers see the same shape as before.
+  const { artifact: _omit, ...rest } = result;
+  return {
+    ok: true,
+    artifact,
+    execution_id: response.execution_id,
+    tool_state: response.tool_state,
+    ...rest,
+  };
+}
+
 async function prepareWindowData() {
   await ensureData();
   await clearStartupLoadingThumbnails();
@@ -549,6 +601,12 @@ async function handlePlanUpdate(_event, { planId, payload }) {
 
 async function handlePlanStepUpdate(_event, { planId, stepId, payload }) {
   return await updatePlanStep(planId, stepId, payload || {});
+}
+
+// FAZA 11: event bridge handler.
+async function handleEventsList(_event, since) {
+  return await listEvents(typeof since === "string" ? since : undefined);
+}
 
 async function handleRealtimeCreateToken() {
   const db = await readDb();
@@ -592,6 +650,30 @@ async function handleRealtimeCreateToken() {
 async function handleToolsExecute(_event, toolCall) {
   const name = String(toolCall?.name || "");
   const args = asObject(toolCall?.arguments);
+
+  // FAZA 11: delegate memory/artifact/system tools to the Python backend.
+  // Context: agent_reports/2026-07-05_faza11-tool-registry-local-tools.md
+  // Legacy handlers below remain as fallback if the backend is unavailable
+  // (per MIGRATION_PLAN.md "Keep legacy implementations available until the
+  // Python versions are verified"). screen_snapshot/ui_inspect still require
+  // computer_mode; the Python permission engine (FAZA 10) enforces it.
+  if (PHASE11_DELEGATED_TOOLS.has(name)) {
+    try {
+      const response = await executeTool({
+        tool_name: name,
+        arguments: args,
+        context: { computer_mode: currentMode === "computer" },
+      });
+      return adaptPythonToolResponse(response, name);
+    } catch (error) {
+      // Fall through to legacy handler below — keeps the app working if the
+      // backend is down or the tool is not yet registered there.
+      console.warn(
+        `[faza11] Python backend failed for ${name}, falling back to legacy:`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+  }
 
   try {
     if (name === "set_mode") {
@@ -1516,6 +1598,8 @@ registerIpcHandlers({
   "plans:get": handlePlanGet,
   "plans:update": handlePlanUpdate,
   "plans:update-step": handlePlanStepUpdate,
+  // FAZA 11: event bridge.
+  "events:list": handleEventsList,
 });
 
 app.whenReady().then(async () => {

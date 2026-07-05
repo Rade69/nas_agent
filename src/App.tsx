@@ -19,6 +19,7 @@ import {
   type VoiceState,
 } from "./lib/realtime";
 import type { Confirmation, Plan, PlanStepStatus, RickyArtifact } from "./vite-env";
+import type { BackendEvent } from "./vite-env";
 
 type RickyMode = "display" | "computer";
 
@@ -106,6 +107,56 @@ export default function App() {
 
   useEffect(() => {
     refreshPlans();
+  }, []);
+
+  // FAZA 11: poll backend events for artifact.created and tool progress.
+  // This surfaces out-of-band artifact updates (e.g. from background tool runs or
+  // the future agent runtime) that don't go through the Realtime function-call
+  // flow. Artifacts created via model tool calls are already handled by onArtifact.
+  useEffect(() => {
+    let cancelled = false;
+    let cursor: string | null = null;
+    async function pollEvents() {
+      try {
+        const response = await window.ricky.listEvents(cursor ?? undefined);
+        if (cancelled) return;
+        const events: BackendEvent[] = response?.events ?? [];
+        if (response?.next_cursor) cursor = response.next_cursor;
+        for (const event of events) {
+          if (event.type === "artifact.created") {
+            const artifactId = event.details?.artifact_id;
+            if (typeof artifactId === "string") {
+              try {
+                const result = await window.ricky.executeTool({
+                  name: "artifact_get",
+                  arguments: { id: artifactId },
+                });
+                if (result.artifact) {
+                  setArtifact(result.artifact);
+                  setArtifactVisible(true);
+                }
+              } catch {
+                // Artifact may not be ready yet; ignore.
+              }
+            }
+          } else if (event.type === "tool.completed" || event.type === "tool.failed") {
+            addActivityEvent(
+              createActivityEvent("tool", event.title || event.type, event.type),
+            );
+          } else if (event.type === "backend.ready") {
+            addActivityEvent(createActivityEvent("status", "Backend ready", "Python backend connected"));
+          }
+        }
+      } catch {
+        // Event polling is best-effort; silent on failure.
+      }
+    }
+    pollEvents();
+    const interval = window.setInterval(pollEvents, 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
   }, []);
 
   async function connect() {

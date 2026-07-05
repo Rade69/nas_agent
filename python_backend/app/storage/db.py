@@ -126,6 +126,25 @@ SCHEMA_STATEMENTS = [
         conversation_id TEXT
     )
     """,
+    # FAZA 11: memory tool storage (notes + records migrated from Electron JSON db).
+    """
+    CREATE TABLE IF NOT EXISTS notes (
+        id TEXT PRIMARY KEY,
+        text TEXT NOT NULL,
+        tags_json TEXT NOT NULL DEFAULT '[]',
+        created_at TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS records (
+        id TEXT PRIMARY KEY,
+        collection TEXT NOT NULL,
+        title TEXT NOT NULL,
+        fields_json TEXT NOT NULL DEFAULT '{}',
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    )
+    """,
 ]
 
 

@@ -101,6 +101,16 @@ export type Plan = {
 
 export type PlanListResponse = { plans: Plan[] };
 
+// --- FAZA 11: backend event bridge ---
+export type BackendEvent = {
+  id: string;
+  type: string;
+  timestamp: string;
+  title: string | null;
+  details: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+};
+
 declare global {
   interface Window {
     ricky: {
@@ -140,6 +150,11 @@ declare global {
         stepId: string,
         payload: { status?: PlanStepStatus; title?: string; details?: Record<string, unknown> },
       ) => Promise<Plan>;
+      // FAZA 11: event bridge
+      listEvents: (since?: string) => Promise<{
+        events: BackendEvent[];
+        next_cursor: string | null;
+      }>;
     };
   }
 }

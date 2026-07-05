@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from app.agent.cancellation import CancellationRegistry
 from app.agent.tool_registry import create_default_registry
 from app.api.confirmations import router as confirmations_router
+from app.api.events import router as events_router
 from app.api.health import router as health_router
 from app.api.plans import router as plans_router
 from app.api.realtime import router as realtime_router
@@ -11,11 +12,19 @@ from app.core.config import get_settings
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
 from app.services.action_log import ActionLogService
+from app.services.artifact_service import ArtifactService
 from app.services.confirmation_service import ConfirmationService
+from app.services.event_bus import EventBus
+from app.services.notes_service import NotesService
 from app.services.plan_service import PlanService
+from app.services.records_service import RecordsService
 from app.storage.db import initialize_database
+from app.storage.repositories.artifact_repo import ArtifactRepository
 from app.storage.repositories.confirmation_repo import ConfirmationRepository
+from app.storage.repositories.event_repo import EventRepository
+from app.storage.repositories.notes_repo import NotesRepository
 from app.storage.repositories.plan_repo import PlanRepository
+from app.storage.repositories.records_repo import RecordsRepository
 from app.storage.repositories.tool_run_repo import ToolRunRepository
 
 
@@ -39,6 +48,30 @@ def create_app() -> FastAPI:
     # in-memory state (see app/agent/cancellation.py); the durable audit trail
     # stays in tool_runs via ActionLogService.
     app.state.cancellation_registry = CancellationRegistry()
+    # FAZA 11: memory + artifact + event bridge services. The permission/risk
+    # enforcement layer (FAZA 10) reads tool definition flags; these tools are
+    # all low/medium risk (notes, records, artifacts) or require computer_mode
+    # (screenshot, ui_inspect), so they coexist with the FAZA 10 permission
+    # engine without changes. Legacy PowerShell fallbacks stay in place until
+    # these Python versions are verified end-to-end.
+    # Context: agent_reports/2026-07-05_faza11-tool-registry-local-tools.md
+    event_bus = EventBus(EventRepository(settings.database_path))
+    app.state.event_bus = event_bus
+    app.state.notes_service = NotesService(NotesRepository(settings.database_path))
+    app.state.records_service = RecordsService(RecordsRepository(settings.database_path))
+    app.state.artifact_service = ArtifactService(
+        ArtifactRepository(settings.database_path), event_bus=event_bus
+    )
+    phase11_services = {
+        "notes": app.state.notes_service,
+        "records": app.state.records_service,
+        "artifact": app.state.artifact_service,
+        "screenshots_dir": settings.data_dir / "screenshots",
+        "event_bus": event_bus,
+    }
+    app.state.tool_registry = create_default_registry(services=phase11_services)
+    # Emit backend.ready so the UI knows the event bridge is live.
+    event_bus.emit("backend.ready", title="Python backend ready")
 
     register_error_handlers(app)
     app.include_router(health_router)
@@ -46,6 +79,7 @@ def create_app() -> FastAPI:
     app.include_router(realtime_router)
     app.include_router(confirmations_router)
     app.include_router(plans_router)
+    app.include_router(events_router)
     return app
 
 

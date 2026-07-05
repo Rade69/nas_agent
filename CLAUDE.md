@@ -60,7 +60,7 @@ Nema MCP memory servera podešenog za ovaj projekat. Izvor istine je repo dokume
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **nas_agent** (1932 symbols, 3087 relationships, 88 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **nas_agent** (2452 symbols, 4048 relationships, 103 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

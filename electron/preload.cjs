@@ -25,4 +25,6 @@ contextBridge.exposeInMainWorld("ricky", {
   updatePlan: (planId, payload) => ipcRenderer.invoke("plans:update", { planId, payload }),
   updatePlanStep: (planId, stepId, payload) =>
     ipcRenderer.invoke("plans:update-step", { planId, stepId, payload }),
+  // FAZA 11: event bridge.
+  listEvents: (since) => ipcRenderer.invoke("events:list", since),
 });
