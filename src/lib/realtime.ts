@@ -1,5 +1,9 @@
 import type { RickyArtifact, RickyToolCall, RickyToolResult, RickyToolSpec } from "../vite-env";
+import { routeRealtimeEvent } from "./realtimeEventRouter";
+import { createActivityEvent, type ActivityEvent, type VoiceState } from "./voiceState";
 
+export { createActivityEvent };
+export type { ActivityEvent, VoiceState };
 export type RickyConnectionState = "idle" | "connecting" | "connected" | "error";
 export type RickyMood = "idle" | "listening" | "thinking" | "speaking" | "working" | "error";
 
@@ -25,6 +29,8 @@ export type RealtimeCallbacks = {
   onArtifact: (artifact: RickyArtifact) => void;
   onMode: (mode: "display" | "computer") => void;
   onStatus: (message: string) => void;
+  onVoiceState: (state: VoiceState) => void;
+  onActivity: (event: ActivityEvent) => void;
   onThumbnailReady: () => void;
 };
 
@@ -76,7 +82,9 @@ export class RickyRealtimeClient {
     if (this.pc) return;
     this.callbacks.onConnectionState("connecting");
     this.callbacks.onMood("thinking");
+    this.callbacks.onVoiceState("thinking");
     this.callbacks.onStatus("Minting a Realtime client secret.");
+    this.callbacks.onActivity(createActivityEvent("status", "Realtime session requested"));
 
     try {
       this.toolSpecs = await window.ricky.getToolSpecs();
@@ -103,7 +111,9 @@ export class RickyRealtimeClient {
       dc.addEventListener("open", () => {
         this.callbacks.onConnectionState("connected");
         this.callbacks.onMood("idle");
+        this.callbacks.onVoiceState("idle");
         this.callbacks.onStatus("Ricky is live. Start talking naturally.");
+        this.callbacks.onActivity(createActivityEvent("status", "WebRTC connected"));
       });
       dc.addEventListener("message", (event) => {
         void this.handleServerEvent(event.data);
@@ -135,6 +145,7 @@ export class RickyRealtimeClient {
     } catch (error) {
       this.callbacks.onConnectionState("error");
       this.callbacks.onMood("error");
+      this.callbacks.onVoiceState("error");
       this.callbacks.onStatus(error instanceof Error ? error.message : String(error));
       this.disconnect();
     }
@@ -151,6 +162,7 @@ export class RickyRealtimeClient {
     this.currentAssistantText = "";
     this.callbacks.onConnectionState("idle");
     this.callbacks.onMood("idle");
+    this.callbacks.onVoiceState("idle");
     this.callbacks.onMouthShape(silentMouthShape());
   }
 
@@ -160,6 +172,8 @@ export class RickyRealtimeClient {
       return;
     }
     this.callbacks.onTranscript(newEntry("user", text));
+    this.callbacks.onVoiceState("thinking");
+    this.callbacks.onActivity(createActivityEvent("transcript", "Typed prompt", text));
     this.sendEvent({
       type: "conversation.item.create",
       item: {
@@ -174,6 +188,10 @@ export class RickyRealtimeClient {
   private async handleServerEvent(raw: string): Promise<void> {
     const event = safeParseEvent(raw);
     if (!event.type) return;
+
+    const routed = routeRealtimeEvent(event);
+    if (routed.voiceState) this.callbacks.onVoiceState(routed.voiceState);
+    if (routed.activity) this.callbacks.onActivity(routed.activity);
 
     if (event.type === "error") {
       this.callbacks.onMood("error");
@@ -227,6 +245,7 @@ export class RickyRealtimeClient {
         await this.executeFunctionCalls(functionCalls);
       } else if (!this.toolRunning) {
         this.callbacks.onMood("idle");
+        this.callbacks.onVoiceState("idle");
       }
     }
   }
@@ -234,6 +253,7 @@ export class RickyRealtimeClient {
   private async executeFunctionCalls(items: ResponseOutputItem[]): Promise<void> {
     this.toolRunning = true;
     this.callbacks.onMood("working");
+    this.callbacks.onVoiceState("thinking");
     let shouldCreateResponse = false;
 
     for (const item of items) {
@@ -253,6 +273,7 @@ export class RickyRealtimeClient {
       }
 
       this.callbacks.onTranscript(newEntry("tool", `Running ${name}`));
+      this.callbacks.onActivity(createActivityEvent("tool", `Running ${name}`));
       if (name === "image_generate") {
         this.callbacks.onArtifact({
           title: "Generating Image",
@@ -282,7 +303,12 @@ export class RickyRealtimeClient {
       await this.returnToolOutput(callId, result);
     }
 
-    if (shouldCreateResponse) this.sendEvent({ type: "response.create" });
+    if (shouldCreateResponse) {
+      this.callbacks.onVoiceState("thinking");
+      this.sendEvent({ type: "response.create" });
+    } else {
+      this.callbacks.onVoiceState("idle");
+    }
     this.toolRunning = false;
   }
 

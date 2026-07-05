@@ -1,14 +1,28 @@
 import { useRef, useState } from "react";
-import { BrainCircuit, Expand, History, Keyboard, Mic, MicOff, MonitorCog, PanelRight, Send, X } from "lucide-react";
+import { Expand, X } from "lucide-react";
+import { ActivityTimeline } from "./components/ActivityTimeline";
 import { ArtifactPanel } from "./components/ArtifactPanel";
+import { BottomVoiceBar } from "./components/BottomVoiceBar";
 import { RickyFace } from "./components/RickyFace";
-import { newEntry, RickyRealtimeClient, type MouthShape, type RickyConnectionState, type RickyMood, type TranscriptEntry } from "./lib/realtime";
+import { VoiceTopBar } from "./components/VoiceTopBar";
+import {
+  createActivityEvent,
+  newEntry,
+  RickyRealtimeClient,
+  type ActivityEvent,
+  type MouthShape,
+  type RickyConnectionState,
+  type RickyMood,
+  type TranscriptEntry,
+  type VoiceState,
+} from "./lib/realtime";
 import type { RickyArtifact } from "./vite-env";
 
 type RickyMode = "display" | "computer";
 
 export default function App() {
   const [connectionState, setConnectionState] = useState<RickyConnectionState>("idle");
+  const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [mood, setMood] = useState<RickyMood>("idle");
   const [mode, setMode] = useState<RickyMode>("display");
   const [artifact, setArtifact] = useState<RickyArtifact | null>(null);
@@ -19,6 +33,9 @@ export default function App() {
   const [mouthShape, setMouthShape] = useState<MouthShape>({ open: 0, width: 0.18, round: 0, teeth: 0 });
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([
     newEntry("system", "Ricky is ready. Connect voice, then talk naturally."),
+  ]);
+  const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([
+    createActivityEvent("status", "Renderer ready", "Voice-first shell loaded."),
   ]);
   const [status, setStatus] = useState("Idle");
   const [textPrompt, setTextPrompt] = useState("");
@@ -31,6 +48,8 @@ export default function App() {
       onConnectionState: setConnectionState,
       onMood: setMood,
       onMouthShape: setMouthShape,
+      onVoiceState: setVoiceState,
+      onActivity: addActivityEvent,
       onTranscript: (entry) => setTranscript((items) => [entry, ...items].slice(0, 80)),
       onArtifact: (nextArtifact) => {
         setArtifact(nextArtifact);
@@ -51,6 +70,7 @@ export default function App() {
       onStatus: (message) => {
         setStatus(message);
         setTranscript((items) => [newEntry("system", message), ...items].slice(0, 80));
+        addActivityEvent(createActivityEvent("status", "Status", message));
       },
       onThumbnailReady: playThumbnailReadySound,
     });
@@ -62,6 +82,7 @@ export default function App() {
     clientRef.current?.disconnect();
     clientRef.current = null;
     setStatus("Disconnected");
+    addActivityEvent(createActivityEvent("status", "Disconnected"));
   }
 
   async function switchMode(nextMode: RickyMode) {
@@ -76,7 +97,9 @@ export default function App() {
     } else {
       setArtifactVisible(true);
     }
-    setTranscript((items) => [newEntry("system", `Mode switched to ${nextMode}.`), ...items].slice(0, 80));
+    const message = `Mode switched to ${nextMode}.`;
+    setTranscript((items) => [newEntry("system", message), ...items].slice(0, 80));
+    addActivityEvent(createActivityEvent("status", "Mode changed", message));
   }
 
   function sendTextPrompt() {
@@ -85,6 +108,10 @@ export default function App() {
     clientRef.current?.sendText(trimmed);
     setTextPrompt("");
     setShowTypeInput(false);
+  }
+
+  function addActivityEvent(event: ActivityEvent) {
+    setActivityEvents((items) => [event, ...items].slice(0, 80));
   }
 
   if (mode === "computer") {
@@ -118,100 +145,37 @@ export default function App() {
         <X size={15} />
       </button>
       <section className="companion-window">
+        <VoiceTopBar
+          voiceState={voiceState}
+          connectionState={connectionState}
+          status={status}
+          activityCount={activityEvents.length + transcript.length}
+        />
+
         <section className="face-stage">
           <RickyFace mood={mood} mouthShape={mouthShape} />
         </section>
 
-        <footer className="bottom-console">
-          {showTypeInput ? (
-            <section className="prompt-box">
-              <input
-                value={textPrompt}
-                onChange={(event) => setTextPrompt(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") sendTextPrompt();
-                }}
-                autoFocus
-                placeholder="Type to Ricky..."
-              />
-              <button onClick={sendTextPrompt} aria-label="Send typed prompt" title="Send typed prompt">
-                <Send size={15} />
-              </button>
-            </section>
-          ) : null}
+        <BottomVoiceBar
+          voiceState={voiceState}
+          connectionState={connectionState}
+          isConnected={isConnected}
+          isConnecting={connectionState === "connecting"}
+          showTypeInput={showTypeInput}
+          showLog={showLog}
+          artifactVisible={artifactVisible}
+          textPrompt={textPrompt}
+          onConnectToggle={isConnected ? disconnect : () => void connect()}
+          onToggleTextInput={() => setShowTypeInput((value) => !value)}
+          onTextPromptChange={setTextPrompt}
+          onSendTextPrompt={sendTextPrompt}
+          onSwitchDisplayMode={() => void switchMode("display")}
+          onSwitchComputerMode={() => void switchMode("computer")}
+          onToggleArtifacts={() => setArtifactVisible((value) => !value)}
+          onToggleActivity={() => setShowLog((value) => !value)}
+        />
 
-          <section className="control-strip">
-            <button
-              className={isConnected ? "simple-button active" : "simple-button"}
-              onClick={isConnected ? disconnect : connect}
-              disabled={connectionState === "connecting"}
-              aria-label={isConnected ? "Disconnect voice" : "Connect voice"}
-              title={isConnected ? "Disconnect voice" : "Connect voice"}
-            >
-              {isConnected ? <MicOff size={16} /> : <Mic size={16} />}
-            </button>
-            <button
-              className={showTypeInput ? "simple-button active" : "simple-button"}
-              onClick={() => setShowTypeInput((value) => !value)}
-              aria-label="Type to Ricky"
-              title="Type to Ricky"
-            >
-              <Keyboard size={16} />
-            </button>
-            <button
-              className={mode === "display" ? "simple-button active" : "simple-button"}
-              onClick={() => void switchMode("display")}
-              aria-label="Display mode"
-              title="Display mode"
-            >
-              <PanelRight size={16} />
-            </button>
-            <button
-              className="simple-button danger"
-              onClick={() => void switchMode("computer")}
-              aria-label="Computer use mode"
-              title="Computer use mode"
-            >
-              <MonitorCog size={16} />
-            </button>
-            <button
-              className={artifactVisible ? "simple-button active" : "simple-button"}
-              onClick={() => setArtifactVisible((value) => !value)}
-              aria-label="Toggle artifacts"
-              title="Toggle artifacts"
-            >
-              <BrainCircuit size={16} />
-            </button>
-            <button
-              className={showLog ? "simple-button active" : "simple-button"}
-              onClick={() => setShowLog((value) => !value)}
-              aria-label="Toggle live log"
-              title="Toggle live log"
-            >
-              <History size={16} />
-            </button>
-          </section>
-        </footer>
-
-        {showLog ? (
-          <section className="transcript">
-            <div className="section-title">
-              <span>Live Log</span>
-              <small>{transcript.length} events</small>
-            </div>
-            <div className="transcript-list">
-              {transcript.map((entry) => (
-                <article className={`entry entry-${entry.role}`} key={entry.id}>
-                  <div>
-                    <strong>{entry.role === "ricky" ? "Ricky" : entry.role}</strong>
-                    <time>{entry.at}</time>
-                  </div>
-                  <p>{entry.text}</p>
-                </article>
-              ))}
-            </div>
-          </section>
-        ) : null}
+        {showLog ? <ActivityTimeline transcript={transcript} activityEvents={activityEvents} /> : null}
       </section>
 
       <ArtifactPanel
