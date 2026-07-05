@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 
 from app.agent.cancellation import CancellationRegistry
 from app.agent.tool_registry import create_default_registry
@@ -8,6 +8,7 @@ from app.api.health import router as health_router
 from app.api.plans import router as plans_router
 from app.api.realtime import router as realtime_router
 from app.api.tools import router as tools_router
+from app.core.auth import require_local_token
 from app.core.config import get_settings
 from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
@@ -33,7 +34,9 @@ def create_app() -> FastAPI:
     settings = get_settings()
     initialize_database(settings)
 
-    app = FastAPI(title=settings.app_name)
+    # Security PR-1: local session token enforced on every route (fails open
+    # only if settings.local_token is unset — see app/core/auth.py docstring).
+    app = FastAPI(title=settings.app_name, dependencies=[Depends(require_local_token)])
     app.state.settings = settings
     app.state.tool_registry = create_default_registry()
     app.state.action_log = ActionLogService(ToolRunRepository(settings.database_path))

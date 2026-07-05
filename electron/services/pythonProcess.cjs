@@ -1,8 +1,9 @@
+const { randomBytes } = require("node:crypto");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const { DEFAULT_BACKEND_URL, getHealth, normalizeBaseUrl } = require("./pythonClient.cjs");
+const { DEFAULT_BACKEND_URL, getHealth, normalizeBaseUrl, setLocalToken } = require("./pythonClient.cjs");
 
 const DEFAULT_PORT = 8765;
 
@@ -13,6 +14,19 @@ const backendState = {
   error: null,
   external: false,
 };
+
+// Security PR-1: one short-lived local session token per Electron app session
+// (SECURITY_HARDENING_PLAN.md section 6). Generated once, never logged, never
+// persisted to disk — lives only in process memory for as long as Electron runs.
+let localSessionToken = null;
+
+function getOrCreateLocalToken() {
+  if (!localSessionToken) {
+    localSessionToken = randomBytes(32).toString("hex");
+    setLocalToken(localSessionToken);
+  }
+  return localSessionToken;
+}
 
 function getBackendStatus() {
   return {
@@ -29,7 +43,7 @@ function resolveBackendPaths(options = {}) {
   const backendDir = options.backendDir || path.join(repoRoot, "python_backend");
   const venvPython = path.join(backendDir, ".venv", "Scripts", "python.exe");
   const pythonCommand = process.env.RICKY_PYTHON_PATH || (fs.existsSync(venvPython) ? venvPython : "python");
-  return { backendDir, pythonCommand };
+  return { repoRoot, backendDir, pythonCommand };
 }
 
 async function startPythonBackend(options = {}) {
@@ -38,6 +52,7 @@ async function startPythonBackend(options = {}) {
   const host = "127.0.0.1";
   const baseUrl = normalizeBaseUrl(options.baseUrl || `http://${host}:${port}`);
   backendState.url = baseUrl;
+  const localToken = getOrCreateLocalToken();
 
   if (backendState.status === "running" || backendState.status === "starting") {
     return getBackendStatus();
@@ -59,7 +74,7 @@ async function startPythonBackend(options = {}) {
     return getBackendStatus();
   }
 
-  const { backendDir, pythonCommand } = resolveBackendPaths(options);
+  const { repoRoot, backendDir, pythonCommand } = resolveBackendPaths(options);
   if (!fs.existsSync(backendDir)) {
     backendState.status = "error";
     backendState.error = `Python backend directory not found: ${backendDir}`;
@@ -78,6 +93,13 @@ async function startPythonBackend(options = {}) {
     env: {
       ...process.env,
       PYTHONUNBUFFERED: "1",
+      // Share one data directory with the Electron-side legacy JSON db
+      // (electron/main.cjs `dataDir`) instead of Python defaulting to its own
+      // python_backend/data/ — otherwise screenshots/SQLite land in a folder
+      // the rest of the app never looks in. See app/core/config.py RICKY_DATA_DIR.
+      RICKY_DATA_DIR: path.join(repoRoot, "data"),
+      // Security PR-1: local session token, see app/core/auth.py.
+      RICKY_LOCAL_TOKEN: localToken,
     },
     windowsHide: true,
     stdio: ["ignore", "pipe", "pipe"],

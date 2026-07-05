@@ -1,5 +1,14 @@
 const DEFAULT_BACKEND_URL = "http://127.0.0.1:8765";
 
+// Security PR-1: local session token (SECURITY_HARDENING_PLAN.md section 6).
+// Set once by electron/services/pythonProcess.cjs right after it generates the
+// token and before it spawns the backend. Never logged, never persisted.
+let localToken = null;
+
+function setLocalToken(token) {
+  localToken = token || null;
+}
+
 function normalizeBaseUrl(baseUrl = process.env.RICKY_BACKEND_URL || DEFAULT_BACKEND_URL) {
   return String(baseUrl).replace(/\/+$/, "");
 }
@@ -15,6 +24,7 @@ async function requestJson(path, options = {}) {
       method: options.method || "GET",
       headers: {
         "Content-Type": "application/json",
+        ...(localToken ? { Authorization: `Bearer ${localToken}` } : {}),
         ...(options.headers || {}),
       },
       body: options.body === undefined ? undefined : JSON.stringify(options.body),
@@ -175,6 +185,7 @@ module.exports = {
   normalizeBaseUrl,
   rejectConfirmation,
   requestJson,
+  setLocalToken,
   updatePlan,
   updatePlanStep,
 };
