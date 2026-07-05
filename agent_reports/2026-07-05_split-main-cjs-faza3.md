@@ -61,9 +61,15 @@ FAZA 3 iz `docs/MIGRATION_PLAN.md` traži razbijanje `main.cjs` bez promjene pon
 
 ## Potreban follow-up
 
-- Korisnik treba ručno pokrenuti `npm run dev` u `Nas-agent` (van ograničenja ove sandbox sesije) i uraditi Notepad computer-use smoke test (open app → type text → screenshot → ui inspect) da potvrdi 100% da PowerShell alati rade identično nakon izdvajanja u zasebne fajlove.
-- Za potpuno testiranje voice/AI funkcionalnosti, korisnik treba kopirati svoj `.env.local` (sa OPENAI_API_KEY/EXA_API_KEY) u `Nas-agent` — namjerno nije kopiran automatski.
+- ~~Korisnik treba ručno pokrenuti `npm run dev` u `Nas-agent`~~ — **urađeno.** Korisnik je napravio zasebnu Desktop prečicu `Ricky (Nas-agent).lnk` (vidi ispod) i pokrenuo app ručno na svom uređaju.
+- ~~Za potpuno testiranje voice/AI funkcionalnosti, korisnik treba kopirati svoj `.env.local`~~ — **urađeno**, kopiran iz `RileyJarvis-Windows` u `Nas-agent` uz korisnikovu potvrdu.
 - Sljedeći korak po planu: FAZA 4 (Python backend skeleton) — ili, ako se odluči kasnije, dovršetak FAZE 3 punog obima (`core/ipc.cjs`) kad storage/AI logika bude jasnija.
+
+## Ažuriranje nakon ručne provjere (2026-07-05)
+
+Korisnik je pokrenuo app preko nove Desktop prečice `Ricky (Nas-agent).lnk` (napravljena zasebno, cilja `Nas-agent\Pokreni-Ricky.bat`, ne dira postojeću `Ricky.lnk` koja i dalje pokazuje na `RileyJarvis-Windows`) i poslao screenshot: Ricky lice se renderuje ispravno (plavi krug, oči, usta), artifact panel prikazuje "Ready" sa default porukom, chat input i toolbar dugmad (mic, tastatura, split-view, computer mode, itd.) su vidljivi. Ovo je vizuelna potvrda da je frameless/transparent prozor iz `core/window.cjs` render-ovan ispravno u pravom desktop okruženju (van agent sandboxa gdje je vizuelna provjera bila ograničena `ELECTRON_RUN_AS_NODE`/focus-stealing problemima).
+
+Napomena: ovo potvrđuje da se prozor i UI učitavaju ispravno, ali **ne** potvrđuje da su computer-use PowerShell alati (`computer_open_app`, `computer_type_text`, itd.) funkcionalno identični — za to je i dalje potreban eksplicitan Notepad smoke test (open app → type text → screenshot → ui inspect) prije nego se FAZA 3 acceptance kriterijum "postojeći Windows tools rade kao ranije" smatra u potpunosti provjerenim.
 
 ## Potrebna korisnička potvrda
 

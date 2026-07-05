@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs/promises");
 const crypto = require("node:crypto");
@@ -6,6 +6,9 @@ const crypto = require("node:crypto");
 require("./core/env.cjs");
 
 const { createWindow, setWindowMode } = require("./core/window.cjs");
+const { registerIpcHandlers } = require("./core/ipc.cjs");
+const { startPythonBackend, stopPythonBackend } = require("./services/pythonProcess.cjs");
+const { createRealtimeSession } = require("./services/pythonClient.cjs");
 const { computerOpenApp } = require("./tools_legacy/powershell/computerOpenApp.cjs");
 const { computerTypeText } = require("./tools_legacy/powershell/computerTypeText.cjs");
 const { computerPressKey } = require("./tools_legacy/powershell/computerPressKey.cjs");
@@ -470,70 +473,54 @@ async function prepareWindowData() {
   await clearStartupLoadingThumbnails();
 }
 
-ipcMain.handle("tools:list", () => toolSpecs);
+function handleToolsList() {
+  return toolSpecs;
+}
 
-ipcMain.handle("app:quit", () => {
+function handleAppQuit() {
   app.quit();
-});
+}
 
-ipcMain.handle("realtime:create-token", async () => {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is missing in .env.local");
-  }
+async function handleRealtimeCreateToken() {
   const db = await readDb();
   const instructions = `${RICKY_INSTRUCTIONS}\n\n${buildThumbnailBoardInstructions(db)}`;
 
-  const response = await fetch("https://api.openai.com/v1/realtime/client_secrets", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "OpenAI-Safety-Identifier": crypto.createHash("sha256").update("riley-local-ricky").digest("hex"),
-    },
-    body: JSON.stringify({
-      session: {
-        type: "realtime",
-        model: "gpt-realtime-2",
-        instructions,
-        output_modalities: ["audio"],
-        reasoning: { effort: "low" },
-        tool_choice: "auto",
-        tools: toolSpecs,
-        audio: {
-          input: {
-            turn_detection: {
-              type: "semantic_vad",
-              eagerness: "medium",
-              create_response: true,
-              interrupt_response: true,
-            },
-          },
-          output: {
-            voice: "cedar",
-          },
-        },
-        tracing: {
-          workflow_name: "Ricky Desktop Companion",
+  const session = {
+    type: "realtime",
+    model: "gpt-realtime-2",
+    instructions,
+    output_modalities: ["audio"],
+    reasoning: { effort: "low" },
+    tool_choice: "auto",
+    tools: toolSpecs,
+    audio: {
+      input: {
+        turn_detection: {
+          type: "semantic_vad",
+          eagerness: "medium",
+          create_response: true,
+          interrupt_response: true,
         },
       },
-    }),
-  });
+      output: {
+        voice: "cedar",
+      },
+    },
+    tracing: {
+      workflow_name: "Ricky Desktop Companion",
+    },
+  };
 
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Realtime token request failed: ${response.status} ${text}`);
-  }
+  // Context: agent_reports/2026-07-05_faza6-realtime-session-security.md
+  // The standard OpenAI API key now lives only on the Python backend side (FAZA 6 /
+  // SECURITY_HARDENING_PLAN.md section 7). Electron only assembles the session config
+  // (instructions/tools depend on Electron-side DB state not yet migrated) and forwards
+  // it for the backend to mint the ephemeral Realtime credential.
+  const { value, expiresAt } = await createRealtimeSession(session);
+  return { value, expiresAt: expiresAt ?? null };
+}
 
-  const data = await response.json();
-  const value = data.value || data.client_secret?.value;
-  if (!value) {
-    throw new Error("Realtime token response did not include a client secret value.");
-  }
-  return { value, expiresAt: data.expires_at || data.client_secret?.expires_at || null };
-});
-
-ipcMain.handle("tools:execute", async (_event, toolCall) => {
+async function handleToolsExecute(_event, toolCall) {
   const name = String(toolCall?.name || "");
   const args = asObject(toolCall?.arguments);
 
@@ -753,7 +740,7 @@ ipcMain.handle("tools:execute", async (_event, toolCall) => {
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) };
   }
-});
+}
 
 async function webSearch(args) {
   const exaKey = process.env.EXA_API_KEY;
@@ -1424,9 +1411,9 @@ function normalizeMermaidDiagram(diagram, title) {
     .filter(Boolean)
     .map((line) =>
       line
-        .replace(/[“”]/g, '"')
-        .replace(/[‘’]/g, "'")
-        .replace(/[–—]/g, "-")
+        .replace(/[â€œâ€]/g, '"')
+        .replace(/[â€˜â€™]/g, "'")
+        .replace(/[â€“â€”]/g, "-")
         .replace(/\s+-->\s+/g, " --> ")
         .replace(/\s+---\s+/g, " --- "),
     );
@@ -1443,7 +1430,26 @@ function fallbackMermaidDiagram(title) {
   return `flowchart TD\n  A["${safeTitle}"] --> B["Chart request received"]\n  B --> C["Ricky will show a safe fallback if syntax fails"]`;
 }
 
-app.whenReady().then(() => createWindow({ beforeShow: prepareWindowData }));
+registerIpcHandlers({
+  "tools:list": handleToolsList,
+  "app:quit": handleAppQuit,
+  "realtime:create-token": handleRealtimeCreateToken,
+  "tools:execute": handleToolsExecute,
+});
+
+app.whenReady().then(async () => {
+  try {
+    await startPythonBackend({ isPackaged: app.isPackaged });
+  } catch (error) {
+    console.error("[python-backend] Failed to start Python backend:", error);
+  }
+
+  await createWindow({ beforeShow: prepareWindowData });
+});
+
+app.on("before-quit", () => {
+  stopPythonBackend();
+});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
