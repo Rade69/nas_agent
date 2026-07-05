@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import sqlite3
+from datetime import UTC, datetime
 from pathlib import Path
 
 from app.core.config import Settings
+
+
+def utc_now_iso() -> str:
+    return datetime.now(UTC).isoformat()
 
 SCHEMA_STATEMENTS = [
     """
@@ -65,7 +70,9 @@ SCHEMA_STATEMENTS = [
         resolved_at TEXT,
         action_name TEXT NOT NULL,
         payload_json TEXT NOT NULL DEFAULT '{}',
-        risk_level TEXT NOT NULL
+        risk_level TEXT NOT NULL,
+        plan_id TEXT,
+        summary TEXT
     )
     """,
     """
@@ -119,6 +126,29 @@ SCHEMA_STATEMENTS = [
 ]
 
 
+def _existing_columns(connection: sqlite3.Connection, table: str) -> set[str]:
+    rows = connection.execute(f"PRAGMA table_info({table})").fetchall()
+    return {row[1] for row in rows}
+
+
+def _ensure_column(connection: sqlite3.Connection, table: str, column: str, definition: str) -> None:
+    """Add a column to an existing table if missing (idempotent dev migration).
+
+    The SQLite schema uses CREATE TABLE IF NOT EXISTS, so columns added in later
+    phases would never appear on an already-created dev database. This helper
+    keeps the local dev DB in sync without introducing a full migration framework
+    (which is intentionally out of scope for the MVP — see MIGRATION_PLAN.md).
+    """
+    if column not in _existing_columns(connection, table):
+        connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+
+
+MIGRATIONS = [
+    ("confirmations", "plan_id", "TEXT"),
+    ("confirmations", "summary", "TEXT"),
+]
+
+
 def connect(database_path: Path) -> sqlite3.Connection:
     connection = sqlite3.connect(database_path)
     connection.row_factory = sqlite3.Row
@@ -131,4 +161,6 @@ def initialize_database(settings: Settings) -> None:
     with connect(settings.database_path) as connection:
         for statement in SCHEMA_STATEMENTS:
             connection.execute(statement)
+        for table, column, definition in MIGRATIONS:
+            _ensure_column(connection, table, column, definition)
         connection.commit()

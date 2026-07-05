@@ -9,6 +9,20 @@ const { createWindow, setWindowMode } = require("./core/window.cjs");
 const { registerIpcHandlers } = require("./core/ipc.cjs");
 const { startPythonBackend, stopPythonBackend } = require("./services/pythonProcess.cjs");
 const { createRealtimeSession } = require("./services/pythonClient.cjs");
+const {
+  approveConfirmation,
+  cancelConfirmation,
+  createConfirmation,
+  createPlan,
+  getPlan,
+  listConfirmations,
+  listPlans,
+  listPendingConfirmations,
+  rejectConfirmation,
+  requestJson,
+  updatePlan,
+  updatePlanStep,
+} = require("./services/pythonClient.cjs");
 const { computerOpenApp } = require("./tools_legacy/powershell/computerOpenApp.cjs");
 const { computerTypeText } = require("./tools_legacy/powershell/computerTypeText.cjs");
 const { computerPressKey } = require("./tools_legacy/powershell/computerPressKey.cjs");
@@ -480,6 +494,61 @@ function handleToolsList() {
 function handleAppQuit() {
   app.quit();
 }
+
+// --- FAZA 9: confirmations + plans IPC handlers ---
+// Context: agent_reports/2026-07-05_faza9-confirmations-plans.md
+// Thin pass-through handlers that forward to the Python backend. No business
+// logic lives here (architecture rule: electron/main.cjs is only shell/IPC).
+// The permission/risk layer that *issues* confirmations from tool execution is
+// FAZA 10 — here we only expose storage + state machine transitions.
+
+async function handleConfirmationsList(_event, payload = {}) {
+  const { status, limit } = payload || {};
+  const params = new URLSearchParams();
+  if (status) params.set("status", status);
+  if (limit) params.set("limit", String(limit));
+  const path = params.toString() ? `/confirmations?${params.toString()}` : "/confirmations";
+  return await requestJson(path, {});
+}
+
+async function handleConfirmationsPending() {
+  return await listPendingConfirmations({});
+}
+
+async function handleConfirmationCreate(_event, payload) {
+  return await createConfirmation(payload || {});
+}
+
+async function handleConfirmationApprove(_event, confirmationId) {
+  return await approveConfirmation(confirmationId);
+}
+
+async function handleConfirmationReject(_event, confirmationId) {
+  return await rejectConfirmation(confirmationId);
+}
+
+async function handleConfirmationCancel(_event, confirmationId) {
+  return await cancelConfirmation(confirmationId);
+}
+
+async function handlePlansList() {
+  return await listPlans({});
+}
+
+async function handlePlanCreate(_event, payload) {
+  return await createPlan(payload || {});
+}
+
+async function handlePlanGet(_event, planId) {
+  return await getPlan(planId);
+}
+
+async function handlePlanUpdate(_event, { planId, payload }) {
+  return await updatePlan(planId, payload || {});
+}
+
+async function handlePlanStepUpdate(_event, { planId, stepId, payload }) {
+  return await updatePlanStep(planId, stepId, payload || {});
 
 async function handleRealtimeCreateToken() {
   const db = await readDb();
@@ -1435,6 +1504,18 @@ registerIpcHandlers({
   "app:quit": handleAppQuit,
   "realtime:create-token": handleRealtimeCreateToken,
   "tools:execute": handleToolsExecute,
+  // FAZA 9: confirmations + plans IPC channels (allowlist entries).
+  "confirmations:list": handleConfirmationsList,
+  "confirmations:pending": handleConfirmationsPending,
+  "confirmations:create": handleConfirmationCreate,
+  "confirmations:approve": handleConfirmationApprove,
+  "confirmations:reject": handleConfirmationReject,
+  "confirmations:cancel": handleConfirmationCancel,
+  "plans:list": handlePlansList,
+  "plans:create": handlePlanCreate,
+  "plans:get": handlePlanGet,
+  "plans:update": handlePlanUpdate,
+  "plans:update-step": handlePlanStepUpdate,
 });
 
 app.whenReady().then(async () => {

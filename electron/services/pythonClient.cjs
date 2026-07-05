@@ -67,11 +67,105 @@ async function createRealtimeSession(session, options = {}) {
   });
 }
 
+// --- FAZA 9: confirmations + plans bridge ---
+// Context: agent_reports/2026-07-05_faza9-confirmations-plans.md
+// These wrap the Python backend endpoints so the renderer can propose/approve
+// confirmations and store/retrieve plans via IPC. The permission/risk layer that
+// *issues* confirmations from tool execution is FAZA 10 — here we only expose
+// storage + state machine transitions.
+
+async function listConfirmations(options = {}) {
+  return await requestJson("/confirmations", options);
+}
+
+async function listPendingConfirmations(options = {}) {
+  return await requestJson("/confirmations/pending", options);
+}
+
+async function createConfirmation(payload, options = {}) {
+  return await requestJson("/confirmations", {
+    ...options,
+    method: "POST",
+    body: payload,
+  });
+}
+
+async function approveConfirmation(confirmationId, options = {}) {
+  return await requestJson(`/confirmations/${encodeURIComponent(confirmationId)}/approve`, {
+    ...options,
+    method: "POST",
+    body: {},
+  });
+}
+
+async function rejectConfirmation(confirmationId, options = {}) {
+  return await requestJson(`/confirmations/${encodeURIComponent(confirmationId)}/reject`, {
+    ...options,
+    method: "POST",
+    body: {},
+  });
+}
+
+async function cancelConfirmation(confirmationId, options = {}) {
+  return await requestJson(`/confirmations/${encodeURIComponent(confirmationId)}`, {
+    ...options,
+    method: "DELETE",
+    body: {},
+  });
+}
+
+async function listPlans(options = {}) {
+  return await requestJson("/plans", options);
+}
+
+async function createPlan(payload, options = {}) {
+  return await requestJson("/plans", {
+    ...options,
+    method: "POST",
+    body: payload,
+  });
+}
+
+async function getPlan(planId, options = {}) {
+  return await requestJson(`/plans/${encodeURIComponent(planId)}`, options);
+}
+
+async function updatePlan(planId, payload, options = {}) {
+  return await requestJson(`/plans/${encodeURIComponent(planId)}`, {
+    ...options,
+    method: "PATCH",
+    body: payload,
+  });
+}
+
+async function updatePlanStep(planId, stepId, payload, options = {}) {
+  return await requestJson(
+    `/plans/${encodeURIComponent(planId)}/steps/${encodeURIComponent(stepId)}`,
+    {
+      ...options,
+      method: "PATCH",
+      body: payload,
+    },
+  );
+}
+
 module.exports = {
   DEFAULT_BACKEND_URL,
+  approveConfirmation,
+  cancelConfirmation,
+  createConfirmation,
+  createPlan,
   createRealtimeSession,
   executeTool,
   getHealth,
+  getPlan,
+  listConfirmations,
+  listPlans,
+  listPendingConfirmations,
   listTools,
   normalizeBaseUrl,
+  rejectConfirmation,
+  requestJson,
+  updatePlan,
+  updatePlanStep,
 };

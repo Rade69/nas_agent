@@ -25,4 +25,9 @@ def get_settings() -> Settings:
     # is a fallback for running the backend directly (per README), so it never
     # overrides an already-set value.
     load_dotenv(dotenv_path=REPO_ROOT / ".env.local", override=False)
-    return Settings(openai_api_key=os.environ.get("OPENAI_API_KEY") or None)
+    data_dir_env = os.environ.get("RICKY_DATA_DIR")
+    data_dir = Path(data_dir_env) if data_dir_env else None
+    return Settings(
+        openai_api_key=os.environ.get("OPENAI_API_KEY") or None,
+        data_dir=data_dir if data_dir is not None else Path(__file__).resolve().parents[2] / "data",
+    )

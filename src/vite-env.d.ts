@@ -39,6 +39,68 @@ export type RickyToolResult = {
   [key: string]: unknown;
 };
 
+// --- FAZA 9: confirmations + plans types ---
+export type ConfirmationStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "expired"
+  | "cancelled";
+
+export type RiskLevel = "low" | "medium" | "high" | "critical";
+
+export type Confirmation = {
+  id: string;
+  status: ConfirmationStatus;
+  action_name: string;
+  payload: Record<string, unknown>;
+  risk_level: RiskLevel;
+  plan_id?: string | null;
+  summary?: string | null;
+  created_at: string;
+  resolved_at?: string | null;
+};
+
+export type ConfirmationListResponse = { confirmations: Confirmation[] };
+export type ConfirmationDecisionResponse = { ok: boolean; confirmation: Confirmation };
+
+export type PlanStatus =
+  | "draft"
+  | "proposed"
+  | "approved"
+  | "running"
+  | "completed"
+  | "rejected"
+  | "cancelled";
+
+export type PlanStepStatus =
+  | "pending"
+  | "in_progress"
+  | "completed"
+  | "skipped"
+  | "failed";
+
+export type PlanStep = {
+  id: string;
+  plan_id: string;
+  step_index: number;
+  title: string;
+  status: PlanStepStatus;
+  details: Record<string, unknown>;
+};
+
+export type Plan = {
+  id: string;
+  title: string;
+  status: PlanStatus;
+  created_at: string;
+  updated_at: string;
+  summary?: string | null;
+  steps: PlanStep[];
+};
+
+export type PlanListResponse = { plans: Plan[] };
+
 declare global {
   interface Window {
     ricky: {
@@ -46,6 +108,38 @@ declare global {
       executeTool: (toolCall: RickyToolCall) => Promise<RickyToolResult>;
       getToolSpecs: () => Promise<RickyToolSpec[]>;
       quitApp: () => Promise<void>;
+      // FAZA 9: confirmations + plans
+      listConfirmations: (filter?: {
+        status?: ConfirmationStatus;
+        limit?: number;
+      }) => Promise<ConfirmationListResponse>;
+      listPendingConfirmations: () => Promise<ConfirmationListResponse>;
+      createConfirmation: (payload: {
+        action_name: string;
+        payload?: Record<string, unknown>;
+        risk_level?: RiskLevel;
+        plan_id?: string | null;
+        summary?: string | null;
+      }) => Promise<Confirmation>;
+      approveConfirmation: (confirmationId: string) => Promise<ConfirmationDecisionResponse>;
+      rejectConfirmation: (confirmationId: string) => Promise<ConfirmationDecisionResponse>;
+      cancelConfirmation: (confirmationId: string) => Promise<ConfirmationDecisionResponse>;
+      listPlans: () => Promise<PlanListResponse>;
+      createPlan: (payload: {
+        title: string;
+        summary?: string | null;
+        steps?: { title: string; details?: Record<string, unknown> }[];
+      }) => Promise<Plan>;
+      getPlan: (planId: string) => Promise<Plan>;
+      updatePlan: (
+        planId: string,
+        payload: { title?: string; summary?: string | null; status?: PlanStatus },
+      ) => Promise<Plan>;
+      updatePlanStep: (
+        planId: string,
+        stepId: string,
+        payload: { status?: PlanStepStatus; title?: string; details?: Record<string, unknown> },
+      ) => Promise<Plan>;
     };
   }
 }

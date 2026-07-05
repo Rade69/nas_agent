@@ -9,10 +9,6 @@ from typing import Any
 from app.storage.db import connect
 
 
-def utc_now_iso() -> str:
-    return datetime.now(UTC).isoformat()
-
-
 class ToolRunRepository:
     def __init__(self, database_path: Path) -> None:
         self._database_path = database_path
@@ -52,7 +48,7 @@ class ToolRunRepository:
                 """,
                 (
                     run_id,
-                    utc_now_iso(),
+                    datetime.now(UTC).isoformat(),
                     tool_name,
                     json.dumps(input_payload, ensure_ascii=False, sort_keys=True),
                     json.dumps(output_payload, ensure_ascii=False, sort_keys=True) if output_payload is not None else None,

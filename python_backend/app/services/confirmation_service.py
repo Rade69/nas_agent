@@ -1,0 +1,85 @@
+from __future__ import annotations
+
+from typing import Any
+from uuid import uuid4
+
+from app.schemas.tool import RiskLevel
+from app.storage.repositories.confirmation_repo import ConfirmationRepository
+
+
+class ConfirmationService:
+    """Application layer over ConfirmationRepository (FAZA 9).
+
+    Owns confirmation lifecycle transitions and ID generation. The permission/
+    risk layer that *creates* confirmations from tool execution is FAZA 10 —
+    this service is the storage + state machine, callable both by the agent
+    runtime (later) and directly from the UI/API for manual proposals.
+    """
+
+    def __init__(self, repository: ConfirmationRepository) -> None:
+        self._repository = repository
+
+    def propose(
+        self,
+        *,
+        action_name: str,
+        payload: dict[str, Any],
+        risk_level: RiskLevel,
+        plan_id: str | None = None,
+        summary: str | None = None,
+    ) -> dict[str, Any]:
+        confirmation_id = f"confirm_{uuid4().hex[:12]}"
+        row = self._repository.create(
+            confirmation_id=confirmation_id,
+            action_name=action_name,
+            payload=payload,
+            risk_level=risk_level,
+            plan_id=plan_id,
+            summary=summary,
+        )
+        return self._to_dict(row)
+
+    def get(self, confirmation_id: str) -> dict[str, Any] | None:
+        row = self._repository.get(confirmation_id)
+        return self._to_dict(row) if row else None
+
+    def list(self, status: str | None = None, limit: int = 50) -> list[dict[str, Any]]:
+        rows = self._repository.list(status=status, limit=limit)
+        return [self._to_dict(row) for row in rows]
+
+    def list_pending(self, limit: int = 20) -> list[dict[str, Any]]:
+        return self.list(status="pending", limit=limit)
+
+    def approve(self, confirmation_id: str) -> dict[str, Any] | None:
+        return self._resolve(confirmation_id, "approved")
+
+    def reject(self, confirmation_id: str) -> dict[str, Any] | None:
+        return self._resolve(confirmation_id, "rejected")
+
+    def cancel(self, confirmation_id: str) -> dict[str, Any] | None:
+        return self._resolve(confirmation_id, "cancelled")
+
+    def _resolve(self, confirmation_id: str, status: str) -> dict[str, Any] | None:
+        row = self._repository.resolve(confirmation_id, status)
+        return self._to_dict(row) if row else None
+
+    def _to_dict(self, row: Any) -> dict[str, Any]:
+        import json
+
+        payload_json = row["payload_json"] if "payload_json" in row.keys() else "{}"
+        try:
+            payload = json.loads(payload_json) if payload_json else {}
+        except (json.JSONDecodeError, TypeError):
+            payload = {}
+
+        return {
+            "id": row["id"],
+            "status": row["status"],
+            "action_name": row["action_name"],
+            "payload": payload,
+            "risk_level": row["risk_level"],
+            "plan_id": row["plan_id"] if "plan_id" in row.keys() else None,
+            "summary": row["summary"] if "summary" in row.keys() else None,
+            "created_at": row["created_at"],
+            "resolved_at": row["resolved_at"],
+        }

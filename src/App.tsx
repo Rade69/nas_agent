@@ -1,8 +1,10 @@
-import { useRef, useState } from "react";
-import { Expand, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Expand, ListChecks, X } from "lucide-react";
 import { ActivityTimeline } from "./components/ActivityTimeline";
 import { ArtifactPanel } from "./components/ArtifactPanel";
 import { BottomVoiceBar } from "./components/BottomVoiceBar";
+import { ConfirmationDialog } from "./components/ConfirmationDialog";
+import { PlansPanel } from "./components/PlansPanel";
 import { RickyFace } from "./components/RickyFace";
 import { VoiceTopBar } from "./components/VoiceTopBar";
 import {
@@ -16,7 +18,7 @@ import {
   type TranscriptEntry,
   type VoiceState,
 } from "./lib/realtime";
-import type { RickyArtifact } from "./vite-env";
+import type { Confirmation, Plan, PlanStepStatus, RickyArtifact } from "./vite-env";
 
 type RickyMode = "display" | "computer";
 
@@ -39,9 +41,72 @@ export default function App() {
   ]);
   const [status, setStatus] = useState("Idle");
   const [textPrompt, setTextPrompt] = useState("");
+  // FAZA 9: confirmations + plans UI state.
+  const [pendingConfirmation, setPendingConfirmation] = useState<Confirmation | null>(null);
+  const [confirmationBusy, setConfirmationBusy] = useState(false);
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [showPlans, setShowPlans] = useState(false);
+  const [busyPlanId, setBusyPlanId] = useState<string | null>(null);
+  const [busyStepId, setBusyStepId] = useState<string | null>(null);
   const clientRef = useRef<RickyRealtimeClient | null>(null);
 
   const isConnected = connectionState === "connected";
+
+  // FAZA 9: drive VoiceState into waiting_confirmation while a pending
+  // confirmation is visible, so the top bar reflects the safety state. The
+  // underlying audio pipeline (src/lib/realtime.ts) is NOT modified — this is
+  // an additive UI-side effect layered over the existing VoiceState model.
+  useEffect(() => {
+    if (pendingConfirmation && pendingConfirmation.status === "pending") {
+      setVoiceState("waiting_confirmation");
+    }
+  }, [pendingConfirmation]);
+
+  // FAZA 9: refresh pending confirmations periodically (lightweight poll —
+  // backend push via activity_events arrives in a later phase).
+  useEffect(() => {
+    let cancelled = false;
+    async function refreshPending() {
+      try {
+        const response = await window.ricky.listPendingConfirmations();
+        if (cancelled) return;
+        const next = response?.confirmations?.[0] ?? null;
+        setPendingConfirmation((current) => {
+          // Only auto-show new pending confirmations; keep resolved ones visible
+          // briefly via the dialog dismiss flow (handled by setVisible inside
+          // the component).
+          if (next && (!current || current.id !== next.id)) {
+            return next;
+          }
+          if (!next && current && current.status !== "pending") {
+            return null;
+          }
+          return current;
+        });
+      } catch {
+        // Backend may briefly be unavailable during startup; silent retry.
+      }
+    }
+    refreshPending();
+    const interval = window.setInterval(refreshPending, 2500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  async function refreshPlans() {
+    try {
+      const response = await window.ricky.listPlans();
+      setPlans(response?.plans ?? []);
+    } catch {
+      // Non-fatal: plans panel just stays empty.
+    }
+  }
+
+  useEffect(() => {
+    refreshPlans();
+  }, []);
 
   async function connect() {
     const client = new RickyRealtimeClient({
@@ -114,6 +179,93 @@ export default function App() {
     setActivityEvents((items) => [event, ...items].slice(0, 80));
   }
 
+  // --- FAZA 9: confirmation + plans handlers ---
+  async function handleApproveConfirmation(confirmationId: string) {
+    setConfirmationBusy(true);
+    try {
+      const result = await window.ricky.approveConfirmation(confirmationId);
+      setPendingConfirmation(result?.confirmation ?? null);
+      addActivityEvent(
+        createActivityEvent("status", "Confirmation approved", `Approved ${confirmationId}`),
+      );
+    } catch (error) {
+      addActivityEvent(
+        createActivityEvent("error", "Approval failed", error instanceof Error ? error.message : String(error)),
+      );
+    } finally {
+      setConfirmationBusy(false);
+      setVoiceState("idle");
+    }
+  }
+
+  async function handleRejectConfirmation(confirmationId: string) {
+    setConfirmationBusy(true);
+    try {
+      const result = await window.ricky.rejectConfirmation(confirmationId);
+      setPendingConfirmation(result?.confirmation ?? null);
+      addActivityEvent(
+        createActivityEvent("status", "Confirmation rejected", `Rejected ${confirmationId}`),
+      );
+    } catch (error) {
+      addActivityEvent(
+        createActivityEvent("error", "Rejection failed", error instanceof Error ? error.message : String(error)),
+      );
+    } finally {
+      setConfirmationBusy(false);
+      setVoiceState("idle");
+    }
+  }
+
+  async function handleCancelConfirmation(confirmationId: string) {
+    setConfirmationBusy(true);
+    try {
+      const result = await window.ricky.cancelConfirmation(confirmationId);
+      setPendingConfirmation(result?.confirmation ?? null);
+    } catch (error) {
+      addActivityEvent(
+        createActivityEvent("error", "Cancel failed", error instanceof Error ? error.message : String(error)),
+      );
+    } finally {
+      setConfirmationBusy(false);
+      setVoiceState("idle");
+    }
+  }
+
+  async function handleUpdatePlanStatus(planId: string, status: Plan["status"]) {
+    setBusyPlanId(planId);
+    try {
+      const updated = await window.ricky.updatePlan(planId, { status });
+      setPlans((items) => items.map((plan) => (plan.id === planId ? updated : plan)));
+      addActivityEvent(createActivityEvent("status", "Plan updated", `${planId} -> ${status}`));
+    } catch (error) {
+      addActivityEvent(
+        createActivityEvent("error", "Plan update failed", error instanceof Error ? error.message : String(error)),
+      );
+    } finally {
+      setBusyPlanId(null);
+    }
+  }
+
+  async function handleUpdateStepStatus(
+    planId: string,
+    stepId: string,
+    status: PlanStepStatus,
+  ) {
+    setBusyPlanId(planId);
+    setBusyStepId(stepId);
+    try {
+      const updated = await window.ricky.updatePlanStep(planId, stepId, { status });
+      setPlans((items) => items.map((plan) => (plan.id === planId ? updated : plan)));
+    } catch (error) {
+      addActivityEvent(
+        createActivityEvent("error", "Step update failed", error instanceof Error ? error.message : String(error)),
+      );
+    } finally {
+      setBusyPlanId(null);
+      setBusyStepId(null);
+    }
+  }
+
   if (mode === "computer") {
     return (
       <main className="app-shell app-shell-mini">
@@ -175,8 +327,31 @@ export default function App() {
           onToggleActivity={() => setShowLog((value) => !value)}
         />
 
+        <button
+          className={`plans-toggle-button${showPlans ? " active" : ""}`}
+          onClick={() => {
+            setShowPlans((value) => !value);
+            if (!showPlans) void refreshPlans();
+          }}
+          aria-label="Toggle plans panel"
+          title="Ricky plans and proposals"
+        >
+          <ListChecks size={14} />
+          <span>{plans.length}</span>
+        </button>
+
         {showLog ? <ActivityTimeline transcript={transcript} activityEvents={activityEvents} /> : null}
       </section>
+
+      <PlansPanel
+        visible={showPlans}
+        plans={plans}
+        busyPlanId={busyPlanId}
+        busyStepId={busyStepId}
+        onClose={() => setShowPlans(false)}
+        onUpdatePlanStatus={handleUpdatePlanStatus}
+        onUpdateStepStatus={handleUpdateStepStatus}
+      />
 
       <ArtifactPanel
         artifact={artifact}
@@ -184,6 +359,14 @@ export default function App() {
         fullscreen={artifactFullscreen}
         onToggleVisible={() => setArtifactVisible((value) => !value)}
         onToggleFullscreen={() => setArtifactFullscreen((value) => !value)}
+      />
+
+      <ConfirmationDialog
+        confirmation={pendingConfirmation}
+        busy={confirmationBusy}
+        onApprove={handleApproveConfirmation}
+        onReject={handleRejectConfirmation}
+        onCancel={handleCancelConfirmation}
       />
     </main>
   );
