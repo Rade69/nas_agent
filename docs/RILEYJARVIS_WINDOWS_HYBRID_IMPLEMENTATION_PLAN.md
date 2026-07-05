@@ -1611,6 +1611,8 @@ PR 18 - Packaging
 
 ## 10. Copy-paste master prompt za Codex ili Claude Code
 
+> **Zastarjelo — ne koristiti direktno.** Brojevi faza ovdje ne odgovaraju više trenutnom stanju (vidi tabelu mapiranja u `docs/MIGRATION_PLAN.md`), a ovaj prompt ne pominje voice-first pravilo (`src/lib/realtime.ts` se ne smije zamijeniti Python audio pipeline-om). Koristi ažuriranu verziju u [MIGRATION_PLAN.md](./MIGRATION_PLAN.md#master-prompt-za-novi-agent-session) — ista namjena, ispravan sadržaj. Ova verzija je ostavljena samo kao istorijski zapis.
+
 Koristi ovaj prompt kada pokrećeš novi agent session:
 
 ```text

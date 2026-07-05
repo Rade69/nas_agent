@@ -1,5 +1,7 @@
 # Security model — RileyJarvis Windows Hybrid
 
+> **Produkcijski sigurnosni plan:** [SECURITY_HARDENING_PLAN.md](./SECURITY_HARDENING_PLAN.md) je autoritativan za produkcijski build (Security Gates 0/1/2, threat model, tool executor provjere, document privacy model, self-test, itd.). Ako se ovaj dokument i `SECURITY_HARDENING_PLAN.md` razilaze, važi `SECURITY_HARDENING_PLAN.md`. Ovaj fajl ostaje kao sažetak risk levela i permission pravila koje `TOOL_CONTRACTS.md` referencira.
+
 ## Risk levels
 
 ```text

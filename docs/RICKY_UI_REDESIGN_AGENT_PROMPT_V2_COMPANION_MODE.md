@@ -1,5 +1,7 @@
 # Ricky Assistant — UI Redesign Agent Prompt
 
+> **Superseded.** Replaced by [RICKY_UI_REDESIGN_AGENT_PROMPT_V3_REALTIME_COMPANION.md](./RICKY_UI_REDESIGN_AGENT_PROMPT_V3_REALTIME_COMPANION.md) — this version predates the correction that `src/lib/realtime.ts` must remain the primary voice/audio pipeline. Kept for historical reference only.
+
 ## Purpose
 
 Use this prompt with Codex, Claude Code, or another coding agent to redesign the current Ricky Assistant desktop UI.
