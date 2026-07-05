@@ -27,4 +27,31 @@ contextBridge.exposeInMainWorld("ricky", {
     ipcRenderer.invoke("plans:update-step", { planId, stepId, payload }),
   // FAZA 11: event bridge.
   listEvents: (since) => ipcRenderer.invoke("events:list", since),
+  // FAZA 12: companion orb lifecycle + voice state forwarding.
+  // onCompanionVoiceState is a subscribe-style listener (returns an unsubscribe
+  // function); it is bound to the single named channel "companion:voice-state"
+  // and does NOT expose a generic ipcRenderer.on pass-through.
+  companionShow: () => ipcRenderer.invoke("companion:show"),
+  companionHide: () => ipcRenderer.invoke("companion:hide"),
+  companionToggle: () => ipcRenderer.invoke("companion:toggle"),
+  companionUpdateVoiceState: (state) =>
+    ipcRenderer.invoke("companion:voice-state-update", state),
+  companionClick: () => ipcRenderer.invoke("companion:click"),
+  companionOpenMain: () => ipcRenderer.invoke("companion:open-main"),
+  companionToggleVoice: () => ipcRenderer.invoke("companion:toggle-voice"),
+  companionToggleLock: (locked) => ipcRenderer.invoke("companion:toggle-lock", locked),
+  onCompanionVoiceState: (handler) => {
+    const listener = (_event, state) => handler(state);
+    ipcRenderer.on("companion:voice-state", listener);
+    return () => {
+      ipcRenderer.removeListener("companion:voice-state", listener);
+    };
+  },
+  onCompanionToggleVoice: (handler) => {
+    const listener = () => handler();
+    ipcRenderer.on("companion:toggle-voice", listener);
+    return () => {
+      ipcRenderer.removeListener("companion:toggle-voice", listener);
+    };
+  },
 });

@@ -1860,3 +1860,243 @@ td {
   background: rgba(255, 91, 114, 0.14);
   color: #ff8197;
 }
+
+/* ============================================================
+   FAZA 12 — Companion orb (separate BrowserWindow, ?view=companion)
+   Context: agent_reports/2026-07-05_faza12-companion-orb.md
+   ============================================================ */
+
+.companion-root {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  -webkit-app-region: drag; /* whole orb is draggable */
+  user-select: none;
+}
+
+.companion-root * {
+  -webkit-app-region: no-drag; /* buttons/menu stay clickable */
+}
+
+.companion-orb-button {
+  width: 96px;
+  height: 96px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  position: relative;
+}
+
+.companion-state-pill {
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 9px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.78);
+  background: rgba(8, 12, 20, 0.78);
+  padding: 2px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.companion-face {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #1b2a4a 0%, #0c1424 70%, #060a14 100%);
+  position: relative;
+  box-shadow: 0 0 0 1px rgba(125, 223, 255, 0.18) inset, 0 6px 18px rgba(0, 0, 0, 0.5);
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  place-items: center;
+}
+
+.companion-glow {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(125, 223, 255, 0.0) 55%, rgba(125, 223, 255, 0.0) 70%);
+  transition: background 0.3s ease;
+}
+
+.companion-state-ring-listening .companion-glow,
+.companion-state-ring-speaking .companion-glow {
+  background: radial-gradient(circle, rgba(125, 223, 255, 0.0) 50%, rgba(125, 223, 255, 0.35) 72%, rgba(125, 223, 255, 0) 90%);
+  animation: companion-glow-pulse 1.6s ease-in-out infinite;
+}
+
+.companion-state-ring-thinking .companion-glow {
+  background: radial-gradient(circle, rgba(255, 178, 62, 0.0) 50%, rgba(255, 178, 62, 0.28) 72%, rgba(255, 178, 62, 0) 90%);
+  animation: companion-glow-pulse 2.2s ease-in-out infinite;
+}
+
+.companion-state-ring-error .companion-glow {
+  background: radial-gradient(circle, rgba(255, 91, 114, 0.0) 50%, rgba(255, 91, 114, 0.32) 72%, rgba(255, 91, 114, 0) 90%);
+}
+
+.companion-state-ring-waiting_confirmation .companion-glow {
+  background: radial-gradient(circle, rgba(255, 178, 62, 0.0) 50%, rgba(255, 178, 62, 0.3) 72%, rgba(255, 178, 62, 0) 90%);
+  animation: companion-glow-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes companion-glow-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+.companion-eye-row {
+  display: flex;
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.companion-eye {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #cdeeff;
+  box-shadow: 0 0 6px rgba(125, 223, 255, 0.7);
+  display: grid;
+  place-items: center;
+}
+
+.companion-eye span {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #0c1424;
+}
+
+.companion-face-talking .companion-eye {
+  animation: companion-blink 3.5s infinite;
+}
+
+.companion-face-sleeping .companion-eye {
+  height: 2px;
+  border-radius: 2px;
+  box-shadow: none;
+}
+
+.companion-face-sleeping .companion-eye span {
+  display: none;
+}
+
+@keyframes companion-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.1); }
+}
+
+.companion-mouth-wrap {
+  display: grid;
+  place-items: center;
+  margin-top: -4px;
+}
+
+.companion-mouth {
+  width: calc(28px * (1 + var(--mouth-width)));
+  height: calc(20px * var(--mouth-open, 0.05) + 4px);
+  border-radius: calc(50% * (0.5 + var(--mouth-round)));
+  background: #0a0f1c;
+  border: 1.5px solid #cdeeff;
+  position: relative;
+  overflow: hidden;
+  transition: height 0.08s ease, border-radius 0.08s ease, width 0.08s ease;
+}
+
+.companion-mouth-teeth {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: calc(40% * var(--mouth-teeth, 0));
+  background: #eaf6ff;
+  border-radius: 0 0 50% 50%;
+}
+
+.companion-mouth-line {
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50%;
+  height: 1px;
+  background: rgba(205, 238, 255, 0.5);
+}
+
+/* Context menu */
+.companion-menu {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #0d1117;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 160px;
+  z-index: 10;
+}
+
+.companion-menu-item {
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.85);
+  text-align: left;
+  padding: 7px 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.companion-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.companion-menu-danger:hover {
+  background: rgba(255, 91, 114, 0.18);
+  color: #ff8197;
+}
+
+.companion-menu-separator {
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 4px 0;
+}
+
+/* Main window: orb toggle button */
+.companion-toggle-button {
+  position: absolute;
+  right: 14px;
+  bottom: 38px;
+  z-index: 90;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: rgba(125, 223, 255, 0.12);
+  color: #cdeeff;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  border: 1px solid rgba(125, 223, 255, 0.2);
+}
+
+.companion-toggle-button:hover {
+  background: rgba(125, 223, 255, 0.22);
+}

@@ -105,9 +105,30 @@ export default function App() {
     }
   }
 
+  // FAZA 12: forward VoiceState from the main window's Realtime client to the
+  // companion orb renderer (over IPC). The orb itself never runs an audio
+  // pipeline — this is the only path it learns the current voice state.
   useEffect(() => {
-    refreshPlans();
-  }, []);
+    if (window.ricky?.companionUpdateVoiceState) {
+      window.ricky.companionUpdateVoiceState(voiceState);
+    }
+  }, [voiceState]);
+
+  // FAZA 12: when the companion orb requests a voice toggle (user clicked the
+  // orb or used the context menu), flip the connection state. The main process
+  // already focuses the main window before forwarding the request.
+  useEffect(() => {
+    const unsubscribe = window.ricky?.onCompanionToggleVoice?.(() => {
+      if (isConnected) {
+        disconnect();
+      } else {
+        void connect();
+      }
+    });
+    return () => {
+      unsubscribe?.();
+    };
+  }, [isConnected]);
 
   // FAZA 11: poll backend events for artifact.created and tool progress.
   // This surfaces out-of-band artifact updates (e.g. from background tool runs or
@@ -389,6 +410,16 @@ export default function App() {
         >
           <ListChecks size={14} />
           <span>{plans.length}</span>
+        </button>
+
+        {/* FAZA 12: toggle the companion orb window (quick voice entry point). */}
+        <button
+          className="companion-toggle-button"
+          onClick={() => void window.ricky.companionToggle?.()}
+          aria-label="Toggle companion orb"
+          title="Show/hide companion orb"
+        >
+          Orb
         </button>
 
         {showLog ? <ActivityTimeline transcript={transcript} activityEvents={activityEvents} /> : null}

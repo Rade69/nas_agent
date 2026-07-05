@@ -5,8 +5,20 @@ const crypto = require("node:crypto");
 
 require("./core/env.cjs");
 
-const { createWindow, setWindowMode } = require("./core/window.cjs");
+const { createWindow, setWindowMode, getMainWindow } = require("./core/window.cjs");
 const { registerIpcHandlers } = require("./core/ipc.cjs");
+// FAZA 12: Companion orb window.
+const {
+  createCompanionWindow,
+  showCompanion,
+  hideCompanion,
+  toggleCompanion,
+  forwardVoiceStateToCompanion,
+  setLockedPosition,
+  ensureTray,
+  setMainWindowFocusCallback,
+  setQuitAppCallback,
+} = require("./core/companionWindow.cjs");
 const { startPythonBackend, stopPythonBackend } = require("./services/pythonProcess.cjs");
 const { createRealtimeSession } = require("./services/pythonClient.cjs");
 const {
@@ -606,6 +618,71 @@ async function handlePlanStepUpdate(_event, { planId, stepId, payload }) {
 // FAZA 11: event bridge handler.
 async function handleEventsList(_event, since) {
   return await listEvents(typeof since === "string" ? since : undefined);
+}
+
+// --- FAZA 12: Companion orb IPC handlers ---
+// Context: agent_reports/2026-07-05_faza12-companion-orb.md
+// Thin pass-through handlers for the companion orb lifecycle and voice state
+// forwarding. No business logic — the orb is a separate BrowserWindow whose
+// renderer mounts CompanionOrb.tsx (see src/main.tsx ?view=companion).
+
+function handleCompanionShow() {
+  showCompanion();
+  return { ok: true };
+}
+
+function handleCompanionHide() {
+  hideCompanion();
+  return { ok: true };
+}
+
+function handleCompanionToggle() {
+  toggleCompanion();
+  return { ok: true };
+}
+
+// Main renderer -> main process -> companion renderer: forward VoiceState so
+// the orb can display it without running its own Realtime client.
+function handleCompanionVoiceStateUpdate(_event, state) {
+  forwardVoiceStateToCompanion(state);
+  return { ok: true };
+}
+
+// Orb renderer -> main process: user clicked the orb (quick voice entry).
+function handleCompanionClick() {
+  // Bring main window forward and focus it so the user sees the conversation.
+  const main = getMainWindow && getMainWindow();
+  if (main && !main.isDestroyed()) {
+    if (!main.isVisible()) main.show();
+    main.focus();
+  }
+  return { ok: true };
+}
+
+// Orb renderer -> main process: user wants the main window.
+function handleCompanionOpenMain() {
+  const main = getMainWindow && getMainWindow();
+  if (main && !main.isDestroyed()) {
+    if (!main.isVisible()) main.show();
+    main.focus();
+  }
+  return { ok: true };
+}
+
+// Orb renderer -> main process: toggle voice (start/stop listening). The actual
+// voice start/stop lives in the main renderer's Realtime client; main forwards
+// a request to it.
+function handleCompanionToggleVoice() {
+  const main = getMainWindow && getMainWindow();
+  if (main && !main.isDestroyed()) {
+    main.webContents.send("companion:toggle-voice");
+  }
+  return { ok: true };
+}
+
+function handleCompanionToggleLock(_event, locked) {
+  setLockedPosition(locked === true);
+  return { ok: true };
 }
 
 async function handleRealtimeCreateToken() {
@@ -1600,9 +1677,29 @@ registerIpcHandlers({
   "plans:update-step": handlePlanStepUpdate,
   // FAZA 11: event bridge.
   "events:list": handleEventsList,
+  // FAZA 12: companion orb lifecycle + voice state forwarding.
+  "companion:show": handleCompanionShow,
+  "companion:hide": handleCompanionHide,
+  "companion:toggle": handleCompanionToggle,
+  "companion:voice-state-update": handleCompanionVoiceStateUpdate,
+  "companion:click": handleCompanionClick,
+  "companion:open-main": handleCompanionOpenMain,
+  "companion:toggle-voice": handleCompanionToggleVoice,
+  "companion:toggle-lock": handleCompanionToggleLock,
 });
 
 app.whenReady().then(async () => {
+  // FAZA 12: wire companion orb callbacks so the companion module can bring
+  // the main window forward and quit the app without circular imports.
+  setMainWindowFocusCallback(() => {
+    const main = getMainWindow && getMainWindow();
+    if (main && !main.isDestroyed()) {
+      if (!main.isVisible()) main.show();
+      main.focus();
+    }
+  });
+  setQuitAppCallback(() => app.quit());
+
   try {
     await startPythonBackend({ isPackaged: app.isPackaged });
   } catch (error) {
@@ -1610,6 +1707,16 @@ app.whenReady().then(async () => {
   }
 
   await createWindow({ beforeShow: prepareWindowData });
+
+  // FAZA 12: create the companion orb after the main window so the user has
+  // a quick voice entry point. Tray is best-effort (may be unavailable on
+  // some CI/headless setups); the orb window itself is the primary surface.
+  try {
+    createCompanionWindow();
+    ensureTray();
+  } catch (error) {
+    console.warn("[companion] Could not create companion orb:", error);
+  }
 });
 
 app.on("before-quit", () => {

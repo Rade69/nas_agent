@@ -1,5 +1,7 @@
 /// <reference types="vite/client" />
 
+import type { VoiceState } from "./lib/voiceState";
+
 export type RickyArtifact = {
   title: string;
   kind:
@@ -155,6 +157,17 @@ declare global {
         events: BackendEvent[];
         next_cursor: string | null;
       }>;
+      // FAZA 12: companion orb
+      companionShow: () => Promise<{ ok: boolean }>;
+      companionHide: () => Promise<{ ok: boolean }>;
+      companionToggle: () => Promise<{ ok: boolean }>;
+      companionUpdateVoiceState: (state: VoiceState) => Promise<{ ok: boolean }>;
+      companionClick: () => Promise<{ ok: boolean }>;
+      companionOpenMain: () => Promise<{ ok: boolean }>;
+      companionToggleVoice: () => Promise<{ ok: boolean }>;
+      companionToggleLock: (locked: boolean) => Promise<{ ok: boolean }>;
+      onCompanionVoiceState: (handler: (state: VoiceState) => void) => () => void;
+      onCompanionToggleVoice: (handler: () => void) => () => void;
     };
   }
 }
