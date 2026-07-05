@@ -9,7 +9,7 @@ Ovo je fazni plan migracije iz [ARCHITECTURE.md](./ARCHITECTURE.md). Pun origina
 | 0 | Baseline i zaštita trenutnog stanja | ✅ urađeno (git init, tag `windows-port-baseline`, branch `hybrid-python-backend`) |
 | 1 | Dokumentacija arhitekture | ✅ urađeno (ovaj `docs/` set) |
 | 2 | Ažurirati AGENTS.md i CLAUDE.md | ✅ urađeno (uključuje agent_reports proceduru i konvenciju `Context:` komentara) |
-| 3 | Razbiti `electron/main.cjs` bez promjene ponašanja | ⬜ |
+| 3 | Razbiti `electron/main.cjs` bez promjene ponašanja | 🟡 djelimično (env/window/PowerShell alati izvučeni; `core/ipc.cjs` odgođen — vidi `agent_reports/2026-07-05_split-main-cjs-faza3.md`) |
 | 4 | Python backend skeleton (FastAPI, `/health`, `/tools`, `/tools/execute`) | ⬜ |
 | 5 | Electron pokreće Python backend | ⬜ |
 | 6 | Tool bridge Electron -> Python | ⬜ |

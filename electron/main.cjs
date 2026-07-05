@@ -1,24 +1,22 @@
-const { app, BrowserWindow, ipcMain, nativeImage, screen } = require("electron");
-const { execFile } = require("node:child_process");
-const { promisify } = require("node:util");
+const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs/promises");
 const crypto = require("node:crypto");
-const dotenv = require("dotenv");
 
-dotenv.config({ path: path.join(process.cwd(), ".env.local") });
+require("./core/env.cjs");
 
-const execFileAsync = promisify(execFile);
-
-async function runPowerShell(script) {
-  return execFileAsync("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script]);
-}
+const { createWindow, setWindowMode } = require("./core/window.cjs");
+const { computerOpenApp } = require("./tools_legacy/powershell/computerOpenApp.cjs");
+const { computerTypeText } = require("./tools_legacy/powershell/computerTypeText.cjs");
+const { computerPressKey } = require("./tools_legacy/powershell/computerPressKey.cjs");
+const { computerClick } = require("./tools_legacy/powershell/computerClick.cjs");
+const { computerScroll } = require("./tools_legacy/powershell/computerScroll.cjs");
+const { screenSnapshot } = require("./tools_legacy/powershell/screenSnapshot.cjs");
+const { uiInspect } = require("./tools_legacy/powershell/uiInspect.cjs");
 
 const dataDir = path.join(process.cwd(), "data");
 const dbPath = path.join(dataDir, "ricky-db.json");
 let currentMode = "display";
-let mainWindow = null;
-let normalWindowBounds = null;
 let dbWriteQueue = Promise.resolve();
 
 const RICKY_INSTRUCTIONS = `# Role and Objective
@@ -467,140 +465,9 @@ function requiresConfirmation(args) {
   return args.confirmed !== true && (args.risk === "may_send_or_modify" || args.risk === "private_or_sensitive");
 }
 
-function sendKeysForKey(key) {
-  const keyTokens = {
-    enter: "{ENTER}",
-    return: "{ENTER}",
-    tab: "{TAB}",
-    escape: "{ESC}",
-    delete: "{DEL}",
-    space: " ",
-    up: "{UP}",
-    down: "{DOWN}",
-    left: "{LEFT}",
-    right: "{RIGHT}",
-  };
-  return keyTokens[String(key || "").toLowerCase()] || null;
-}
-
-function escapeSendKeys(text) {
-  return String(text)
-    .replace(/([+^%~(){}[\]])/g, "{$1}")
-    .replace(/\r?\n/g, "{ENTER}");
-}
-
-function psSingleQuote(value) {
-  return `'${String(value).replace(/'/g, "''")}'`;
-}
-
-const NATIVE_MOUSE_TYPE = `
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-public class RickyNativeMouse {
-  [DllImport("user32.dll")]
-  public static extern bool SetCursorPos(int x, int y);
-  [DllImport("user32.dll")]
-  public static extern void mouse_event(uint dwFlags, int dx, int dy, int dwData, UIntPtr dwExtraInfo);
-}
-"@
-`;
-
-const NATIVE_WINDOW_TYPE = `
-Add-Type @"
-using System;
-using System.Runtime.InteropServices;
-using System.Text;
-public class RickyNativeWindow {
-  [DllImport("user32.dll")]
-  public static extern IntPtr GetForegroundWindow();
-  [DllImport("user32.dll")]
-  public static extern int GetWindowText(IntPtr hWnd, StringBuilder text, int count);
-  [DllImport("user32.dll")]
-  public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
-}
-"@
-`;
-
-async function createWindow() {
+async function prepareWindowData() {
   await ensureData();
   await clearStartupLoadingThumbnails();
-  const win = new BrowserWindow({
-    width: 1120,
-    height: 760,
-    minWidth: 420,
-    minHeight: 520,
-    title: "Ricky",
-    frame: false,
-    transparent: true,
-    backgroundColor: "#00000000",
-    icon: nativeImage.createEmpty(),
-    webPreferences: {
-      preload: path.join(__dirname, "preload.cjs"),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
-  });
-  mainWindow = win;
-  win.center();
-
-  win.webContents.session.setPermissionRequestHandler((_webContents, permission, callback) => {
-    callback(permission === "media");
-  });
-
-  if (process.env.RICKY_DEBUG_CONSOLE) {
-    win.webContents.on("console-message", (_event, level, message, line, sourceId) => {
-      console.log(`[renderer] ${message} (${sourceId}:${line})`);
-    });
-    win.webContents.session.webRequest.onErrorOccurred((details) => {
-      console.log(`[network-error] ${details.method} ${details.url} -> ${details.error}`);
-    });
-  }
-
-  const devUrl = process.env.VITE_DEV_SERVER_URL;
-  if (devUrl) {
-    await win.loadURL(devUrl);
-  } else {
-    await win.loadFile(path.join(process.cwd(), "dist", "index.html"));
-  }
-}
-
-function setWindowMode(mode) {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-
-  if (mode === "computer") {
-    const currentBounds = mainWindow.getBounds();
-    if (currentBounds.width > 400 && currentBounds.height > 400) {
-      normalWindowBounds = currentBounds;
-    }
-    const cursorPoint = screen.getCursorScreenPoint();
-    const targetDisplay = screen.getDisplayNearestPoint(cursorPoint) || screen.getDisplayMatching(currentBounds);
-    const { workArea } = targetDisplay;
-    const miniSize = 190;
-    const margin = 18;
-    mainWindow.setMinimumSize(150, 150);
-    mainWindow.setResizable(false);
-    mainWindow.setAlwaysOnTop(true, "floating");
-    mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-    mainWindow.setBounds({
-      x: workArea.x + margin,
-      y: workArea.y + workArea.height - miniSize - margin,
-      width: miniSize,
-      height: miniSize,
-    });
-    return;
-  }
-
-  mainWindow.setAlwaysOnTop(false);
-  mainWindow.setVisibleOnAllWorkspaces(false);
-  mainWindow.setResizable(true);
-  mainWindow.setMinimumSize(420, 520);
-  if (normalWindowBounds) {
-    mainWindow.setBounds(normalWindowBounds);
-  } else {
-    mainWindow.setBounds({ width: 1120, height: 760 });
-    mainWindow.center();
-  }
 }
 
 ipcMain.handle("tools:list", () => toolSpecs);
@@ -826,7 +693,7 @@ ipcMain.handle("tools:execute", async (_event, toolCall) => {
     if (name === "computer_open_app") {
       const appName = String(args.appName || "");
       try {
-        await runPowerShell(`Start-Process ${psSingleQuote(appName)}`);
+        await computerOpenApp(appName);
       } catch (error) {
         return { ok: false, error: `Could not open ${appName}: ${error instanceof Error ? error.message : String(error)}` };
       }
@@ -834,21 +701,12 @@ ipcMain.handle("tools:execute", async (_event, toolCall) => {
     }
 
     if (name === "computer_type_text") {
-      const escaped = escapeSendKeys(String(args.text || ""));
-      const script = `Add-Type -AssemblyName System.Windows.Forms\n[System.Windows.Forms.SendKeys]::SendWait(${psSingleQuote(escaped)})`;
-      await runPowerShell(script);
+      await computerTypeText(args.text);
       return { ok: true, message: "Typed text into the active app." };
     }
 
     if (name === "computer_press_key") {
-      const keyToken = sendKeysForKey(args.key);
-      if (!keyToken) {
-        return { ok: false, error: `Unsupported key: ${args.key}` };
-      }
-      const repeat = Math.max(1, Math.min(20, Number(args.repeat || 1)));
-      const repeated = keyToken.repeat(repeat);
-      const script = `Add-Type -AssemblyName System.Windows.Forms\n[System.Windows.Forms.SendKeys]::SendWait(${psSingleQuote(repeated)})`;
-      await runPowerShell(script);
+      await computerPressKey(args.key, args.repeat);
       return { ok: true, message: `Pressed ${args.key}.` };
     }
 
@@ -856,41 +714,17 @@ ipcMain.handle("tools:execute", async (_event, toolCall) => {
       if (requiresConfirmation(args)) {
         return { ok: false, requiresConfirmation: true, message: "Confirmation required before clicking a risky target." };
       }
-      const script = `${NATIVE_MOUSE_TYPE}
-[RickyNativeMouse]::SetCursorPos(${Number(args.x) | 0}, ${Number(args.y) | 0})
-Start-Sleep -Milliseconds 50
-[RickyNativeMouse]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)
-[RickyNativeMouse]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)`;
-      await runPowerShell(script);
+      await computerClick(args.x, args.y);
       return { ok: true, message: `Clicked ${args.x}, ${args.y}.` };
     }
 
     if (name === "computer_scroll") {
-      const direction = String(args.direction || "down");
-      const amount = Math.max(1, Math.min(20, Number(args.amount || 4)));
-      const wheelDelta = 120 * amount;
-      const isHorizontal = direction === "left" || direction === "right";
-      const flags = isHorizontal ? "0x1000" : "0x0800";
-      const dwData = direction === "down" || direction === "left" ? -wheelDelta : wheelDelta;
-      const script = `${NATIVE_MOUSE_TYPE}
-[RickyNativeMouse]::mouse_event(${flags}, 0, 0, ${dwData}, [UIntPtr]::Zero)`;
-      await runPowerShell(script);
+      const direction = await computerScroll(args.direction, args.amount);
       return { ok: true, message: `Scrolled ${direction}.` };
     }
 
     if (name === "screen_snapshot") {
-      await fs.mkdir(dataDir, { recursive: true });
-      const screenshotPath = path.join(dataDir, `screenshot-${Date.now()}.png`);
-      const script = `Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
-$bounds = [System.Windows.Forms.SystemInformation]::VirtualScreen
-$bitmap = New-Object System.Drawing.Bitmap($bounds.Width, $bounds.Height)
-$graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-$graphics.CopyFromScreen($bounds.Location, [System.Drawing.Point]::Empty, $bounds.Size)
-$bitmap.Save(${psSingleQuote(screenshotPath)}, [System.Drawing.Imaging.ImageFormat]::Png)
-$graphics.Dispose()
-$bitmap.Dispose()`;
-      await runPowerShell(script);
+      const screenshotPath = await screenSnapshot(dataDir);
       return {
         ok: true,
         path: screenshotPath,
@@ -903,24 +737,14 @@ $bitmap.Dispose()`;
     }
 
     if (name === "ui_inspect") {
-      const script = `${NATIVE_WINDOW_TYPE}
-$hwnd = [RickyNativeWindow]::GetForegroundWindow()
-$sb = New-Object System.Text.StringBuilder 256
-[RickyNativeWindow]::GetWindowText($hwnd, $sb, 256) | Out-Null
-$procId = 0
-[RickyNativeWindow]::GetWindowThreadProcessId($hwnd, [ref]$procId) | Out-Null
-$proc = Get-Process -Id $procId -ErrorAction SilentlyContinue
-$procName = if ($proc) { $proc.ProcessName } else { "Unknown" }
-Write-Output ("App: " + $procName)
-Write-Output ("Window: " + $sb.ToString())`;
-      const { stdout } = await runPowerShell(script);
+      const summary = await uiInspect();
       return {
         ok: true,
-        summary: stdout.trim(),
+        summary,
         artifact: {
           title: "UI Inspect",
           kind: "text",
-          content: stdout.trim(),
+          content: summary,
         },
       };
     }
@@ -1619,7 +1443,7 @@ function fallbackMermaidDiagram(title) {
   return `flowchart TD\n  A["${safeTitle}"] --> B["Chart request received"]\n  B --> C["Ricky will show a safe fallback if syntax fails"]`;
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => createWindow({ beforeShow: prepareWindowData }));
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
@@ -1627,6 +1451,6 @@ app.on("window-all-closed", () => {
 
 app.on("activate", () => {
   if (BrowserWindow.getAllWindows().length === 0) {
-    void createWindow();
+    void createWindow({ beforeShow: prepareWindowData });
   }
 });
