@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
+from app.core.payload_hash import hash_payload
 from app.schemas.tool import RiskLevel
 from app.storage.repositories.confirmation_repo import ConfirmationRepository
 
@@ -27,8 +29,11 @@ class ConfirmationService:
         risk_level: RiskLevel,
         plan_id: str | None = None,
         summary: str | None = None,
+        tool_name: str | None = None,
+        ttl_seconds: int = 300,
     ) -> dict[str, Any]:
         confirmation_id = f"confirm_{uuid4().hex[:12]}"
+        expires_at = (datetime.now(UTC) + timedelta(seconds=ttl_seconds)).isoformat()
         row = self._repository.create(
             confirmation_id=confirmation_id,
             action_name=action_name,
@@ -36,8 +41,21 @@ class ConfirmationService:
             risk_level=risk_level,
             plan_id=plan_id,
             summary=summary,
+            tool_name=tool_name,
+            payload_hash=hash_payload(payload),
+            expires_at=expires_at,
         )
         return self._to_dict(row)
+
+    def is_expired(self, confirmation: dict[str, Any]) -> bool:
+        expires_at = confirmation.get("expires_at")
+        if not expires_at:
+            return False
+        try:
+            expiry = datetime.fromisoformat(expires_at)
+        except ValueError:
+            return False
+        return datetime.now(UTC) > expiry
 
     def get(self, confirmation_id: str) -> dict[str, Any] | None:
         row = self._repository.get(confirmation_id)
@@ -80,6 +98,9 @@ class ConfirmationService:
             "risk_level": row["risk_level"],
             "plan_id": row["plan_id"] if "plan_id" in row.keys() else None,
             "summary": row["summary"] if "summary" in row.keys() else None,
+            "tool_name": row["tool_name"] if "tool_name" in row.keys() else None,
+            "payload_hash": row["payload_hash"] if "payload_hash" in row.keys() else None,
+            "expires_at": row["expires_at"] if "expires_at" in row.keys() else None,
             "created_at": row["created_at"],
             "resolved_at": row["resolved_at"],
         }

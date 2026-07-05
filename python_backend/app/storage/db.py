@@ -72,7 +72,10 @@ SCHEMA_STATEMENTS = [
         payload_json TEXT NOT NULL DEFAULT '{}',
         risk_level TEXT NOT NULL,
         plan_id TEXT,
-        summary TEXT
+        summary TEXT,
+        tool_name TEXT,
+        payload_hash TEXT,
+        expires_at TEXT
     )
     """,
     """
@@ -146,6 +149,11 @@ def _ensure_column(connection: sqlite3.Connection, table: str, column: str, defi
 MIGRATIONS = [
     ("confirmations", "plan_id", "TEXT"),
     ("confirmations", "summary", "TEXT"),
+    # FAZA 10: permission engine binds confirmations to a specific tool call so an
+    # approved confirmation can't be replayed against a different tool/payload/app.
+    ("confirmations", "tool_name", "TEXT"),
+    ("confirmations", "payload_hash", "TEXT"),
+    ("confirmations", "expires_at", "TEXT"),
 ]
 
 

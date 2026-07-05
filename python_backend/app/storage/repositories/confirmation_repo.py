@@ -30,6 +30,9 @@ class ConfirmationRepository:
         risk_level: str,
         plan_id: str | None = None,
         summary: str | None = None,
+        tool_name: str | None = None,
+        payload_hash: str | None = None,
+        expires_at: str | None = None,
     ) -> sqlite3.Row:
         created_at = utc_now_iso()
         with connect(self._database_path) as connection:
@@ -38,8 +41,8 @@ class ConfirmationRepository:
                 INSERT INTO confirmations (
                     id, status, created_at, resolved_at,
                     action_name, payload_json, risk_level,
-                    plan_id, summary
-                ) VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?)
+                    plan_id, summary, tool_name, payload_hash, expires_at
+                ) VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     confirmation_id,
@@ -50,6 +53,9 @@ class ConfirmationRepository:
                     risk_level,
                     plan_id,
                     summary,
+                    tool_name,
+                    payload_hash,
+                    expires_at,
                 ),
             )
             connection.commit()

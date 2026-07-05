@@ -30,6 +30,8 @@ def create_confirmation(
         risk_level=request_body.risk_level,
         plan_id=request_body.plan_id,
         summary=request_body.summary,
+        tool_name=request_body.tool_name,
+        ttl_seconds=request_body.ttl_seconds,
     )
     return ConfirmationResponse(**data)
 

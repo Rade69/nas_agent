@@ -5,6 +5,21 @@ from pydantic import BaseModel, Field
 RiskLevel = Literal["low", "medium", "high", "critical"]
 ImplementedBy = Literal["python", "electron_legacy"]
 
+# FAZA 10 tool execution state machine — see SECURITY_HARDENING_PLAN.md section 25
+# "Realtime Event Flow and Cancellation Safety". Voice interruption and tool
+# cancellation are separate layers; this is the tool-side state.
+ToolState = Literal[
+    "planned",
+    "preflight",
+    "running",
+    "commit_started",
+    "completed",
+    "cancel_requested",
+    "cancelled_before_commit",
+    "cannot_cancel_commit_started",
+    "failed",
+]
+
 
 class ToolDefinition(BaseModel):
     name: str
@@ -31,6 +46,10 @@ class ToolExecutionContext(BaseModel):
     computer_mode: bool = False
     conversation_id: str | None = None
     request_id: str | None = None
+    # FAZA 10: required when the tool definition sets requires_confirmation.
+    # Must reference an "approved" confirmation bound to this exact tool_name
+    # and payload (see app/agent/permission_engine.py).
+    confirmation_id: str | None = None
 
 
 class ToolExecutionRequest(BaseModel):
@@ -54,3 +73,5 @@ class ToolExecutionResponse(BaseModel):
     action_log_id: str
     duration_ms: int
     error: ToolError | None = None
+    execution_id: str | None = None
+    tool_state: ToolState | None = None

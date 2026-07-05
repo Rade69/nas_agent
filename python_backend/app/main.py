@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.agent.cancellation import CancellationRegistry
 from app.agent.tool_registry import create_default_registry
 from app.api.confirmations import router as confirmations_router
 from app.api.health import router as health_router
@@ -34,6 +35,10 @@ def create_app() -> FastAPI:
     # docs/ARCHITECTURE_VOICE_FIRST_REVISED.md "Voice confirmations".
     app.state.confirmation_service = ConfirmationService(ConfirmationRepository(settings.database_path))
     app.state.plan_service = PlanService(PlanRepository(settings.database_path))
+    # FAZA 10: permission/risk layer. Cancellation registry is process-lifetime
+    # in-memory state (see app/agent/cancellation.py); the durable audit trail
+    # stays in tool_runs via ActionLogService.
+    app.state.cancellation_registry = CancellationRegistry()
 
     register_error_handlers(app)
     app.include_router(health_router)
