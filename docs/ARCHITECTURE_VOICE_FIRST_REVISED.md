@@ -596,6 +596,8 @@ Python backend može evidentirati i sinhronizovati stanje:
 
 Za akcije koje su već izvršene ne obećavati rollback ako ga nema.
 
+**Napomena (2026-07-05):** Voice interruption i tool cancellation su dva odvojena sloja — prekid glasovnog odgovora ne prekida automatski tool koji je u toku. Puna `execution_id`/`cancellation_token` state mašina (planned → preflight → running → commit_started → completed/cancelled_before_commit/cannot_cancel_commit_started) i pravila za event throttling/backpressure ka Python backend-u su definisana u `SECURITY_HARDENING_PLAN.md` sekcija 25 "Realtime Event Flow and Cancellation Safety" — gornje tri stub funkcije se implementiraju prema toj specifikaciji, ne proizvoljno.
+
 ---
 
 # Voice confirmations

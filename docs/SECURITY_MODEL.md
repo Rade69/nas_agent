@@ -77,6 +77,8 @@ critical:
 
 ## Status implementacije
 
-Ovaj sloj (`python_backend/app/security/`) je predviđen za FAZU 11 plana. Do tada, postojeći legacy PowerShell computer-use alati (trenutno implementirani direktno u `electron/main.cjs`) **rade bez ovog sloja** — to je poznat, privremen rizik dok se permission layer ne implementira, i treba ga imati na umu prije nego se computer-use alati dalje šire ili izlažu van lokalne mašine.
+Permission/risk engine je implementiran u FAZI 10 (`python_backend/app/agent/permission_engine.py` — risk/computer_mode/confirmation_id provjere; `python_backend/app/agent/cancellation.py` — execution_id/cancellation_token state mašina, vidi `agent_reports/2026-07-05_faza10-permission-cancellation-engine.md` i `SECURITY_HARDENING_PLAN.md` sekcija 25). `ToolExecutor` sad primjenjuje ova pravila na svaki Python-registrovan tool.
+
+**Ograničenje:** ovaj sloj štiti samo toolove registrovane u Python `ToolRegistry`-ju (trenutno samo dummy `echo`). Postojeći legacy PowerShell computer-use alati (i dalje implementirani direktno u `electron/main.cjs`) **rade bez ovog sloja** — to ostaje poznat, privremen rizik dok se ti alati ne migriraju u Python (FAZA 11/13/14) i time počnu prolaziti kroz `ToolExecutor`. Active window validation i path/network sandbox (koraci 10-12 iz tool executor provjere, `SECURITY_HARDENING_PLAN.md` sekcija 8) takođe nisu implementirani — Python backend trenutno nema kapacitet da čita aktivni prozor niti fajl sistem sandbox; to je FAZA 11 posao.
 
 Vidi [TOOL_CONTRACTS.md](./TOOL_CONTRACTS.md) za polja `risk` i `requires_confirmation` u tool definiciji.

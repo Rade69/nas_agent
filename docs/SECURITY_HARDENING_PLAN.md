@@ -549,6 +549,8 @@ critical: disabled by default / hard-block unless developer/admin allowlist
 
 Computer-use je najrizičniji dio aplikacije.
 
+> Za cancellation/interrupt state mašinu (šta se dešava ako korisnik prekine dok tool radi) vidi sekciju 25 "Realtime Event Flow and Cancellation Safety".
+
 ## Computer Mode
 
 Computer-use toolovi ne rade ako:
@@ -1278,3 +1280,219 @@ Security PR-4:
 9. Critical tools su disabled by default.
 10. Ako security self-test padne, produkcija se ne pokreće.
 ```
+
+---
+
+# 25. Realtime Event Flow and Cancellation Safety
+
+Dodato nakon analize (Gemini, pregledao ChatGPT, 2026-07-05) koja je identifikovala dvije rupe koje `docs/ARCHITECTURE_VOICE_FIRST_REVISED.md` pominje samo kao neimplementirane stub funkcije (`cancel_pending_confirmation()`, `cancel_safe_before_tool_execution()`, `mark_activity_interrupted()` — vidi taj dokument, sekcija "Interruption / Stop"), bez prave state mašine ili konkretnih pravila. Ova sekcija ih čini provodivim.
+
+## 25.1 Voice interruption != tool cancellation
+
+Ovo su dva odvojena sloja. Prekid glasovnog odgovora (`src/lib/realtime.ts` WebRTC interrupt) **ne prekida automatski** tool koji Python backend (ili legacy PowerShell put) izvršava.
+
+Pravilo:
+
+```txt
+UI ne smije prikazati "Cancelled" dok backend ne potvrdi da je tool stvarno zaustavljen ili da je commit faza već nepovratno počela.
+```
+
+## 25.2 Tool execution state machine
+
+Svaki tool execution mora imati:
+
+```txt
+execution_id
+confirmation_id
+cancellation_token
+tool_state
+started_at
+safe_to_cancel
+commit_started
+```
+
+Stanja toola:
+
+```txt
+planned
+waiting_confirmation
+approved
+preflight
+running
+commit_started
+completed
+cancel_requested
+cancelled_before_commit
+cannot_cancel_commit_started
+failed
+```
+
+Najvažnije pravilo:
+
+```txt
+Ako korisnik prekine prije commit faze, tool mora stati (cancelled_before_commit).
+Ako je commit faza već počela, tool ne smije lagati da je rollback urađen —
+mora završiti minimalno sigurno stanje i napisati Action Receipt sa statusom
+cannot_cancel_commit_started.
+```
+
+## 25.3 Preflight/commit split za OS-level toolove
+
+Primjer — `computer_type_text` ne smije raditi kao jedna atomska akcija (trenutna implementacija u `electron/tools_legacy/powershell/computerTypeText.cjs` jeste tačno to: jedan `SendKeys::SendWait` poziv za cijeli string, bez provjere u sredini):
+
+```txt
+preflight:
+- provjeri Computer Mode
+- provjeri active window
+- provjeri confirmation_id
+- provjeri cancellation_token
+
+commit:
+- unesi tekst u kratkim segmentima
+- između segmenata provjeri cancellation_token
+- nikad ne ostavljaj modifier key pritisnut
+- poslije akcije provjeri active window
+```
+
+Pravilo za sve OS-level toolove:
+
+```txt
+All OS-level tools must be cancellable before commit and bounded during commit.
+```
+
+To znači:
+
+```txt
+- nema dugih neprekidnih OS akcija
+- nema beskonačnih loopova
+- nema "hold key" bez finally release
+- nema click/type akcije bez active window provjere neposredno prije izvršenja
+- nema potvrde koja se može ponovo iskoristiti za drugi payload
+```
+
+`confirmation_id` mora biti vezan za: tool name, payload hash, target app/window, risk level, expiration time. Ako se bilo šta promijeni, potvrda više ne važi.
+
+## 25.4 Event volume: šta ide u renderer, šta u backend
+
+Trenutno stanje (provjereno u kodu, 2026-07-05): `src/lib/realtime.ts` ne šalje nijedan raw Realtime event u Python backend — sve ostaje u rendereru. Ovo pravilo je preventivno, za kad FAZA 8/11 event bridge stvarno počne slati evente backend-u (vidi `ARCHITECTURE_VOICE_FIRST_REVISED.md`: "renderer šalje relevantne evente Python backendu").
+
+Pravilo:
+
+```txt
+Realtime raw deltas ostaju u rendereru.
+Backend dobija samo finalne ili agregirane događaje.
+```
+
+Šta ide samo u renderer:
+
+```txt
+response.audio.delta
+audio playback events
+high-frequency waveform/mic level
+partial transcript tokeni
+UI-only animation states
+```
+
+Šta ide u Python backend:
+
+```txt
+voice.final_transcript
+voice.turn_started
+voice.turn_completed
+voice.interrupted
+confirmation.required
+tool.started
+tool.completed
+tool.failed
+activity.created
+final response summary
+```
+
+Partial transcript u backend samo ako stvarno treba, throttled: max 1 event / 500ms do 1000ms.
+
+## 25.5 Event throttling / backpressure pravila
+
+```txt
+1. Backend ne prima svaki token.
+2. Activity log ne čuva svaki delta.
+3. Transcript partial evente grupisati.
+4. UI smije imati high-frequency state, backend ne.
+5. IPC mora imati bounded queue.
+6. Ako queue raste, dropati low-priority partial evente.
+7. Nikad ne dropati confirmation/tool/security evente.
+```
+
+Prioritet eventa:
+
+```txt
+CRITICAL:
+- confirmation.required
+- tool.blocked
+- tool.failed
+- security.violation
+- voice.interrupted
+
+HIGH:
+- tool.started
+- tool.completed
+- voice.final_transcript
+- backend.error
+
+MEDIUM:
+- activity.created
+- plan.updated
+- artifact.created
+
+LOW:
+- partial transcript
+- animation state
+- mic level
+- waveform
+```
+
+## 25.6 UI pravilo za Stop
+
+Ako korisnik klikne Stop, UI ne smije odmah reći "Cancelled". Mora razlikovati:
+
+```txt
+Voice stopped
+Tool cancellation requested
+Tool cancelled
+Tool already committed
+Action completed before cancellation
+```
+
+Primjer (dozvoljeno):
+
+```txt
+Ricky stopped speaking.
+Cancelling current tool...
+Tool cancelled before execution.
+```
+
+ili:
+
+```txt
+Ricky stopped speaking.
+The typing action had already started and could not be fully cancelled.
+See Action Receipt.
+```
+
+## 25.7 Finalna pravila (dopuna sekcije 24)
+
+```txt
+11. Voice interruption and tool cancellation are separate layers.
+12. Every tool execution has execution_id and cancellation_token.
+13. Tool execution must check cancellation before preflight, before commit, and between safe steps.
+14. Once commit starts, tool must either complete minimal safe action or report cannot_cancel_commit_started.
+15. UI must never show "cancelled" unless backend confirms tool cancellation.
+16. Renderer keeps high-frequency Realtime deltas local.
+17. Backend receives final transcript and aggregated activity events.
+18. Partial transcript persistence must be throttled.
+19. Security/confirmation/tool events are never dropped.
+20. Low-priority animation/audio deltas are never persisted by default.
+```
+
+## 25.8 Obim za implementaciju
+
+Ovo proširuje **FAZA 10** (permission/risk/confirmation layer) — `execution_id`/`cancellation_token` state mašina je tool-executor posao, ne nova faza. Event throttling pravila važe za **FAZA 8/11 event bridge** kad renderer stvarno počne slati evente Python backend-u. Security Gate 0 (vidi `docs/MIGRATION_PLAN.md` "Security Gates") se ne smatra zatvorenim dok cancellation state mašina ne postoji u tool executoru.
