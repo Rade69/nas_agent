@@ -4,7 +4,7 @@ from time import perf_counter
 from uuid import uuid4
 
 from app.agent.cancellation import CancellationRegistry
-from app.agent.permission_engine import check_permission
+from app.agent.permission_engine import check_active_window, check_permission
 from app.agent.tool_registry import RegisteredTool, ToolRegistry
 from app.core.errors import AppError
 from app.schemas.tool import ToolError, ToolExecutionRequest, ToolExecutionResponse, ToolState
@@ -73,6 +73,25 @@ class ToolExecutor:
                 started,
                 permission_error.code,
                 permission_error.message,
+                execution_id=execution_id,
+                tool_state="failed",
+            )
+            self._log(request=request, response=response, tool=tool)
+            return response
+
+        # FAZA 13: active window enforcement (SECURITY_HARDENING_PLAN.md step 10).
+        # Runs after risk/confirmation checks, before the tool handler is invoked.
+        # Uses requires_active_window_match/allowed_apps/blocked_apps from ToolDefinition.
+        active_window_error = check_active_window(tool.definition)
+        if active_window_error is not None:
+            if self._cancellations:
+                self._cancellations.set_state(execution_id, "failed")
+            response = self._error_response(
+                request.tool_name,
+                action_log_id,
+                started,
+                active_window_error.code,
+                active_window_error.message,
                 execution_id=execution_id,
                 tool_state="failed",
             )

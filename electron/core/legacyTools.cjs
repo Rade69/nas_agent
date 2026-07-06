@@ -32,15 +32,21 @@ const TOOLS_WITH_PYTHON_EQUIVALENT = new Set([
   "ui_inspect",
   "web_search",
   "image_generate",
-]);
-
-// FAZA 13/14 will add these; until then legacy is the only path.
-const TOOLS_PENDING_PYTHON_EQUIVALENT = new Set([
+  // FAZA 13: computer-use tools now have Python equivalents.
   "computer_open_app",
   "computer_type_text",
   "computer_press_key",
   "computer_click",
   "computer_scroll",
+  // FAZA 14: element-targeting tools now have Python equivalents.
+  "computer_find_elements",
+  "computer_click_element",
+  "computer_set_text_element",
+  "computer_get_element_text",
+]);
+
+// FAZA 13 added these; FAZA 14 will add more when element targeting lands.
+const TOOLS_PENDING_PYTHON_EQUIVALENT = new Set([
 ]);
 
 /**
@@ -50,7 +56,7 @@ const TOOLS_PENDING_PYTHON_EQUIVALENT = new Set([
  * replacements return a structured error.
  */
 function isLegacyEnabled() {
-  const raw = (process.env[LEGACY_FLAG] || "1").trim();
+  const raw = (process.env[LEGACY_FLAG] || "0").trim();
   return raw !== "0" && raw.toLowerCase() !== "false";
 }
 

@@ -4,6 +4,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from app.agent.permission_engine import DEFAULT_BLOCKED_APPS
 from app.schemas.tool import ToolDefinition
 
 ToolHandler = Callable[[dict[str, Any]], dict[str, Any]]
@@ -37,13 +38,7 @@ def echo_tool(arguments: dict[str, Any]) -> dict[str, Any]:
 
 
 def _register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) -> None:
-    """Register FAZA 11 memory/artifact/system tools.
-
-    Tool definitions follow TOOL_CONTRACTS.md (risk, requires_confirmation,
-    requires_computer_mode, etc.). The permission/risk enforcement layer
-    (FAZA 10) will read these flags; here we only register the tools and
-    expose them through `/tools` and `/tools/execute`.
-    """
+    """Register FAZA 11 memory/artifact/system tools."""
     from app.tools.artifacts import make_handlers as make_artifact_handlers
     from app.tools.images.generate import make_handlers as make_image_handlers
     from app.tools.memory.notes import make_handlers as make_notes_handlers
@@ -70,6 +65,9 @@ def _register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) ->
         requires_computer_mode: bool = False,
         enabled: bool = True,
         timeout_ms: int = 10000,
+        requires_active_window_match: bool = False,
+        allowed_apps: list[str] | None = None,
+        blocked_apps: list[str] | None = None,
     ) -> ToolDefinition:
         return ToolDefinition(
             name=name,
@@ -78,9 +76,9 @@ def _register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) ->
             risk=risk,
             requires_confirmation=requires_confirmation,
             requires_computer_mode=requires_computer_mode,
-            requires_active_window_match=False,
-            allowed_apps=[],
-            blocked_apps=[],
+            requires_active_window_match=requires_active_window_match,
+            allowed_apps=allowed_apps or [],
+            blocked_apps=blocked_apps or [],
             logs_action_receipt=False,
             allowed_in_background=not requires_computer_mode,
             timeout_ms=timeout_ms,
@@ -322,6 +320,277 @@ def _register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) ->
     )
 
 
+def _register_phase13_tools(registry: ToolRegistry) -> None:
+    """Register FAZA 13 computer-use tools (coordinate-based).
+
+    These are 1:1 Python replacements for the legacy PowerShell computer_*
+    tools. All require computer_mode; click and type_text are high risk.
+    """
+    from app.tools.system.computer import make_handlers as make_computer_handlers
+
+    handlers = make_computer_handlers()
+
+    def _def(
+        name: str,
+        description: str,
+        schema: dict[str, Any],
+        *,
+        risk: str = "medium",
+        requires_confirmation: bool = False,
+        requires_computer_mode: bool = True,
+        requires_active_window_match: bool = False,
+        blocked_apps: list[str] | None = None,
+        timeout_ms: int = 10000,
+    ) -> ToolDefinition:
+        return ToolDefinition(
+            name=name,
+            description=description,
+            input_schema=schema,
+            risk=risk,
+            requires_confirmation=requires_confirmation,
+            requires_computer_mode=requires_computer_mode,
+            requires_active_window_match=requires_active_window_match,
+            allowed_apps=[],
+            blocked_apps=blocked_apps or [],
+            logs_action_receipt=False,
+            allowed_in_background=False,
+            timeout_ms=timeout_ms,
+            implemented_by="python",
+            enabled=True,
+        )
+
+    registry.register(
+        _def(
+            "computer_open_app",
+            "Open a Windows app by name (must be in PATH or have an App Execution Alias, e.g. notepad, calc, mspaint, chrome). Requires computer mode.",
+            {
+                "type": "object",
+                "properties": {"appName": {"type": "string"}},
+                "required": ["appName"],
+                "additionalProperties": False,
+            },
+        ),
+        handlers["computer_open_app"],
+    )
+
+    registry.register(
+        _def(
+            "computer_type_text",
+            "Type text into the active app. Requires computer mode and an approved confirmation for anything beyond trivial, low-risk text — see the 'confirmed'/'risk' fields.",
+            {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                    "confirmed": {"type": "boolean"},
+                    "risk": {"type": "string", "enum": ["low", "may_send_or_modify", "private_or_sensitive"]},
+                },
+                "required": ["text"],
+                "additionalProperties": False,
+            },
+            risk="high",
+            requires_confirmation=True,
+            requires_active_window_match=True,
+            blocked_apps=DEFAULT_BLOCKED_APPS,
+        ),
+        handlers["computer_type_text"],
+    )
+
+    registry.register(
+        _def(
+            "computer_press_key",
+            "Press a keyboard key in the active app. Requires computer mode. Use enter/return after typing when the user asks to send a prompt.",
+            {
+                "type": "object",
+                "properties": {
+                    "key": {"type": "string", "enum": ["enter", "return", "tab", "escape", "delete", "space", "up", "down", "left", "right"]},
+                    "repeat": {"type": "number", "minimum": 1, "maximum": 20},
+                },
+                "required": ["key"],
+                "additionalProperties": False,
+            },
+            requires_active_window_match=True,
+            blocked_apps=DEFAULT_BLOCKED_APPS,
+        ),
+        handlers["computer_press_key"],
+    )
+
+    registry.register(
+        _def(
+            "computer_click",
+            "Click screen coordinates. Requires computer mode and an approved confirmation.",
+            {
+                "type": "object",
+                "properties": {
+                    "x": {"type": "number"},
+                    "y": {"type": "number"},
+                    "confirmed": {"type": "boolean"},
+                    "risk": {"type": "string", "enum": ["low", "may_send_or_modify", "private_or_sensitive"]},
+                },
+                "required": ["x", "y"],
+                "additionalProperties": False,
+            },
+            risk="high",
+            requires_confirmation=True,
+            requires_active_window_match=True,
+            blocked_apps=DEFAULT_BLOCKED_APPS,
+        ),
+        handlers["computer_click"],
+    )
+
+    registry.register(
+        _def(
+            "computer_scroll",
+            "Scroll the active app. Requires computer mode.",
+            {
+                "type": "object",
+                "properties": {
+                    "direction": {"type": "string", "enum": ["up", "down", "left", "right"]},
+                    "amount": {"type": "number", "minimum": 1, "maximum": 20},
+                },
+                "required": ["direction"],
+                "additionalProperties": False,
+            },
+            requires_active_window_match=True,
+            blocked_apps=DEFAULT_BLOCKED_APPS,
+        ),
+        handlers["computer_scroll"],
+    )
+
+
+def _register_phase14_tools(registry: ToolRegistry) -> None:
+    """Register FAZA 14 computer-use tools (UI element targeting).
+
+    Element-based UI automation via Windows UIA. Reduces reliance on raw
+    coordinate clicks from FAZA 13.
+    """
+    from app.tools.system.element_target import make_handlers as make_element_handlers
+
+    handlers = make_element_handlers()
+
+    def _def(
+        name: str,
+        description: str,
+        schema: dict[str, Any],
+        *,
+        risk: str = "medium",
+        requires_confirmation: bool = False,
+        requires_computer_mode: bool = True,
+        requires_active_window_match: bool = False,
+        blocked_apps: list[str] | None = None,
+        timeout_ms: int = 15000,
+    ) -> ToolDefinition:
+        return ToolDefinition(
+            name=name,
+            description=description,
+            input_schema=schema,
+            risk=risk,
+            requires_confirmation=requires_confirmation,
+            requires_computer_mode=requires_computer_mode,
+            requires_active_window_match=requires_active_window_match,
+            allowed_apps=[],
+            blocked_apps=blocked_apps or [],
+            logs_action_receipt=False,
+            allowed_in_background=False,
+            timeout_ms=timeout_ms,
+            implemented_by="python",
+            enabled=True,
+        )
+
+    registry.register(
+        _def(
+            "computer_find_elements",
+            "Find UI elements in a Windows application by app name, window title, control type, element name, automation ID, or class name. Returns basic properties of matched elements (name, control_type, automation_id, class_name, bounding_rect, enabled state). Requires computer mode.",
+            {
+                "type": "object",
+                "properties": {
+                    "app": {"type": "string", "description": "Process name (e.g. notepad.exe, chrome.exe)"},
+                    "title_contains": {"type": "string", "description": "Substring match on window title"},
+                    "control_type": {"type": "string", "description": "UIA control type name (e.g. Edit, Button, Window, MenuItem)"},
+                    "name": {"type": "string", "description": "Element name (substring match)"},
+                    "automation_id": {"type": "string", "description": "Exact AutomationId"},
+                    "class_name": {"type": "string", "description": "Exact ClassName"},
+                    "max_results": {"type": "number", "minimum": 1, "maximum": 50},
+                },
+                "required": [],
+                "additionalProperties": False,
+            },
+        ),
+        handlers["computer_find_elements"],
+    )
+
+    registry.register(
+        _def(
+            "computer_click_element",
+            "Click a UI element identified by its properties (app name, window title, control type, etc.). Prefer this over coordinate clicks (computer_click) when a specific UI element can be identified. Requires computer mode.",
+            {
+                "type": "object",
+                "properties": {
+                    "app": {"type": "string", "description": "Process name (e.g. notepad.exe)"},
+                    "title_contains": {"type": "string", "description": "Substring match on window title"},
+                    "control_type": {"type": "string", "description": "UIA control type name"},
+                    "name": {"type": "string", "description": "Element name"},
+                    "automation_id": {"type": "string", "description": "Exact AutomationId"},
+                    "class_name": {"type": "string", "description": "Exact ClassName"},
+                },
+                "required": [],
+                "additionalProperties": False,
+            },
+            risk="high",
+            requires_confirmation=True,
+            requires_active_window_match=True,
+            blocked_apps=DEFAULT_BLOCKED_APPS,
+        ),
+        handlers["computer_click_element"],
+    )
+
+    registry.register(
+        _def(
+            "computer_set_text_element",
+            "Set text value on a UI element (Edit fields, etc.) identified by its properties. Uses UIA ValuePattern when available, falls back to keyboard simulation. Requires computer mode and an approved confirmation.",
+            {
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string", "description": "Text to set"},
+                    "app": {"type": "string"},
+                    "title_contains": {"type": "string"},
+                    "control_type": {"type": "string"},
+                    "name": {"type": "string"},
+                    "automation_id": {"type": "string"},
+                    "class_name": {"type": "string"},
+                },
+                "required": ["text"],
+                "additionalProperties": False,
+            },
+            risk="high",
+            requires_confirmation=True,
+            requires_active_window_match=True,
+            blocked_apps=DEFAULT_BLOCKED_APPS,
+        ),
+        handlers["computer_set_text_element"],
+    )
+
+    registry.register(
+        _def(
+            "computer_get_element_text",
+            "Read text value from a UI element (Edit fields, labels, etc.) identified by its properties. Requires computer mode.",
+            {
+                "type": "object",
+                "properties": {
+                    "app": {"type": "string"},
+                    "title_contains": {"type": "string"},
+                    "control_type": {"type": "string"},
+                    "name": {"type": "string"},
+                    "automation_id": {"type": "string"},
+                    "class_name": {"type": "string"},
+                },
+                "required": [],
+                "additionalProperties": False,
+            },
+        ),
+        handlers["computer_get_element_text"],
+    )
+
+
 def create_default_registry(services: dict[str, Any] | None = None) -> ToolRegistry:
     registry = ToolRegistry()
     registry.register(
@@ -355,4 +624,6 @@ def create_default_registry(services: dict[str, Any] | None = None) -> ToolRegis
     )
     if services is not None:
         _register_phase11_tools(registry, services)
+        _register_phase13_tools(registry)
+        _register_phase14_tools(registry)
     return registry

@@ -526,6 +526,17 @@ const PHASE11_DELEGATED_TOOLS = new Set([
   // FAZA 16: OpenAI/Exa/image integrations now live in the Python backend.
   "web_search",
   "image_generate",
+  // FAZA 13: computer-use tools now have Python equivalents (ctypes + Win32 API).
+  "computer_open_app",
+  "computer_type_text",
+  "computer_press_key",
+  "computer_click",
+  "computer_scroll",
+  // FAZA 14: element-targeting tools (UIA).
+  "computer_find_elements",
+  "computer_click_element",
+  "computer_set_text_element",
+  "computer_get_element_text",
 ]);
 
 // Adapt a Python ToolExecutionResponse into the legacy {ok, artifact, ...}
