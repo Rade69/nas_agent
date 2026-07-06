@@ -25,6 +25,10 @@ class ToolExecutor:
         self._confirmations = confirmations
         self._cancellations = cancellations
 
+    @property
+    def registry(self) -> ToolRegistry:
+        return self._registry
+
     def execute(self, request: ToolExecutionRequest) -> ToolExecutionResponse:
         started = perf_counter()
         action_log_id = str(uuid4())

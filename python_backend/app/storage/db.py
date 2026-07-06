@@ -145,6 +145,28 @@ SCHEMA_STATEMENTS = [
         updated_at TEXT NOT NULL
     )
     """,
+    # FAZA 15: agent runtime conversation state (LocalDesktopAssistant).
+    """
+    CREATE TABLE IF NOT EXISTS agent_conversations (
+        id TEXT PRIMARY KEY,
+        title TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS agent_messages (
+        id TEXT PRIMARY KEY,
+        conversation_id TEXT NOT NULL,
+        role TEXT NOT NULL,
+        content TEXT,
+        tool_calls_json TEXT,
+        tool_call_id TEXT,
+        tool_name TEXT,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY(conversation_id) REFERENCES agent_conversations(id)
+    )
+    """,
 ]
 
 
