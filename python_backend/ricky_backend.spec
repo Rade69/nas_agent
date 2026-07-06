@@ -96,6 +96,7 @@ a = Analysis(
         "app.storage.repositories.event_repo",
         "app.storage.repositories.agent_repo",
         # third-party deps
+        "uvicorn",
         "uvicorn.logging",
         "uvicorn.loops.auto",
         "uvicorn.protocols.http.auto",

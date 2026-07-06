@@ -124,3 +124,18 @@ def create_app() -> FastAPI:
 
 
 app = create_app()
+
+
+if __name__ == "__main__":
+    # FAZA 19: entry point for the PyInstaller sidecar (ricky_backend.spec
+    # builds this file into ricky_backend.exe). The dev path launches via
+    # `python -m uvicorn app.main:app`, which never executes this block — the
+    # uvicorn CLI drives the server itself. A frozen executable has no CLI to
+    # invoke, so it must start the server itself here, using the same
+    # RICKY_HOST/RICKY_PORT env vars electron/services/pythonProcess.cjs
+    # already passes to the packaged backend (see app/core/config.py).
+    # Context: agent_reports/2026-07-06_faza19-packaging-plan.md
+    import uvicorn
+
+    _settings = get_settings()
+    uvicorn.run(app, host=_settings.host, port=_settings.port)
