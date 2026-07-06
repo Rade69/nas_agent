@@ -22,3 +22,7 @@ python_backend/**/__pycache__/
 python_backend/*.egg-info/
 python_backend/data/*.sqlite
 python_backend/data/*.db
+# FAZA 19: PyInstaller build output (sidecar .exe — ne ide u git).
+python_backend/build/
+python_backend/dist/ricky_backend/
+*.spec.bak

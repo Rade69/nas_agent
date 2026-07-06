@@ -1,0 +1,67 @@
+# FAZA 19: electron-builder konfiguracija za RileyJarvis Windows Hybrid.
+#
+# Pokretanje (nakon npm run build):
+#   npx electron-builder --win --dir    # unpacked folder (brzo, za test)
+#   npx electron-builder --win          # puni installer
+#
+# Preduvjet: ricky_backend.exe sidecar je izbuildovan (pyinstaller ricky_backend.spec)
+# i nalazi se u python_backend/dist/ricky_backend/
+#
+# Context: agent_reports/2026-07-06_faza19-packaging-plan.md
+#          docs/PACKAGING_PLAN.md
+
+appId: com.rileyjarvis.ricky
+productName: Ricky
+copyright: "Copyright © 2026"
+electronLanguages: ["en-US"]
+
+directories:
+  output: release
+  buildResources: assets
+
+files:
+  - "dist/**/*"
+  - "electron/**/*"
+  - "package.json"
+  # Ne uključuj python_backend/app/** — to ide u .exe sidecar.
+  # .env.* fajlovi su eksplicitno isključeni (vidi dolje).
+
+# Python backend sidecar — kopira se pored app.asar u resources/ricky_backend/
+# extraFiles ide mimo asar-a, tako da backend može pristupiti datotekama i
+# .exe može pisati u data/ folder unutar njega.
+extraFiles:
+  - from: "python_backend/dist/ricky_backend"
+    to: "ricky_backend"
+    filter:
+      # Očisti PyInstaller junk — samo .exe + dll-ovi + _internal
+      - "**/*"
+
+# .env.local i API ključevi ne smiju ući u paket.
+# .gitignore već isključuje .env.* (osim .env.example), ali electron-builder
+# čita iz files/extrafiles polja, ne iz .gitignore, pa dodajemo eksplicitno.
+# Osim .env.local, isključujemo i python_backend/data/ (runtime SQLite/screenshots
+# folder koji se kreira pri prvom pokretanju).
+extraResources: []
+
+asar: true
+asarUnpack: []
+
+win:
+  target:
+    - target: nsis
+      arch: ["x64"]
+  icon: assets/Ricky-agent.png
+  # signAndEditExecutable: false  # code signing tek u Security Gate 2
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: Ricky
+  uninstallDisplayName: Ricky
+  installerIcon: assets/Ricky-agent.png
+  uninstallerIcon: assets/Ricky-agent.png
+
+# Bez automatskog update-a za MVP (Security Gate 2).
+# publish: null

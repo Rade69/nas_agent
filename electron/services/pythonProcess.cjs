@@ -47,7 +47,7 @@ function resolveBackendPaths(options = {}) {
 }
 
 async function startPythonBackend(options = {}) {
-  const enabled = options.enabled ?? !options.isPackaged;
+  const enabled = options.enabled ?? true;
   const port = Number(options.port || process.env.RICKY_BACKEND_PORT || DEFAULT_PORT);
   const host = "127.0.0.1";
   const baseUrl = normalizeBaseUrl(options.baseUrl || `http://${host}:${port}`);
@@ -69,12 +69,20 @@ async function startPythonBackend(options = {}) {
 
   if (!enabled) {
     backendState.status = "skipped";
-    backendState.error = "Python backend auto-start is enabled only in dev mode for FAZA 5.";
+    backendState.error = "Python backend auto-start is disabled.";
     console.log(`[python-backend] ${backendState.error}`);
     return getBackendStatus();
   }
 
   const { repoRoot, backendDir, pythonCommand } = resolveBackendPaths(options);
+
+  // FAZA 19: u packaged (production) build-u pokreni bundlovani PyInstaller
+  // sidecar (.exe) umjesto python -m uvicorn. Dev ostaje na postojećem toku.
+  // Context: agent_reports/2026-07-06_faza19-packaging-plan.md
+  if (options.isPackaged) {
+    return await startPackagedBackend({ host, port, baseUrl, localToken, options });
+  }
+
   if (!fs.existsSync(backendDir)) {
     backendState.status = "error";
     backendState.error = `Python backend directory not found: ${backendDir}`;
@@ -156,6 +164,95 @@ async function waitForBackendHealth({ baseUrl, timeoutMs }) {
   }
 
   throw new Error(`Python backend health check timed out: ${lastError}`);
+}
+
+// FAZA 19: pokreni PyInstaller-bundlovani ricky_backend.exe sidecar.
+// Sidecar se nalazi u process.resourcesPath/ricky_backend/ (electron-builder
+// extraFiles ga kopira tamo iz python_backend/dist/ricky_backend/).
+// Context: agent_reports/2026-07-06_faza19-packaging-plan.md
+async function startPackagedBackend({ host, port, baseUrl, localToken, options }) {
+  const resourcesPath = process.resourcesPath || path.join(__dirname, "..", "..");
+  const sidecarDir = path.join(resourcesPath, "ricky_backend");
+  const sidecarExe = path.join(sidecarDir, "ricky_backend.exe");
+
+  if (!fs.existsSync(sidecarExe)) {
+    backendState.status = "error";
+    backendState.error = `Packaged backend executable not found: ${sidecarExe}. Ensure the sidecar was built (pyinstaller ricky_backend.spec) and included in the electron-builder package.`;
+    throw new Error(backendState.error);
+  }
+
+  backendState.status = "starting";
+  backendState.error = null;
+  backendState.external = false;
+
+  // Sidecar prima iste env varijable kao dev backend:
+  // - RICKY_DATA_DIR → data/ folder unutar sidecar direktorija (čitanje/pisanje)
+  // - RICKY_LOCAL_TOKEN → Security PR-1 lokalni auth token
+  // - OPENAI_API_KEY, EXA_API_KEY → proslijeđeni iz roditeljskog procesa preko ...process.env
+  //
+  // .env.local NIJE u paketu (electron-builder extraFiles filter + .gitignore)
+  // tako da API ključevi dolaze SAMO iz env varijabli roditeljskog procesa.
+  // Ako korisnik nije postavio ključeve, backend će se pokrenuti ali realtime
+  // i web_search/image_generate će vratiti MISSING_API_KEY (fail closed).
+  const dataDir = path.join(sidecarDir, "data");
+  fs.mkdirSync(dataDir, { recursive: true });
+
+  console.log(`[python-backend] Starting packaged: ${sidecarExe}`);
+  const child = spawn(sidecarExe, [], {
+    cwd: sidecarDir,
+    env: {
+      ...process.env,
+      PYTHONUNBUFFERED: "1",
+      RICKY_DATA_DIR: dataDir,
+      RICKY_LOCAL_TOKEN: localToken,
+      // Uvicorn sluša na zadatom host:port — sidecar .exe je entry point
+      // isti kao "python -m uvicorn app.main:app --host ... --port ..."
+      // pa env varijable kontrolišu host/port.
+      RICKY_HOST: host,
+      RICKY_PORT: String(port),
+    },
+    windowsHide: true,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  backendState.process = child;
+
+  child.stdout.on("data", (chunk) => {
+    process.stdout.write(`[python-backend] ${chunk}`);
+  });
+
+  child.stderr.on("data", (chunk) => {
+    process.stderr.write(`[python-backend] ${chunk}`);
+  });
+
+  child.on("exit", (code, signal) => {
+    if (backendState.process === child) {
+      backendState.process = null;
+      if (backendState.status !== "stopping") {
+        backendState.status = code === 0 ? "stopped" : "error";
+        backendState.error =
+          code === 0 ? null : `Python backend exited with code ${code ?? "null"} signal ${signal ?? "null"}`;
+      }
+    }
+  });
+
+  child.on("error", (error) => {
+    backendState.status = "error";
+    backendState.error = error.message;
+  });
+
+  try {
+    await waitForBackendHealth({ baseUrl, timeoutMs: options.timeoutMs || 30000 });
+    backendState.status = "running";
+    backendState.error = null;
+    console.log(`[python-backend] Ready at ${baseUrl}`);
+    return getBackendStatus();
+  } catch (error) {
+    backendState.status = "error";
+    backendState.error = error instanceof Error ? error.message : String(error);
+    stopPythonBackend();
+    throw error;
+  }
 }
 
 function stopPythonBackend() {

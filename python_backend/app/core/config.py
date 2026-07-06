@@ -42,4 +42,10 @@ def get_settings() -> Settings:
         local_token=os.environ.get("RICKY_LOCAL_TOKEN") or None,
         exa_api_key=os.environ.get("EXA_API_KEY") or None,
         data_dir=data_dir if data_dir is not None else Path(__file__).resolve().parents[2] / "data",
+        # FAZA 19: PyInstaller sidecar receives host/port from Electron's env.
+        # Defaults are fine for dev (uvicorn --host/--port CLI args take
+        # precedence), but in a packaged build the .exe has no CLI args, so
+        # these env vars are the only way to configure the listen address.
+        host=os.environ.get("RICKY_HOST") or "127.0.0.1",
+        port=int(os.environ["RICKY_PORT"]) if os.environ.get("RICKY_PORT") else 8765,
     )
