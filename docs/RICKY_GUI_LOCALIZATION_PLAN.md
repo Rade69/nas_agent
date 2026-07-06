@@ -203,6 +203,29 @@ Ako se ipak koristi `language="sr"` (npr. za bolju pokrivenost specifično srpsk
 - Promjena jezika u Settings mijenja STT hint bez potrebe za redizajnom cijelog voice pipeline-a.
 ```
 
+## Otvorena stavka (backlog, nije odlučeno): izbor cloud vs. lokalni STT za Dictation Mode
+
+Ideja iz razgovora (2026-07-06): u Settings ponuditi korisniku izbor STT engine-a za Dictation Mode,
+ne nametnuti jedan:
+
+```txt
+- "Cloud" opcija — OpenAI transkripcija (ne puna Realtime sesija, samo transcribe poziv radi cijene) —
+  najbolja preciznost/konzistentnost (vidi nalaz iznad o Cyrillic/Latin), ali platno po korištenju
+  i zahtijeva internet.
+- "Lokalno" opcija — faster-whisper (vidi whisper_bcs_test.py, samostalan test skript izvan ovog
+  repo-a, NIJE integrisan u kod) — besplatno nakon preuzimanja modela, radi offline, ali sporije na
+  CPU-u i sklono istoj Cyrillic/Latin nekonzistentnosti nađenoj u testu.
+- Preporuka ako se ovo implementira: model se NE pakuje u installer po defaultu — preuzima se tek
+  kad korisnik prvi put izabere "Lokalno" u Settings, da ne povećava veličinu/packaging teret
+  (FAZA 19) za korisnike koji ga nikad ne izaberu.
+- Trade-off koji treba imati na umu prije implementacije: dva paralelna STT koda (cloud transcribe
+  poziv + lokalni faster-whisper proces) znače duplo održavanje/testiranje, ne samo duplo pitanje
+  cijene za korisnika.
+```
+
+Status: nije arhitektonska odluka, samo zapisana opcija za budući razgovor. Ne implementirati dok se
+eksplicitno ne odluči da se ide u ovom pravcu.
+
 ---
 
 # Ključno pravilo
