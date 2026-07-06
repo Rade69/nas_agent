@@ -7,7 +7,11 @@
     "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on tcp:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
     "start": "electron .",
     "build": "tsc --noEmit && vite build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check": "node --check electron/main.cjs && node --check electron/preload.cjs && node --check electron/services/pythonClient.cjs && node --check electron/core/env.cjs && node --check electron/core/ipc.cjs && node --check electron/core/legacyTools.cjs",
+    "smoke": "node scripts/smoke-test.cjs",
+    "test": "cd python_backend && python -m pytest -q",
+    "quality": "npm run typecheck && npm run check && npm run build && npm run test && npm run smoke"
   },
   "keywords": [
     "electron",
