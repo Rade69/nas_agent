@@ -11,7 +11,9 @@
     "check": "node --check electron/main.cjs && node --check electron/preload.cjs && node --check electron/services/pythonClient.cjs && node --check electron/core/env.cjs && node --check electron/core/ipc.cjs && node --check electron/core/legacyTools.cjs && node --check electron/core/window.cjs && node --check electron/core/companionWindow.cjs && node --check electron/core/secureWebPreferences.cjs && node --check electron/core/securitySelfTest.cjs",
     "smoke": "node scripts/smoke-test.cjs",
     "test": "cd python_backend && python -m pytest -q",
-    "quality": "npm run typecheck && npm run check && npm run build && npm run test && npm run smoke"
+    "quality": "npm run typecheck && npm run check && npm run build && npm run test && npm run smoke",
+    "package:dir": "npm run build && electron-builder --win --dir",
+    "package:win": "npm run build && electron-builder --win"
   },
   "keywords": [
     "electron",
@@ -37,6 +39,7 @@
     "concurrently": "^10.0.3",
     "cross-env": "^10.1.0",
     "electron": "^42.5.1",
+    "electron-builder": "^26.15.3",
     "typescript": "^6.0.3",
     "vite": "^8.1.0",
     "wait-on": "^9.0.10"

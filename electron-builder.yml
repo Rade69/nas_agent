@@ -31,7 +31,7 @@ files:
 # .exe može pisati u data/ folder unutar njega.
 extraFiles:
   - from: "python_backend/dist/ricky_backend"
-    to: "ricky_backend"
+    to: "resources/ricky_backend"
     filter:
       # Očisti PyInstaller junk — samo .exe + dll-ovi + _internal
       - "**/*"
