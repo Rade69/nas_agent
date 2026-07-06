@@ -158,6 +158,53 @@ Ali dugoročno je bolje da se primijeni odmah.
 
 ---
 
+# interface_language kao STT jezički hint (Dictation Mode)
+
+> Dodatak (2026-07-06). `interface_language` ne treba biti samo prevod GUI teksta — treba biti i signal lokalnom STT engine-u (vidi Dictation/Voice Draft Mode u `RICKY_UI_REDESIGN_AGENT_PROMPT_V4_AFTER_REVIEW.md` sekciji G) koji jezik/pismo da očekuje. Ovo NIJE prevođenje govora (transcript i dalje ostaje ono što je korisnik stvarno rekao, po pravilu iz sekcije "Transcript language rule" ispod) — samo jezička/pismovna pretpostavka za tačniju transkripciju.
+
+## Zašto je ovo potrebno — stvaran nalaz, ne teorija
+
+Ručni test (`whisper-test/whisper_bcs_test.py`, faster-whisper `medium`, auto-detect jezika) je pokazao da isti engine, u istoj sesiji, može transkribovati srpski **naizmjenično na latinici i na ćirilici** — jedna rečenica latinicom, sljedeća ćirilicom, bez ikakve promjene na strani korisnika. Pošto je "srpski latinica" eksplicitan standard u ovom projektu (vidi UI stringove, `sr-Latn` kod), ovo je stvaran problem koji auto-detect ne rješava sam od sebe.
+
+## Pravilo
+
+```txt
+interface_language se prosljeđuje STT engine-u kao language hint pri Dictation Mode pozivu,
+ne samo i18n translation loader-u.
+```
+
+Predloženo mapiranje (faster-whisper jezički kodovi):
+
+```txt
+sr-Latn → "bs" (bosanski je u Whisper-u latinica-only, izbjegava se ćirilica/latinica kockanje
+           za jugoslovenske jezike koji su međusobno visoko razumljivi)
+en      → "en"
+de      → "de"
+es      → "es"
+fr      → "fr"
+```
+
+Ako se ipak koristi `language="sr"` (npr. za bolju pokrivenost specifično srpskog rječnika) i engine svejedno vrati ćirilicu, dodati **transliteraciju ćirilica→latinica kao sigurnosnu mrežu** prije nego što tekst uđe u Voice Draft panel — ovo je deterministički, jednostavan mapping tabele karaktera, ne zahtijeva ML.
+
+## Šta ostaje nepromijenjeno
+
+```txt
+- Transcript i dalje pokazuje ono što je korisnik rekao (nema silent prevoda sadržaja).
+- interface_language i dalje odvojeno kontroliše GUI labele (postojeće pravilo iznad).
+- Ako korisnik promijeni jezik u Settings, to mijenja i STT hint za SLJEDEĆU dictation sesiju,
+  ne retroaktivno već sačuvane transkripte.
+```
+
+## Acceptance criteria
+
+```txt
+- Dictation Mode poziva STT sa language hint-om izvedenim iz interface_language, ne auto-detect.
+- Srpski latinica ostaje latinica u transkriptu, konzistentno, ne naizmjenično sa ćirilicom.
+- Promjena jezika u Settings mijenja STT hint bez potrebe za redizajnom cijelog voice pipeline-a.
+```
+
+---
+
 # Ključno pravilo
 
 Ne hardkodirati user-facing tekstove u komponentama.
