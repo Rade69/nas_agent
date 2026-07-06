@@ -7,6 +7,14 @@ require("./core/env.cjs");
 
 const { createWindow, setWindowMode, getMainWindow } = require("./core/window.cjs");
 const { registerIpcHandlers } = require("./core/ipc.cjs");
+// FAZA 17: legacy PowerShell tool feature flag.
+const {
+  isLegacyEnabled,
+  hasPythonEquivalent,
+  hasNoPythonYet,
+  blockLegacyResponse,
+  LEGACY_FLAG,
+} = require("./core/legacyTools.cjs");
 // FAZA 12: Companion orb window.
 const {
   createCompanionWindow,
@@ -746,6 +754,16 @@ async function handleToolsExecute(_event, toolCall) {
       });
       return adaptPythonToolResponse(response, name);
     } catch (error) {
+      // FAZA 17: if legacy tools are disabled, don't fall through to the
+      // legacy handler — return a structured error instead.
+      // Context: agent_reports/2026-07-06_faza17-disable-legacy-powershell.md
+      if (!isLegacyEnabled()) {
+        return {
+          ok: false,
+          error: `Tool '${name}' failed via Python backend and legacy fallback is disabled (${LEGACY_FLAG}=0): ${error instanceof Error ? error.message : error}`,
+          errorCode: "PYTHON_FAILED_LEGACY_DISABLED",
+        };
+      }
       // Fall through to legacy handler below — keeps the app working if the
       // backend is down or the tool is not yet registered there.
       console.warn(
@@ -904,6 +922,15 @@ async function handleToolsExecute(_event, toolCall) {
     }
 
     if (name.startsWith("computer_") || name === "screen_snapshot" || name === "ui_inspect") {
+      // FAZA 17: when legacy tools are disabled, tools that have no Python
+      // equivalent yet (computer_open_app/type_text/press_key/click/scroll)
+      // must return a clear error rather than silently failing or crashing.
+      // screen_snapshot/ui_inspect already prefer Python via PHASE11; they
+      // only reach this legacy path if Python failed AND legacy is enabled.
+      // Context: agent_reports/2026-07-06_faza17-disable-legacy-powershell.md
+      if (!isLegacyEnabled() && hasNoPythonYet(name)) {
+        return blockLegacyResponse(name);
+      }
       const blocked = requireComputerMode();
       if (blocked) return blocked;
     }
