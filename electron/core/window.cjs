@@ -1,5 +1,6 @@
 const path = require("node:path");
 const { BrowserWindow, nativeImage, screen } = require("electron");
+const { getSecureWebPreferences } = require("./secureWebPreferences.cjs");
 
 let mainWindow = null;
 let normalWindowBounds = null;
@@ -19,11 +20,7 @@ async function createWindow({ beforeShow } = {}) {
     transparent: true,
     backgroundColor: "#00000000",
     icon: nativeImage.createEmpty(),
-    webPreferences: {
-      preload: path.join(__dirname, "..", "preload.cjs"),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
+    webPreferences: getSecureWebPreferences(),
   });
   mainWindow = win;
   win.center();

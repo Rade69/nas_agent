@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, dialog } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs/promises");
 const crypto = require("node:crypto");
@@ -7,6 +7,7 @@ require("./core/env.cjs");
 
 const { createWindow, setWindowMode, getMainWindow } = require("./core/window.cjs");
 const { registerIpcHandlers } = require("./core/ipc.cjs");
+const { runSecuritySelfTest } = require("./core/securitySelfTest.cjs");
 // FAZA 17: legacy PowerShell tool feature flag.
 const {
   isLegacyEnabled,
@@ -1734,6 +1735,27 @@ app.whenReady().then(async () => {
     await startPythonBackend({ isPackaged: app.isPackaged });
   } catch (error) {
     console.error("[python-backend] Failed to start Python backend:", error);
+  }
+
+  // Security Gate 0 (docs/SECURITY_HARDENING_PLAN.md section 18). Runs after
+  // the backend is up so the backend-side half of the self-test is reachable.
+  // A packaged build fails closed on any failed check; a dev build only logs
+  // a warning so local iteration isn't blocked.
+  // Context: agent_reports/2026-07-06_gate0-selftest-pathsandbox.md
+  try {
+    const selfTest = await runSecuritySelfTest({ isPackaged: app.isPackaged });
+    if (!selfTest.ok) {
+      const failed = selfTest.checks.filter((check) => !check.passed);
+      const summary = failed.map((check) => `${check.name}: ${check.detail}`).join("\n");
+      if (app.isPackaged) {
+        dialog.showErrorBox("Security configuration failed. Production mode blocked.", summary);
+        app.quit();
+        return;
+      }
+      console.warn("[security-self-test] FAILED (non-blocking in dev build):\n" + summary);
+    }
+  } catch (error) {
+    console.error("[security-self-test] Could not run self-test:", error);
   }
 
   await createWindow({ beforeShow: prepareWindowData });

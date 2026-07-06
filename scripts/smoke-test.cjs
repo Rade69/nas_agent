@@ -17,6 +17,7 @@ const {
   executeTool,
   listEvents,
 } = require("../electron/services/pythonClient.cjs");
+const { runSecuritySelfTest } = require("../electron/core/securitySelfTest.cjs");
 
 const TIMEOUT_MS = 600;
 const MAX_RETRIES = 30;
@@ -45,7 +46,7 @@ async function run() {
   console.log("\n=== RileyJarvis Smoke Test (FAZA 18) ===\n");
 
   // 1. Start backend
-  console.log("[1/6] Pokretanje Python backend-a...");
+  console.log("[1/7] Pokretanje Python backend-a...");
   await startPythonBackend({ isPackaged: false });
 
   console.log("       Čekanje /health...");
@@ -57,7 +58,7 @@ async function run() {
   }
 
   // 2. List tools
-  console.log("\n[2/6] GET /tools...");
+  console.log("\n[2/7] GET /tools...");
   const tools = await listTools({});
   const toolNames = new Set(tools.tools.map((t) => t.name));
   check("Vraća listu toolova", Array.isArray(tools.tools) && tools.tools.length > 0);
@@ -66,8 +67,13 @@ async function run() {
   check("Sadrži web_search (FAZA 16)", toolNames.has("web_search"));
   check("Sadrži screen_snapshot (FAZA 11)", toolNames.has("screen_snapshot"));
 
-  // 3. Execute a tool
-  console.log("\n[3/6] POST /tools/execute (echo)...");
+  // 3. Security Gate 0 self-test (Electron + backend combined)
+  console.log("\n[3/7] Security self-test (Electron + backend)...");
+  const selfTest = await runSecuritySelfTest({ isPackaged: false });
+  check("Security self-test ok", selfTest.ok, selfTest.ok ? "" : JSON.stringify(selfTest.checks.filter((c) => !c.passed)));
+
+  // 4. Execute a tool
+  console.log("\n[4/7] POST /tools/execute (echo)...");
   const echo = await executeTool({
     tool_name: "echo",
     arguments: { text: "smoke" },
@@ -76,8 +82,8 @@ async function run() {
   check("echo vraća ok", echo.ok === true);
   check("echo result.text === 'smoke'", echo.result?.text === "smoke");
 
-  // 4. Create note (FAZA 11)
-  console.log("\n[4/6] POST /tools/execute (note_add)...");
+  // 5. Create note (FAZA 11)
+  console.log("\n[5/7] POST /tools/execute (note_add)...");
   const note = await executeTool({
     tool_name: "note_add",
     arguments: { text: "Smoke test note", tags: ["smoke"] },
@@ -86,16 +92,16 @@ async function run() {
   check("note_add vraća ok", note.ok === true);
   check("note_add result.note.text tačan", note.result?.note?.text === "Smoke test note");
 
-  // 5. Events bridge (FAZA 11)
-  console.log("\n[5/6] GET /events (backend.ready event)...");
+  // 6. Events bridge (FAZA 11)
+  console.log("\n[6/7] GET /events (backend.ready event)...");
   const events = await listEvents(undefined);
   const eventTypes = new Set(events.events.map((e) => e.type));
   check("Vraća events listu", Array.isArray(events.events));
   check("Sadrži backend.ready", eventTypes.has("backend.ready"));
   check("next_cursor postavljen", typeof events.next_cursor === "string");
 
-  // 6. Stop backend
-  console.log("\n[6/6] Gašenje backend-a...");
+  // 7. Stop backend
+  console.log("\n[7/7] Gašenje backend-a...");
   stopPythonBackend();
   // Uvicorn graceful shutdown može trajati nekoliko sekundi.
   await new Promise((r) => setTimeout(r, 3500));

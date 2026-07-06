@@ -167,6 +167,13 @@ async function listEvents(since, options = {}) {
   return await requestJson(`/events${query}`, options);
 }
 
+// Security Gate 0 (docs/SECURITY_HARDENING_PLAN.md section 18). Backend half
+// of the Production Security Self-Test; electron/core/securitySelfTest.cjs
+// combines this with its own Electron-side checks.
+async function getSecuritySelfTest(options = {}) {
+  return await requestJson("/security/self-test", options);
+}
+
 module.exports = {
   DEFAULT_BACKEND_URL,
   approveConfirmation,
@@ -177,6 +184,7 @@ module.exports = {
   executeTool,
   getHealth,
   getPlan,
+  getSecuritySelfTest,
   listConfirmations,
   listEvents,
   listPlans,

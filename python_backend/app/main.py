@@ -12,6 +12,7 @@ from app.api.events import router as events_router
 from app.api.health import router as health_router
 from app.api.plans import router as plans_router
 from app.api.realtime import router as realtime_router
+from app.api.security import router as security_router
 from app.api.tools import router as tools_router
 from app.core.auth import require_local_token
 from app.core.config import get_settings
@@ -38,8 +39,11 @@ from app.storage.repositories.tool_run_repo import ToolRunRepository
 
 
 def create_app() -> FastAPI:
-    configure_logging()
     settings = get_settings()
+    # Security Gate 0 (SECURITY_HARDENING_PLAN.md section 14 "Redaction"):
+    # configure logging with the real secrets this process holds so they
+    # never appear verbatim in log output.
+    configure_logging(secrets=[settings.openai_api_key, settings.local_token, settings.exa_api_key])
     initialize_database(settings)
 
     # Security PR-1: local session token enforced on every route (fails open
@@ -115,6 +119,7 @@ def create_app() -> FastAPI:
     app.include_router(plans_router)
     app.include_router(events_router)
     app.include_router(agent_router)
+    app.include_router(security_router)
     return app
 
 

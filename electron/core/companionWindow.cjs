@@ -1,5 +1,6 @@
 const path = require("node:path");
 const { BrowserWindow, nativeImage, screen, ipcMain, Tray, Menu, shell } = require("electron");
+const { getSecureWebPreferences } = require("./secureWebPreferences.cjs");
 
 // Context: agent_reports/2026-07-05_faza12-companion-orb.md
 // FAZA 12: Companion orb — a separate always-on-top transparent BrowserWindow
@@ -39,11 +40,7 @@ function createCompanionWindow() {
     backgroundColor: "#00000000",
     focusable: true,
     title: "Ricky Companion",
-    webPreferences: {
-      preload: path.join(__dirname, "..", "preload.cjs"),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
+    webPreferences: getSecureWebPreferences(),
   });
 
   companionWindow = win;
