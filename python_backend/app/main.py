@@ -1,7 +1,12 @@
 from fastapi import Depends, FastAPI
 
 from app.agent.cancellation import CancellationRegistry
+from app.agent.conversation_state import ConversationStateService
+from app.agent.model_client import OpenAIModelClient
+from app.agent.runtime import LocalDesktopAssistant
+from app.agent.tool_executor import ToolExecutor
 from app.agent.tool_registry import create_default_registry
+from app.api.agent import router as agent_router
 from app.api.confirmations import router as confirmations_router
 from app.api.events import router as events_router
 from app.api.health import router as health_router
@@ -16,10 +21,13 @@ from app.services.action_log import ActionLogService
 from app.services.artifact_service import ArtifactService
 from app.services.confirmation_service import ConfirmationService
 from app.services.event_bus import EventBus
+from app.services.exa_client import ExaClient
 from app.services.notes_service import NotesService
+from app.services.openai_image_client import OpenAIImageClient
 from app.services.plan_service import PlanService
 from app.services.records_service import RecordsService
 from app.storage.db import initialize_database
+from app.storage.repositories.agent_repo import AgentConversationRepository
 from app.storage.repositories.artifact_repo import ArtifactRepository
 from app.storage.repositories.confirmation_repo import ConfirmationRepository
 from app.storage.repositories.event_repo import EventRepository
@@ -71,10 +79,33 @@ def create_app() -> FastAPI:
         "artifact": app.state.artifact_service,
         "screenshots_dir": settings.data_dir / "screenshots",
         "event_bus": event_bus,
+        # FAZA 16: OpenAI/Exa/image integrations now live in the Python backend.
+        "exa_client": ExaClient(settings.exa_api_key),
+        "openai_image_client": OpenAIImageClient(settings.openai_api_key),
+        "images_dir": settings.data_dir / "images",
     }
     app.state.tool_registry = create_default_registry(services=phase11_services)
     # Emit backend.ready so the UI knows the event bridge is live.
     event_bus.emit("backend.ready", title="Python backend ready")
+
+    # FAZA 15: agent runtime (LocalDesktopAssistant). Tool calls the model
+    # requests are executed through this same ToolExecutor instance — the
+    # identical permission/cancellation gate used by POST /tools/execute, so
+    # the agent runtime has no separate path that could bypass it.
+    app.state.conversation_state_service = ConversationStateService(
+        AgentConversationRepository(settings.database_path)
+    )
+    agent_tool_executor = ToolExecutor(
+        app.state.tool_registry,
+        action_log=app.state.action_log,
+        confirmations=app.state.confirmation_service,
+        cancellations=app.state.cancellation_registry,
+    )
+    app.state.agent_runtime = LocalDesktopAssistant(
+        model_client=OpenAIModelClient(settings.openai_api_key),
+        tool_executor=agent_tool_executor,
+        conversations=app.state.conversation_state_service,
+    )
 
     register_error_handlers(app)
     app.include_router(health_router)
@@ -83,6 +114,7 @@ def create_app() -> FastAPI:
     app.include_router(confirmations_router)
     app.include_router(plans_router)
     app.include_router(events_router)
+    app.include_router(agent_router)
     return app
 
 

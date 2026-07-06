@@ -514,6 +514,9 @@ const PHASE11_DELEGATED_TOOLS = new Set([
   "artifact_show",
   "screen_snapshot",
   "ui_inspect",
+  // FAZA 16: OpenAI/Exa/image integrations now live in the Python backend.
+  "web_search",
+  "image_generate",
 ]);
 
 // Adapt a Python ToolExecutionResponse into the legacy {ok, artifact, ...}

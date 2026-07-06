@@ -45,16 +45,20 @@ def _register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) ->
     expose them through `/tools` and `/tools/execute`.
     """
     from app.tools.artifacts import make_handlers as make_artifact_handlers
+    from app.tools.images.generate import make_handlers as make_image_handlers
     from app.tools.memory.notes import make_handlers as make_notes_handlers
     from app.tools.memory.records import make_handlers as make_records_handlers
     from app.tools.system.screenshot import make_handlers as make_screenshot_handlers
     from app.tools.system.ui_inspect import make_handlers as make_ui_inspect_handlers
+    from app.tools.web.search import make_handlers as make_web_handlers
 
     notes_handlers = make_notes_handlers(services["notes"])
     records_handlers = make_records_handlers(services["records"])
     artifact_handlers = make_artifact_handlers(services["artifact"])
     screenshot_handlers = make_screenshot_handlers(services["screenshots_dir"])
     ui_inspect_handlers = make_ui_inspect_handlers()
+    web_handlers = make_web_handlers(services["exa_client"])
+    image_handlers = make_image_handlers(services["openai_image_client"], services["images_dir"])
 
     def _def(
         name: str,
@@ -65,6 +69,7 @@ def _register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) ->
         requires_confirmation: bool = False,
         requires_computer_mode: bool = False,
         enabled: bool = True,
+        timeout_ms: int = 10000,
     ) -> ToolDefinition:
         return ToolDefinition(
             name=name,
@@ -78,7 +83,7 @@ def _register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) ->
             blocked_apps=[],
             logs_action_receipt=False,
             allowed_in_background=not requires_computer_mode,
-            timeout_ms=10000,
+            timeout_ms=timeout_ms,
             implemented_by="python",
             enabled=enabled,
         )
@@ -278,6 +283,42 @@ def _register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) ->
             requires_computer_mode=True,
         ),
         ui_inspect_handlers["ui_inspect"],
+    )
+
+    # --- Web / AI integrations (FAZA 16) ---
+    registry.register(
+        _def(
+            "web_search",
+            "Search the web with Exa. Use for current facts, links, research, and source gathering. Results are shown as a clean Markdown research brief in the artifact panel.",
+            {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string"},
+                    "numResults": {"type": "number", "minimum": 1, "maximum": 10},
+                },
+                "required": ["query"],
+                "additionalProperties": False,
+            },
+            timeout_ms=30000,
+        ),
+        web_handlers["web_search"],
+    )
+    registry.register(
+        _def(
+            "image_generate",
+            "Generate a standalone image with GPT Image and show it in the artifact panel. Do not use for YouTube thumbnails; use thumbnail_generate or thumbnail_edit instead.",
+            {
+                "type": "object",
+                "properties": {
+                    "prompt": {"type": "string"},
+                    "size": {"type": "string"},
+                },
+                "required": ["prompt"],
+                "additionalProperties": False,
+            },
+            timeout_ms=90000,
+        ),
+        image_handlers["image_generate"],
     )
 
 

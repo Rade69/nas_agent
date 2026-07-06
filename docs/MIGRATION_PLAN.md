@@ -54,7 +54,7 @@ Kolona **Agent** je preporuka podjele rada (vidi `agent_reports/2026-07-05_codex
 | 13 | Computer-use Python v1 (koordinate) | ⬜ 🔒 BLOCKED dok Security Gate 0 nije zatvoren (vidi sekciju "Security Gates" niže) | Claude Code (1:1 zamjena PowerShell alata iz FAZE 3, treba provjera ponašanja) |
 | 14 | Computer-use Python v2 (UI element targeting) | ⬜ 🔒 BLOCKED dok Security Gate 0 nije zatvoren (vidi sekciju "Security Gates" niže) | Claude Code (eksplorativno, UIA nepredvidljiv) |
 | 15 | Agent runtime u Pythonu | ⬜ | Claude Code (arhitektonski centralno) |
-| 16 | Prebaciti OpenAI/Exa/image pozive u Python | ⬜ | Codex |
+| 16 | Prebaciti OpenAI/Exa/image pozive u Python | ✅ urađeno (`python_backend/app/services/exa_client.py`, `openai_image_client.py`; `app/tools/web/search.py` (`web_search`), `app/tools/images/generate.py` (`image_generate`); Exa/OpenAI ključevi sad na Python backend strani (Security Gate 0 pattern); Electron delegacija u `PHASE11_DELEGATED_TOOLS`; 7 novih testova; vidi `agent_reports/2026-07-05_faza16-openai-exa-image-python.md`) | Codex |
 | 17 | Deaktivacija legacy PowerShell toolova | ⬜ | Codex |
 | 18 | Test suite i quality gate | ⬜ | Codex |
 | 19 | Packaging plan | ⬜ | Codex (draft) → Claude Code (verifikacija) |

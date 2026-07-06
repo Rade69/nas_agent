@@ -20,6 +20,9 @@ class Settings(BaseModel):
     # auth dependency in app/core/auth.py fails open rather than locking out
     # local dev/test runs — the real Electron-launched path always sets it.
     local_token: str | None = None
+    # FAZA 16: Exa web search API key (env: EXA_API_KEY). Held only on the
+    # Python backend side, same pattern as OPENAI_API_KEY.
+    exa_api_key: str | None = None
 
     @property
     def database_path(self) -> Path:
@@ -37,5 +40,6 @@ def get_settings() -> Settings:
     return Settings(
         openai_api_key=os.environ.get("OPENAI_API_KEY") or None,
         local_token=os.environ.get("RICKY_LOCAL_TOKEN") or None,
+        exa_api_key=os.environ.get("EXA_API_KEY") or None,
         data_dir=data_dir if data_dir is not None else Path(__file__).resolve().parents[2] / "data",
     )
