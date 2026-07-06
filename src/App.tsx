@@ -63,10 +63,16 @@ export default function App() {
     }
   }, [pendingConfirmation]);
 
-  // FAZA 9: refresh pending confirmations periodically (lightweight poll —
-  // backend push via activity_events arrives in a later phase).
+  // FAZA 9 + FAZA 11: single consolidated poller for pending confirmations and
+  // backend events. Previously two independent setInterval loops (2.5s and
+  // 3s, respectively) ran concurrently — same data freshness, but double the
+  // effect/interval lifecycles and HTTP round-trips for no real benefit at
+  // this cadence. Merged into one tick (see
+  // agent_reports/2026-07-06_consolidate-backend-polling.md).
   useEffect(() => {
     let cancelled = false;
+    let cursor: string | null = null;
+
     async function refreshPending() {
       try {
         const response = await window.ricky.listPendingConfirmations();
@@ -88,8 +94,50 @@ export default function App() {
         // Backend may briefly be unavailable during startup; silent retry.
       }
     }
-    refreshPending();
-    const interval = window.setInterval(refreshPending, 2500);
+
+    async function pollEvents() {
+      try {
+        const response = await window.ricky.listEvents(cursor ?? undefined);
+        if (cancelled) return;
+        const events: BackendEvent[] = response?.events ?? [];
+        if (response?.next_cursor) cursor = response.next_cursor;
+        for (const event of events) {
+          if (event.type === "artifact.created") {
+            const artifactId = event.details?.artifact_id;
+            if (typeof artifactId === "string") {
+              try {
+                const result = await window.ricky.executeTool({
+                  name: "artifact_get",
+                  arguments: { id: artifactId },
+                });
+                if (result.artifact) {
+                  setArtifact(result.artifact);
+                  setArtifactVisible(true);
+                }
+              } catch {
+                // Artifact may not be ready yet; ignore.
+              }
+            }
+          } else if (event.type === "tool.completed" || event.type === "tool.failed") {
+            addActivityEvent(
+              createActivityEvent("tool", event.title || event.type, event.type),
+            );
+          } else if (event.type === "backend.ready") {
+            addActivityEvent(createActivityEvent("status", "Backend ready", "Python backend connected"));
+          }
+        }
+      } catch {
+        // Event polling is best-effort; silent on failure.
+      }
+    }
+
+    async function pollBoth() {
+      // allSettled so a failure in one poll never blocks or delays the other.
+      await Promise.allSettled([refreshPending(), pollEvents()]);
+    }
+
+    pollBoth();
+    const interval = window.setInterval(pollBoth, 3000);
     return () => {
       cancelled = true;
       window.clearInterval(interval);
@@ -130,55 +178,6 @@ export default function App() {
     };
   }, [isConnected]);
 
-  // FAZA 11: poll backend events for artifact.created and tool progress.
-  // This surfaces out-of-band artifact updates (e.g. from background tool runs or
-  // the future agent runtime) that don't go through the Realtime function-call
-  // flow. Artifacts created via model tool calls are already handled by onArtifact.
-  useEffect(() => {
-    let cancelled = false;
-    let cursor: string | null = null;
-    async function pollEvents() {
-      try {
-        const response = await window.ricky.listEvents(cursor ?? undefined);
-        if (cancelled) return;
-        const events: BackendEvent[] = response?.events ?? [];
-        if (response?.next_cursor) cursor = response.next_cursor;
-        for (const event of events) {
-          if (event.type === "artifact.created") {
-            const artifactId = event.details?.artifact_id;
-            if (typeof artifactId === "string") {
-              try {
-                const result = await window.ricky.executeTool({
-                  name: "artifact_get",
-                  arguments: { id: artifactId },
-                });
-                if (result.artifact) {
-                  setArtifact(result.artifact);
-                  setArtifactVisible(true);
-                }
-              } catch {
-                // Artifact may not be ready yet; ignore.
-              }
-            }
-          } else if (event.type === "tool.completed" || event.type === "tool.failed") {
-            addActivityEvent(
-              createActivityEvent("tool", event.title || event.type, event.type),
-            );
-          } else if (event.type === "backend.ready") {
-            addActivityEvent(createActivityEvent("status", "Backend ready", "Python backend connected"));
-          }
-        }
-      } catch {
-        // Event polling is best-effort; silent on failure.
-      }
-    }
-    pollEvents();
-    const interval = window.setInterval(pollEvents, 3000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-    };
-  }, []);
 
   async function connect() {
     const client = new RickyRealtimeClient({
