@@ -45,7 +45,7 @@ Legenda statusa: ✅ URAĐENO · 🟡 DJELIMIČNO · ❌ RUPA
 | S12 | Nikad glasovna potvrda za high-risk | 🟡 | Treba potvrditi u realtime/voice sloju da "da/pokreni" ne može odobriti high-risk bez klika. Provjeriti `src/lib/realtime.ts`. |
 | S13 | Electron contextIsolation/nodeIntegration/sandbox | ✅ | `secureWebPreferences.cjs` — sve tri + `webSecurity`, `allowRunningInsecureContent:false`; self-test enforce. |
 | S14 | Allowlisted preload (nema generičkog invoke) | ✅ | `preload.cjs` — svaka funkcija = jedan imenovani kanal; self-test skenira protiv generic passthrough. |
-| S15 | **CSP (blokira inline script/eval)** | ❌ | `index.html` nema CSP meta; nema `onHeadersReceived` CSP u `electron/`. |
+| S15 | **CSP (blokira inline script/eval)** | ✅ | **URAĐENO (FAZA S-3, 2026-07-07).** Build-only Vite plugin (`vite.config.ts`) ubacuje strogi CSP `<meta>` u prod `dist/index.html` (`script-src 'self' 'wasm-unsafe-eval'`, bez unsafe-inline/eval; `connect-src` samo OpenAI; `object-src 'none'`). Meta jer prod ide preko `file://` (onHeadersReceived ne okida). Self-test `content_security_policy` gate-uje u packaged buildu. Dev nedirnut. |
 | S16 | Main proces validira svaki IPC poziv | 🟡 | Kanali su imenovani; treba provjeriti da svaki handler u `main.cjs` validira payload (ne vjeruje rendereru). |
 | S17 | **Supply chain: lockfile + hash pinning** | ❌/🟡 | `package-lock.json` postoji (✅), ali nema `npm ci` u skriptama; Python `pyproject.toml` bez hash-pinned locka (`uv.lock`/`requirements.txt --require-hashes`). |
 | S18 | `--ignore-scripts` / npm audit | ❌ | Nije konfigurisano. |
@@ -87,10 +87,13 @@ Redoslijed je biran tako da se prvo rade **arhitekturne stvari koje se ne mogu z
 - ✅ **Acceptance ispunjen:** red-team test `test_injection_chain_read_then_act_is_blocked` dokazuje da read→act lanac završava blokadom (`CONFIRMATION_REQUIRED`).
 - Report: `agent_reports/2026-07-07_faza-s2-prompt-injection.md`.
 
-### FAZA S-3 — Electron CSP (S15) 🟠
-- Dodati strogi CSP preko `session.defaultSession.webRequest.onHeadersReceived` u `window.cjs` (ne samo meta): `default-src 'self'; script-src 'self'; connect-src` samo OpenAI + backend; `object-src 'none'`; bez `unsafe-inline`/`unsafe-eval`.
-- Uskladiti sa Vite dev (dev vs prod CSP).
-- **Acceptance:** self-test dobija novu provjeru `csp_present`; inline `<script>` u rendereru ne izvršava.
+### FAZA S-3 — Electron CSP (S15) ✅ URAĐENO (2026-07-07)
+- ✅ Strogi CSP `<meta>` ubačen u prod `dist/index.html` build-only Vite pluginom (`vite.config.ts`). **Zašto meta a ne `onHeadersReceived`:** prod se učitava preko `file://` (`window.cjs loadFile`), a `onHeadersReceived` ne okida za file:// dokumente — meta je jedini pouzdan mehanizam.
+- ✅ Direktive: `default-src 'self'`; `script-src 'self' 'wasm-unsafe-eval'` (bez unsafe-inline/eval); `connect-src 'self' https://api.openai.com https://*.openai.com wss://*.openai.com`; `object-src 'none'`; `base-uri 'self'`; `frame-src 'none'`; `form-action 'none'`. `connect-src` je uzak jer je jedini eksterni egress renderera OpenAI Realtime SDP.
+- ✅ Self-test provjera `content_security_policy` (`securitySelfTest.cjs`) — u packaged buildu čita `dist/index.html` i potvrđuje CSP meta + da `script-src` nema unsafe. Fail-closed u prod.
+- ✅ Dev workflow netaknut (CSP samo u buildu).
+- ⚠️ **Treba vizuelni smoke test u packaged buildu:** glasovni WebRTC poziv i mermaid/katex render dijagrama. Ako mermaid pukne uz `'wasm-unsafe-eval'`, dodati `'unsafe-eval'` (dokumentovani tradeoff) ili predkompajlirati dijagrame.
+- Report: `agent_reports/2026-07-07_faza-s3-csp.md`.
 
 ### FAZA S-4 — Fail-closed defaulti + kill switch (S29, S33, S30) 🟠
 - Computer Mode uvijek OFF na startu (ne perzistira ON).

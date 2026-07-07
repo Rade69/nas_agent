@@ -74,8 +74,53 @@ function checkNoDevtoolsInProduction(isPackaged) {
   };
 }
 
+// FAZA S-3: the packaged renderer loads via file:// (window.cjs loadFile), where
+// a response-header CSP cannot apply — the CSP lives as a <meta> tag injected
+// into dist/index.html at build time (vite.config.ts cspMetaPlugin). This check
+// confirms that meta tag actually shipped, with the directives that matter most
+// (locked script-src, no plugins, tight egress). Dev is exempt: the CSP is
+// build-only and the dev server intentionally has none.
+function checkContentSecurityPolicy(isPackaged) {
+  if (!isPackaged) {
+    return { name: "content_security_policy", passed: true, detail: "dev build — CSP is injected at build time only" };
+  }
+  const indexPath = path.join(process.cwd(), "dist", "index.html");
+  if (!fs.existsSync(indexPath)) {
+    return { name: "content_security_policy", passed: false, detail: `built index.html not found at ${indexPath}` };
+  }
+  const html = fs.readFileSync(indexPath, "utf8");
+  const cspMatch = html.match(/http-equiv=["']Content-Security-Policy["'][^>]*content=["']([^"']+)["']/i);
+  if (!cspMatch) {
+    return { name: "content_security_policy", passed: false, detail: "no Content-Security-Policy meta tag in dist/index.html" };
+  }
+  // Vite serializes the attribute with HTML-encoded quotes (&#39;); the browser
+  // decodes these before reading the CSP, so decode them here too before
+  // matching directive strings that contain single quotes.
+  const csp = cspMatch[1]
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, "&");
+  const required = ["default-src 'self'", "script-src 'self'", "object-src 'none'", "connect-src"];
+  const missing = required.filter((directive) => !csp.includes(directive));
+  if (missing.length > 0) {
+    return { name: "content_security_policy", passed: false, detail: `CSP missing directives: ${missing.join(", ")}` };
+  }
+  // script-src must not weaken back to inline/eval (style-src 'unsafe-inline'
+  // is fine and expected, so we inspect only the script-src directive).
+  const scriptSrc = (csp.split(";").find((d) => d.trim().startsWith("script-src")) || "").trim();
+  if (scriptSrc.includes("'unsafe-eval'") || scriptSrc.includes("'unsafe-inline'")) {
+    return { name: "content_security_policy", passed: false, detail: `script-src allows unsafe code: ${scriptSrc}` };
+  }
+  return { name: "content_security_policy", passed: true, detail: "ok" };
+}
+
 function runElectronSelfTestChecks(isPackaged) {
-  return [checkSecureWebPreferences(), checkPreloadSurface(), checkNoDevtoolsInProduction(isPackaged)];
+  return [
+    checkSecureWebPreferences(),
+    checkPreloadSurface(),
+    checkNoDevtoolsInProduction(isPackaged),
+    checkContentSecurityPolicy(isPackaged),
+  ];
 }
 
 async function runSecuritySelfTest({ isPackaged = false } = {}) {
