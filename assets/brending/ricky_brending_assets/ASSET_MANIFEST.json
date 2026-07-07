@@ -1,0 +1,11 @@
+{
+  "version": "1.0",
+  "root_target_windows": "C:\\Users\\38765\\Desktop\\Nas-agent\\assets\\brending",
+  "created_assets_count": 78,
+  "notes": [
+    "SVG icons use currentColor where possible.",
+    "Ricky orb PNG/WebP assets are prepared from the approved glowing R orb.",
+    "Use ricky-orb-main.png for main identity, ricky-orb-mini.png for floating/minimized companion.",
+    "Do not use warning icons/colors for normal progress states."
+  ]
+}

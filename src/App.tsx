@@ -1,12 +1,23 @@
 import { useEffect, useRef, useState } from "react";
-import { Expand, ListChecks, X } from "lucide-react";
+import { MonitorCog } from "lucide-react";
 import { ActivityTimeline } from "./components/ActivityTimeline";
 import { ArtifactPanel } from "./components/ArtifactPanel";
-import { BottomVoiceBar } from "./components/BottomVoiceBar";
 import { ConfirmationDialog } from "./components/ConfirmationDialog";
 import { PlansPanel } from "./components/PlansPanel";
-import { RickyFace } from "./components/RickyFace";
-import { VoiceTopBar } from "./components/VoiceTopBar";
+import { RickyOrb } from "./components/RickyOrb";
+import { Sidebar } from "./components/Sidebar";
+import { voiceStateLabel } from "./lib/voiceState";
+import { categoryForActivity } from "./lib/activityIcons";
+import IconMic from "../assets/brending/icons/voice/icon-microphone.svg?react";
+import IconMicOff from "../assets/brending/icons/voice/icon-microphone-muted.svg?react";
+import IconStop from "../assets/brending/icons/voice/icon-stop.svg?react";
+import IconSend from "../assets/brending/icons/voice/icon-send.svg?react";
+import IconClose from "../assets/brending/icons/window/icon-close.svg?react";
+import IconCompanion from "../assets/brending/icons/system/icon-realtime.svg?react";
+import IconCalendar from "../assets/brending/icons/actions/icon-calendar.svg?react";
+import IconSettings from "../assets/brending/icons/navigation/icon-settings.svg?react";
+import IconChevron from "../assets/brending/icons/ui/icon-chevron-right.svg?react";
+import IconLogoR from "../assets/brending/logo/ricky-logo-r.svg?react";
 import {
   createActivityEvent,
   newEntry,
@@ -29,10 +40,9 @@ export default function App() {
   const [mood, setMood] = useState<RickyMood>("idle");
   const [mode, setMode] = useState<RickyMode>("display");
   const [artifact, setArtifact] = useState<RickyArtifact | null>(null);
-  const [artifactVisible, setArtifactVisible] = useState(true);
+  const [artifactVisible, setArtifactVisible] = useState(false);
   const [artifactFullscreen, setArtifactFullscreen] = useState(false);
   const [showLog, setShowLog] = useState(false);
-  const [showTypeInput, setShowTypeInput] = useState(false);
   const [mouthShape, setMouthShape] = useState<MouthShape>({ open: 0, width: 0.18, round: 0, teeth: 0 });
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([
     newEntry("system", "Ricky is ready. Connect voice, then talk naturally."),
@@ -42,36 +52,50 @@ export default function App() {
   ]);
   const [status, setStatus] = useState("Idle");
   const [textPrompt, setTextPrompt] = useState("");
-  // FAZA 9: confirmations + plans UI state.
   const [pendingConfirmation, setPendingConfirmation] = useState<Confirmation | null>(null);
   const [confirmationBusy, setConfirmationBusy] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
-  const [showPlans, setShowPlans] = useState(false);
   const [busyPlanId, setBusyPlanId] = useState<string | null>(null);
   const [busyStepId, setBusyStepId] = useState<string | null>(null);
+
+  // UI redesign: state-machine screen (mockup principle "Jedan sadržaj po
+  // ekranu") separate from an overlay drawer (mockup principle "Paneli
+  // dostupni po potrebi (drawers)" — Activity/Plans/etc. float over the
+  // current screen instead of replacing it; see GUI-SET-4/5.png).
+  const [screen, setScreen] = useState<"home" | "dictation">("home");
+  const [activeDrawer, setActiveDrawer] = useState<
+    "activity" | "plans" | "memory" | "screens" | "settings" | null
+  >(null);
+  const [dictationText, setDictationText] = useState("");
+  const [backendConnected, setBackendConnected] = useState(false);
   const clientRef = useRef<RickyRealtimeClient | null>(null);
 
   const isConnected = connectionState === "connected";
 
+  // isActive: any state where the user might need to Stop
+  const isActive = voiceState === "listening" || voiceState === "transcribing" ||
+    voiceState === "thinking" || voiceState === "speaking" ||
+    voiceState === "waiting_confirmation";
+
   // FAZA 9: drive VoiceState into waiting_confirmation while a pending
-  // confirmation is visible, so the top bar reflects the safety state. The
-  // underlying audio pipeline (src/lib/realtime.ts) is NOT modified — this is
-  // an additive UI-side effect layered over the existing VoiceState model.
+  // confirmation is visible.
   useEffect(() => {
     if (pendingConfirmation && pendingConfirmation.status === "pending") {
       setVoiceState("waiting_confirmation");
     }
   }, [pendingConfirmation]);
 
-  // FAZA 9 + FAZA 11: single consolidated poller for pending confirmations and
-  // backend events. Previously two independent setInterval loops (2.5s and
-  // 3s, respectively) ran concurrently — same data freshness, but double the
-  // effect/interval lifecycles and HTTP round-trips for no real benefit at
-  // this cadence. Merged into one tick (see
-  // agent_reports/2026-07-06_consolidate-backend-polling.md).
+  // Consolidated poller: confirmations + events + backend health
   useEffect(() => {
     let cancelled = false;
     let cursor: string | null = null;
+    // The very first /events call has no `since` cursor, so the backend
+    // returns the most recent persisted events (app/api/events.py
+    // service.recent()) — this can include an artifact.created/backend.ready
+    // event from hours-old test sessions, not this run. Replay them silently
+    // (just advance the cursor) instead of re-opening old artifacts / adding
+    // duplicate "Backend ready" entries on every fresh launch.
+    let isFirstPoll = true;
 
     async function refreshPending() {
       try {
@@ -79,20 +103,11 @@ export default function App() {
         if (cancelled) return;
         const next = response?.confirmations?.[0] ?? null;
         setPendingConfirmation((current) => {
-          // Only auto-show new pending confirmations; keep resolved ones visible
-          // briefly via the dialog dismiss flow (handled by setVisible inside
-          // the component).
-          if (next && (!current || current.id !== next.id)) {
-            return next;
-          }
-          if (!next && current && current.status !== "pending") {
-            return null;
-          }
+          if (next && (!current || current.id !== next.id)) return next;
+          if (!next && current && current.status !== "pending") return null;
           return current;
         });
-      } catch {
-        // Backend may briefly be unavailable during startup; silent retry.
-      }
+      } catch { /* silent */ }
     }
 
     async function pollEvents() {
@@ -101,168 +116,156 @@ export default function App() {
         if (cancelled) return;
         const events: BackendEvent[] = response?.events ?? [];
         if (response?.next_cursor) cursor = response.next_cursor;
+        const replayingHistory = isFirstPoll;
+        isFirstPoll = false;
         for (const event of events) {
           if (event.type === "artifact.created") {
+            if (replayingHistory) continue; // stale artifact from a past session — don't reopen it
             const artifactId = event.details?.artifact_id;
             if (typeof artifactId === "string") {
               try {
-                const result = await window.ricky.executeTool({
-                  name: "artifact_get",
-                  arguments: { id: artifactId },
-                });
-                if (result.artifact) {
-                  setArtifact(result.artifact);
+                const result = await window.ricky.executeTool({ name: "artifact_get", arguments: { id: artifactId } });
+                if ((result as Record<string, unknown>).artifact) {
+                  setArtifact((result as Record<string, unknown>).artifact as RickyArtifact);
                   setArtifactVisible(true);
                 }
-              } catch {
-                // Artifact may not be ready yet; ignore.
-              }
+              } catch { /* ignore */ }
             }
           } else if (event.type === "tool.completed" || event.type === "tool.failed") {
-            addActivityEvent(
-              createActivityEvent("tool", event.title || event.type, event.type),
-            );
+            if (replayingHistory) continue;
+            addActivityEvent(createActivityEvent("tool", event.title || event.type, event.type));
           } else if (event.type === "backend.ready") {
+            setBackendConnected(true);
+            if (replayingHistory) continue; // one of these per past restart today — not a new event
             addActivityEvent(createActivityEvent("status", "Backend ready", "Python backend connected"));
           }
         }
-      } catch {
-        // Event polling is best-effort; silent on failure.
-      }
+      } catch { /* silent */ }
     }
 
-    async function pollBoth() {
-      // allSettled so a failure in one poll never blocks or delays the other.
-      await Promise.allSettled([refreshPending(), pollEvents()]);
+    async function pollHealth() {
+      try {
+        await window.ricky.listEvents();
+        setBackendConnected(true);
+      } catch { setBackendConnected(false); }
     }
 
-    pollBoth();
-    const interval = window.setInterval(pollBoth, 3000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-    };
+    async function pollAll() {
+      await Promise.allSettled([refreshPending(), pollEvents(), pollHealth()]);
+    }
+
+    pollAll();
+    const interval = window.setInterval(pollAll, 3000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
+
+  // --- Voice state callbacks setup ---
+  useEffect(() => {
+    const client = new RickyRealtimeClient({
+      onConnectionState: setConnectionState,
+      onVoiceState: setVoiceState,
+      onMood: setMood,
+      onStatus: setStatus,
+      onMouthShape: setMouthShape,
+      onTranscript: (entry) => setTranscript((list) => [entry, ...list].slice(0, 200)),
+      onArtifact: (next) => { setArtifact(next); setArtifactVisible(true); },
+      onActivity: (event) => addActivityEvent(event),
+      onMode: (next) => setMode(next as RickyMode),
+      onThumbnailReady: () => {},
+    });
+    clientRef.current = client;
+    return () => { client.disconnect(); };
+  }, []);
+
+  // --- Helpers ---
+  function addActivityEvent(event: ActivityEvent) {
+    setActivityEvents((items) => [event, ...items].slice(0, 80));
+  }
+
+  async function connect() {
+    setBackendConnected(false);
+    await clientRef.current?.connect();
+  }
+
+  function disconnect() {
+    clientRef.current?.disconnect();
+  }
+
+  function sendTextPrompt() {
+    if (!textPrompt.trim()) return;
+    clientRef.current?.sendText(textPrompt.trim());
+    setTextPrompt("");
+  }
+
+  async function switchMode(nextMode: RickyMode) {
+    const result = await window.ricky.executeTool({ name: "set_mode", arguments: { mode: nextMode } });
+    if ((result as Record<string, unknown>).artifact) {
+      setArtifact((result as Record<string, unknown>).artifact as RickyArtifact);
+      setArtifactVisible(true);
+    }
+  }
 
   async function refreshPlans() {
     try {
       const response = await window.ricky.listPlans();
       setPlans(response?.plans ?? []);
-    } catch {
-      // Non-fatal: plans panel just stays empty.
-    }
+    } catch { /* silent */ }
   }
 
-  // FAZA 12: forward VoiceState from the main window's Realtime client to the
-  // companion orb renderer (over IPC). The orb itself never runs an audio
-  // pipeline — this is the only path it learns the current voice state.
+  // Bug fix: refreshPlans() existed but was never called anywhere, so the
+  // Planovi drawer always showed an empty list regardless of backend state.
   useEffect(() => {
-    if (window.ricky?.companionUpdateVoiceState) {
-      window.ricky.companionUpdateVoiceState(voiceState);
-    }
-  }, [voiceState]);
+    if (activeDrawer === "plans") void refreshPlans();
+  }, [activeDrawer]);
 
-  // FAZA 12: when the companion orb requests a voice toggle (user clicked the
-  // orb or used the context menu), flip the connection state. The main process
-  // already focuses the main window before forwarding the request.
-  useEffect(() => {
-    const unsubscribe = window.ricky?.onCompanionToggleVoice?.(() => {
-      if (isConnected) {
-        disconnect();
-      } else {
-        void connect();
-      }
-    });
-    return () => {
-      unsubscribe?.();
-    };
-  }, [isConnected]);
-
-
-  async function connect() {
-    const client = new RickyRealtimeClient({
-      onConnectionState: setConnectionState,
-      onMood: setMood,
-      onMouthShape: setMouthShape,
-      onVoiceState: setVoiceState,
-      onActivity: addActivityEvent,
-      onTranscript: (entry) => setTranscript((items) => [entry, ...items].slice(0, 80)),
-      onArtifact: (nextArtifact) => {
-        setArtifact(nextArtifact);
-        setArtifactVisible(true);
-        if (nextArtifact.fullscreen) setArtifactFullscreen(true);
-      },
-      onMode: (nextMode) => {
-        setMode(nextMode);
-        if (nextMode === "computer") {
-          setArtifactVisible(false);
-          setArtifactFullscreen(false);
-          setShowLog(false);
-          setShowTypeInput(false);
-        } else {
-          setArtifactVisible(true);
-        }
-      },
-      onStatus: (message) => {
-        setStatus(message);
-        setTranscript((items) => [newEntry("system", message), ...items].slice(0, 80));
-        addActivityEvent(createActivityEvent("status", "Status", message));
-      },
-      onThumbnailReady: playThumbnailReadySound,
-    });
-    clientRef.current = client;
-    await client.connect();
+  async function handleCreatePlan() {
+    try {
+      const created = await window.ricky.createPlan({ title: "Novi plan" });
+      if (created) setPlans((list) => [created, ...list]);
+    } catch { /* silent */ }
   }
 
-  function disconnect() {
-    clientRef.current?.disconnect();
-    clientRef.current = null;
-    setStatus("Disconnected");
-    addActivityEvent(createActivityEvent("status", "Disconnected"));
-  }
-
-  async function switchMode(nextMode: RickyMode) {
-    setMode(nextMode);
-    const result = await window.ricky.executeTool({ name: "set_mode", arguments: { mode: nextMode } });
-    if (result.artifact) setArtifact(result.artifact);
-    if (nextMode === "computer") {
-      setArtifactVisible(false);
-      setArtifactFullscreen(false);
-      setShowLog(false);
-      setShowTypeInput(false);
-    } else {
-      setArtifactVisible(true);
-    }
-    const message = `Mode switched to ${nextMode}.`;
-    setTranscript((items) => [newEntry("system", message), ...items].slice(0, 80));
-    addActivityEvent(createActivityEvent("status", "Mode changed", message));
-  }
-
-  function sendTextPrompt() {
-    const trimmed = textPrompt.trim();
-    if (!trimmed) return;
-    clientRef.current?.sendText(trimmed);
-    setTextPrompt("");
-    setShowTypeInput(false);
-  }
-
-  function addActivityEvent(event: ActivityEvent) {
-    setActivityEvents((items) => [event, ...items].slice(0, 80));
-  }
-
-  // --- FAZA 9: confirmation + plans handlers ---
+  // --- Confirmation handlers (FAZA 9 + confirmation bridge) ---
   async function handleApproveConfirmation(confirmationId: string) {
     setConfirmationBusy(true);
     try {
       const result = await window.ricky.approveConfirmation(confirmationId);
-      setPendingConfirmation(result?.confirmation ?? null);
-      addActivityEvent(
-        createActivityEvent("status", "Confirmation approved", `Approved ${confirmationId}`),
-      );
+      const approved = result?.confirmation ?? null;
+      setPendingConfirmation(approved);
+      addActivityEvent(createActivityEvent("status", "Confirmation approved", `Approved ${confirmationId}`));
+      if (approved && approved.tool_name) {
+        try {
+          const retryResult = await window.ricky.executeTool({
+            name: approved.tool_name,
+            arguments: approved.payload || {},
+            context: { confirmation_id: confirmationId, computer_mode: true },
+          } as { name: string; arguments: Record<string, unknown>; context: Record<string, unknown> });
+          const retryResultObj = retryResult as Record<string, unknown>;
+          if (retryResultObj.ok === false) {
+            // Report the real outcome — e.g. the active window changed to a
+            // blocked app while the user was still looking at the dialog.
+            // Silently logging "Retried" here would tell the user an action
+            // happened when it actually didn't.
+            addActivityEvent(
+              createActivityEvent(
+                "error",
+                `Retry of ${approved.tool_name} was blocked`,
+                typeof retryResultObj.error === "string" ? retryResultObj.error : "Tool execution failed after approval.",
+              ),
+            );
+          } else {
+            if (retryResultObj.artifact) {
+              setArtifact(retryResultObj.artifact as Parameters<typeof setArtifact>[0]);
+              setArtifactVisible(true);
+            }
+            addActivityEvent(createActivityEvent("tool", `Retried ${approved.tool_name}`, `Approved re-execution of ${confirmationId}`));
+          }
+        } catch (retryErr) {
+          addActivityEvent(createActivityEvent("error", "Retry failed", retryErr instanceof Error ? retryErr.message : String(retryErr)));
+        }
+      }
     } catch (error) {
-      addActivityEvent(
-        createActivityEvent("error", "Approval failed", error instanceof Error ? error.message : String(error)),
-      );
+      addActivityEvent(createActivityEvent("error", "Approval failed", error instanceof Error ? error.message : String(error)));
     } finally {
       setConfirmationBusy(false);
       setVoiceState("idle");
@@ -274,13 +277,9 @@ export default function App() {
     try {
       const result = await window.ricky.rejectConfirmation(confirmationId);
       setPendingConfirmation(result?.confirmation ?? null);
-      addActivityEvent(
-        createActivityEvent("status", "Confirmation rejected", `Rejected ${confirmationId}`),
-      );
+      addActivityEvent(createActivityEvent("status", "Confirmation rejected", `Rejected ${confirmationId}`));
     } catch (error) {
-      addActivityEvent(
-        createActivityEvent("error", "Rejection failed", error instanceof Error ? error.message : String(error)),
-      );
+      addActivityEvent(createActivityEvent("error", "Rejection failed", error instanceof Error ? error.message : String(error)));
     } finally {
       setConfirmationBusy(false);
       setVoiceState("idle");
@@ -292,156 +291,306 @@ export default function App() {
     try {
       const result = await window.ricky.cancelConfirmation(confirmationId);
       setPendingConfirmation(result?.confirmation ?? null);
-    } catch (error) {
-      addActivityEvent(
-        createActivityEvent("error", "Cancel failed", error instanceof Error ? error.message : String(error)),
-      );
+    } catch {
+      setPendingConfirmation(null);
     } finally {
       setConfirmationBusy(false);
       setVoiceState("idle");
     }
   }
 
-  async function handleUpdatePlanStatus(planId: string, status: Plan["status"]) {
+  async function handleUpdatePlanStatus(planId: string, status: string) {
     setBusyPlanId(planId);
     try {
-      const updated = await window.ricky.updatePlan(planId, { status });
-      setPlans((items) => items.map((plan) => (plan.id === planId ? updated : plan)));
-      addActivityEvent(createActivityEvent("status", "Plan updated", `${planId} -> ${status}`));
-    } catch (error) {
-      addActivityEvent(
-        createActivityEvent("error", "Plan update failed", error instanceof Error ? error.message : String(error)),
-      );
-    } finally {
-      setBusyPlanId(null);
-    }
+      const result = await window.ricky.updatePlan(planId, { status: status as Plan["status"] });
+      if (result) {
+        setPlans((list) => list.map((p) => (p.id === planId ? result : p)));
+      }
+    } catch { /* silent */ }
+    setBusyPlanId(null);
   }
 
-  async function handleUpdateStepStatus(
-    planId: string,
-    stepId: string,
-    status: PlanStepStatus,
-  ) {
-    setBusyPlanId(planId);
+  async function handleUpdateStepStatus(planId: string, stepId: string, status: string) {
     setBusyStepId(stepId);
     try {
-      const updated = await window.ricky.updatePlanStep(planId, stepId, { status });
-      setPlans((items) => items.map((plan) => (plan.id === planId ? updated : plan)));
-    } catch (error) {
-      addActivityEvent(
-        createActivityEvent("error", "Step update failed", error instanceof Error ? error.message : String(error)),
-      );
-    } finally {
-      setBusyPlanId(null);
-      setBusyStepId(null);
-    }
+      const result = await window.ricky.updatePlanStep(planId, stepId, { status: status as PlanStepStatus });
+      if (result) {
+        setPlans((list) => list.map((p) => (p.id === planId ? result : p)));
+      }
+    } catch { /* silent */ }
+    setBusyStepId(null);
   }
 
-  if (mode === "computer") {
+  // --- Stop handler ---
+  function handleStop() {
+    clientRef.current?.disconnect();
+    setVoiceState("interrupted");
+    addActivityEvent(createActivityEvent("status", "Stopped", "User pressed Stop"));
+  }
+
+  // --- Recent activity items (last 4, excluding raw system events) ---
+  // Bug fix: this used to check `a.detail` for "Backend ready"/"Renderer ready",
+  // but createActivityEvent("status", "Backend ready", "Python backend connected")
+  // puts that text in `.title`, not `.detail` — so the filter never matched and
+  // every historical "Backend ready" event (one per backend restart, replayed on
+  // every fresh app launch — see pollEvents()) showed up as noise.
+  const SYSTEM_NOISE_TITLES = ["Backend ready", "Renderer ready", "Voice-first shell"];
+  const recentActivity = activityEvents
+    .filter((a) => a.kind !== "status" || !SYSTEM_NOISE_TITLES.some((noise) => a.title.includes(noise)))
+    .slice(0, 4);
+
+  // --- Render: Idle / Ready screen ---
+  function renderIdleScreen() {
     return (
-      <main className="app-shell app-shell-mini">
-        <section className="mini-companion" aria-label="Ricky computer use mini mode">
-          <RickyFace mood={mood} mouthShape={mouthShape} />
-          <button
-            className="mini-restore-button"
-            onClick={() => void switchMode("display")}
-            aria-label="Return to full Ricky window"
-            title="Return to full Ricky window"
-          >
-            <Expand size={14} />
-          </button>
-        </section>
-      </main>
+      <div className="idle-screen">
+        <div className="idle-center">
+          <RickyOrb voiceState={voiceState} />
+          <div className="idle-headline">Ricky je spreman</div>
+          <div className="idle-subtitle">Klikni mikrofon ili reci "Ricky"</div>
+          {isActive ? (
+            <button className="idle-cta stop" onClick={handleStop} title="Stop">
+              <IconStop className="idle-cta-icon" />
+            </button>
+          ) : (
+            <button
+              className="idle-cta"
+              onClick={isConnected ? disconnect : () => void connect()}
+              title={isConnected ? "Prekini vezu" : "Pokreni glas"}
+            >
+              {isConnected ? <IconMicOff className="idle-cta-icon" /> : <IconMic className="idle-cta-icon" />}
+            </button>
+          )}
+        </div>
+        <div className="idle-right">
+          <div className="idle-card">
+            <div className="idle-card-head">
+              <h4>Zadnja aktivnost</h4>
+              {recentActivity.length ? (
+                <button className="idle-card-link" onClick={() => setActiveDrawer("activity")}>
+                  Prikaži sve
+                </button>
+              ) : null}
+            </div>
+            <ul className="idle-activity-list">
+              {recentActivity.length ? recentActivity.map((a, i) => {
+                const { Icon, className } = categoryForActivity(a);
+                return (
+                  <li key={i} className="idle-activity-item">
+                    <span className={`activity-icon activity-icon-sm ${className}`}>
+                      <Icon className="activity-icon-svg" />
+                    </span>
+                    <div className="idle-activity-body">
+                      <span className="idle-activity-text">{a.title || a.detail}</span>
+                      {a.title && a.detail ? (
+                        <span className="idle-activity-sub">{a.detail}</span>
+                      ) : null}
+                    </div>
+                    <time className="idle-activity-time">{a.at}</time>
+                  </li>
+                );
+              }) : <li className="idle-empty">Još nema aktivnosti.</li>}
+            </ul>
+          </div>
+          <div className="idle-card">
+            <div className="idle-card-head">
+              <h4>Brze komande</h4>
+            </div>
+            <ul>
+              <li className="cmd" onClick={() => sendText("Napiši email šefu")}>
+                <IconChevron className="cmd-icon" /> Napiši email šefu
+              </li>
+              <li className="cmd" onClick={() => sendText("Napravi screenshot")}>
+                <IconChevron className="cmd-icon" /> Napravi screenshot
+              </li>
+              <li className="cmd" onClick={() => sendText("Otvori Notepad")}>
+                <IconChevron className="cmd-icon" /> Otvori Notepad
+              </li>
+              <li className="cmd" onClick={() => sendText("Planiraj sastanak sutra u 10h")}>
+                <IconChevron className="cmd-icon" /> Planiraj sastanak sutra u 10h
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
     );
   }
 
+  // --- Render: Dictation screen ---
+  function renderDictationScreen() {
+    return (
+      <div className="dictation-screen">
+        <div className="dictation-header">
+          <h3>Diktiranje</h3>
+          <span className="dictation-badge">DICTATION MODE</span>
+        </div>
+        <textarea
+          className="dictation-editor"
+          value={dictationText}
+          onChange={(e) => setDictationText(e.target.value)}
+          placeholder="Tekst diktata će se pojaviti ovdje..."
+        />
+        <div className="dictation-actions">
+          <button className="btn-secondary" onClick={() => setScreen("home")}>
+            Zatvori
+          </button>
+          <div className="spacer" />
+          <button className="btn-secondary" onClick={() => setDictationText("")}>Obriši</button>
+          <button className="btn-primary" onClick={() => {
+            if (dictationText.trim()) sendText(dictationText.trim());
+            setScreen("home");
+          }}>Pošalji agentu</button>
+        </div>
+      </div>
+    );
+  }
+
+  function sendText(text: string) {
+    clientRef.current?.sendText(text);
+  }
+
+  // --- Render: persistent state-machine screen (Idle or Dictation) ---
+  function renderScreen() {
+    return screen === "dictation" ? renderDictationScreen() : renderIdleScreen();
+  }
+
+  // --- Drawer: overlay panel floating over the current screen; see
+  // GUI-SET-4.png (Activity Drawer) / GUI-SET-5.png (Plans Drawer) ---
+  const DRAWER_TITLE: Record<string, string> = {
+    activity: "Aktivnost",
+    plans: "Planovi",
+    memory: "Memorija",
+    screens: "Snimci ekrana",
+    settings: "Postavke",
+  };
+
+  function renderDrawerContent() {
+    switch (activeDrawer) {
+      case "activity":
+        return <ActivityTimeline transcript={transcript} activityEvents={activityEvents} />;
+      case "plans":
+        return (
+          <PlansPanel
+            visible={true}
+            plans={plans}
+            busyPlanId={busyPlanId}
+            busyStepId={busyStepId}
+            onUpdatePlanStatus={handleUpdatePlanStatus}
+            onUpdateStepStatus={handleUpdateStepStatus}
+            onCreatePlan={handleCreatePlan}
+          />
+        );
+      case "memory":
+        return <p className="drawer-placeholder-text">Notes and records will appear here.</p>;
+      case "screens":
+        return <p className="drawer-placeholder-text">Screenshots will appear here.</p>;
+      case "settings":
+        return <p className="drawer-placeholder-text">Settings panel — coming soon.</p>;
+      default:
+        return null;
+    }
+  }
+
+  // --- Main render ---
   return (
-    <main className="app-shell">
+    <main className="app-shell-redesign">
       <div className="window-drag-strip" aria-hidden="true" />
-      <div className="window-drag-left-zone" aria-hidden="true" />
-      <button
-        className="window-close-button"
-        onClick={() => void window.ricky.quitApp()}
-        aria-label="Close Ricky"
-        title="Close Ricky"
-      >
-        <X size={15} />
-      </button>
-      <section className="companion-window">
-        <VoiceTopBar
-          voiceState={voiceState}
-          connectionState={connectionState}
-          status={status}
-          activityCount={activityEvents.length + transcript.length}
-        />
 
-        <section className="face-stage">
-          <RickyFace mood={mood} mouthShape={mouthShape} />
-        </section>
-
-        <BottomVoiceBar
-          voiceState={voiceState}
-          connectionState={connectionState}
-          isConnected={isConnected}
-          isConnecting={connectionState === "connecting"}
-          showTypeInput={showTypeInput}
-          showLog={showLog}
-          artifactVisible={artifactVisible}
-          textPrompt={textPrompt}
-          onConnectToggle={isConnected ? disconnect : () => void connect()}
-          onToggleTextInput={() => setShowTypeInput((value) => !value)}
-          onTextPromptChange={setTextPrompt}
-          onSendTextPrompt={sendTextPrompt}
-          onSwitchDisplayMode={() => void switchMode("display")}
-          onSwitchComputerMode={() => void switchMode("computer")}
-          onToggleArtifacts={() => setArtifactVisible((value) => !value)}
-          onToggleActivity={() => setShowLog((value) => !value)}
-        />
-
+      {/* ---- TOP BAR ---- */}
+      <header className="top-bar">
+        <IconLogoR className="top-bar-logo" />
+        <span className="top-bar-brand">Ricky</span>
+        <div className={`voice-state-pill voice-state-${voiceState}`}>
+          <span className="dot" />
+          <span>{voiceStateLabel(voiceState)}</span>
+        </div>
+        <div className="top-bar-spacer" />
         <button
-          className={`plans-toggle-button${showPlans ? " active" : ""}`}
-          onClick={() => {
-            setShowPlans((value) => !value);
-            if (!showPlans) void refreshPlans();
-          }}
-          aria-label="Toggle plans panel"
-          title="Ricky plans and proposals"
+          className={`computer-mode-pill ${mode === "computer" ? "on" : "off"}`}
+          onClick={() => switchMode(mode === "computer" ? "display" : "computer")}
         >
-          <ListChecks size={14} />
-          <span>{plans.length}</span>
+          <MonitorCog size={14} />
+          <span>{mode === "computer" ? "Computer mode: UKLJUČEN" : "Computer mode: ISKLJUČEN"}</span>
         </button>
+        <div className="top-bar-controls">
+          <button className="top-bar-btn" onClick={() => void window.ricky.companionToggle?.()} title="Companion orb">
+            <IconCompanion className="top-bar-btn-icon" />
+          </button>
+          <button className="top-bar-btn" onClick={() => setActiveDrawer("plans")} title="Planovi">
+            <IconCalendar className="top-bar-btn-icon" />
+          </button>
+          <button className="top-bar-btn" onClick={() => setActiveDrawer("settings")} title="Postavke">
+            <IconSettings className="top-bar-btn-icon" />
+          </button>
+          <button className="top-bar-btn close" onClick={() => void window.ricky.quitApp()} title="Close">
+            <IconClose className="top-bar-btn-icon" />
+          </button>
+        </div>
+      </header>
 
-        {/* FAZA 12: toggle the companion orb window (quick voice entry point). */}
-        <button
-          className="companion-toggle-button"
-          onClick={() => void window.ricky.companionToggle?.()}
-          aria-label="Toggle companion orb"
-          title="Show/hide companion orb"
-        >
-          Orb
-        </button>
+      {/* ---- SIDEBAR ---- */}
+      <Sidebar activeTab={activeDrawer ?? screen} onTabChange={(id) => {
+        if (id === "home") { setScreen("home"); setActiveDrawer(null); }
+        else setActiveDrawer(id as typeof activeDrawer);
+      }} backendConnected={backendConnected} />
 
-        {showLog ? <ActivityTimeline transcript={transcript} activityEvents={activityEvents} /> : null}
-      </section>
+      {/* ---- MAIN CONTENT ---- */}
+      <div className="main-content">
+        {renderScreen()}
 
-      <PlansPanel
-        visible={showPlans}
-        plans={plans}
-        busyPlanId={busyPlanId}
-        busyStepId={busyStepId}
-        onClose={() => setShowPlans(false)}
-        onUpdatePlanStatus={handleUpdatePlanStatus}
-        onUpdateStepStatus={handleUpdateStepStatus}
-      />
+        {/* Bottom voice bar — only on the Idle screen; Dictation Mode has its own actions bar */}
+        {screen === "home" && (
+          <footer className="bottom-voice-bar">
+            <span className="bottom-voice-status-text">
+              <span className={`voice-state-dot voice-state-dot-${voiceState}`} style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", marginRight: 5 }} />
+              {voiceStateLabel(voiceState)}
+            </span>
+            <div className="bottom-voice-input">
+              <input
+                value={textPrompt}
+                onChange={(e) => setTextPrompt(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") sendTextPrompt(); }}
+                placeholder="Upiši umjesto govora..."
+              />
+              <button className="btn-primary" style={{ padding: "7px 14px", fontSize: 13 }} onClick={sendTextPrompt} title="Pošalji">
+                <IconSend style={{ width: 14, height: 14 }} />
+              </button>
+            </div>
+            {isActive && (
+              <button className="btn-danger" onClick={handleStop}>
+                <IconStop style={{ width: 14, height: 14 }} /> Stop
+              </button>
+            )}
+          </footer>
+        )}
 
-      <ArtifactPanel
-        artifact={artifact}
-        visible={artifactVisible}
-        fullscreen={artifactFullscreen}
-        onToggleVisible={() => setArtifactVisible((value) => !value)}
-        onToggleFullscreen={() => setArtifactFullscreen((value) => !value)}
-      />
+        {/* ---- DRAWER OVERLAY (Activity/Plans/Memory/Snimci/Postavke) ---- */}
+        {activeDrawer && (
+          <div className="drawer-backdrop" onClick={() => setActiveDrawer(null)}>
+            <div className="drawer-panel" onClick={(e) => e.stopPropagation()}>
+              <header className="drawer-header">
+                <strong>{DRAWER_TITLE[activeDrawer]}</strong>
+                <button className="drawer-close" onClick={() => setActiveDrawer(null)} aria-label="Zatvori">
+                  <IconClose className="drawer-close-icon" />
+                </button>
+              </header>
+              <div className="drawer-body">{renderDrawerContent()}</div>
+            </div>
+          </div>
+        )}
+      </div>
 
+      {/* ---- ARTIFACT PANEL ---- */}
+      {artifactVisible && artifact && (
+        <ArtifactPanel
+          artifact={artifact}
+          visible={artifactVisible}
+          fullscreen={artifactFullscreen}
+          onToggleVisible={() => setArtifactVisible((v) => !v)}
+          onToggleFullscreen={() => setArtifactFullscreen((v) => !v)}
+        />
+      )}
+
+      {/* ---- CONFIRMATION DIALOG ---- */}
       <ConfirmationDialog
         confirmation={pendingConfirmation}
         busy={confirmationBusy}
@@ -451,28 +600,4 @@ export default function App() {
       />
     </main>
   );
-}
-
-function playThumbnailReadySound() {
-  try {
-    const AudioContextClass = window.AudioContext;
-    const audio = new AudioContextClass();
-    const gain = audio.createGain();
-    const osc = audio.createOscillator();
-
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(880, audio.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(1320, audio.currentTime + 0.08);
-    gain.gain.setValueAtTime(0.0001, audio.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.035, audio.currentTime + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.13);
-
-    osc.connect(gain);
-    gain.connect(audio.destination);
-    osc.start();
-    osc.stop(audio.currentTime + 0.14);
-    window.setTimeout(() => void audio.close(), 220);
-  } catch {
-    // Audio cues are optional; ignore browsers that block short sounds.
-  }
 }

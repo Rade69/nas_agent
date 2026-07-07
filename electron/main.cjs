@@ -299,6 +299,7 @@ const toolSpecs = [
   {
     type: "function",
     name: "records_delete",
+    risk: "critical",
     description: "Delete a local database record. Always ask the user for explicit confirmation first, then call with confirmed true.",
     parameters: {
       type: "object",
@@ -313,6 +314,7 @@ const toolSpecs = [
   {
     type: "function",
     name: "computer_open_app",
+    risk: "medium",
     description: "Open a Windows app by name (must be in PATH or have an App Execution Alias, e.g. notepad, calc, mspaint, chrome). Requires computer mode.",
     parameters: {
       type: "object",
@@ -326,6 +328,7 @@ const toolSpecs = [
   {
     type: "function",
     name: "computer_type_text",
+    risk: "high",
     description: "Type text into the active app. Requires computer mode. Do not ask for extra confirmation just to type.",
     parameters: {
       type: "object",
@@ -341,6 +344,7 @@ const toolSpecs = [
   {
     type: "function",
     name: "computer_press_key",
+    risk: "medium",
     description: "Press a keyboard key in the active app. Requires computer mode. Use enter/return after typing when the user asks to send a prompt.",
     parameters: {
       type: "object",
@@ -355,6 +359,7 @@ const toolSpecs = [
   {
     type: "function",
     name: "computer_click",
+    risk: "high",
     description: "Click screen coordinates. Requires computer mode. Ask for confirmation before clicking buttons that send, delete, buy, submit, or change settings.",
     parameters: {
       type: "object",
@@ -371,6 +376,7 @@ const toolSpecs = [
   {
     type: "function",
     name: "computer_scroll",
+    risk: "medium",
     description: "Scroll the active app. Requires computer mode.",
     parameters: {
       type: "object",
@@ -385,6 +391,7 @@ const toolSpecs = [
   {
     type: "function",
     name: "screen_snapshot",
+    risk: "low",
     description: "Capture the current screen and return the local screenshot path. Requires computer mode.",
     parameters: {
       type: "object",
@@ -395,6 +402,7 @@ const toolSpecs = [
   {
     type: "function",
     name: "ui_inspect",
+    risk: "low",
     description: "Inspect the frontmost Windows app name and window title. Requires computer mode.",
     parameters: {
       type: "object",
@@ -719,7 +727,7 @@ async function handleRealtimeCreateToken() {
     output_modalities: ["audio"],
     reasoning: { effort: "low" },
     tool_choice: "auto",
-    tools: toolSpecs,
+    tools: toolSpecs.map(({ risk: _omit, ...rest }) => rest),
     audio: {
       input: {
         turn_detection: {
@@ -759,10 +767,14 @@ async function handleToolsExecute(_event, toolCall) {
   // computer_mode; the Python permission engine (FAZA 10) enforces it.
   if (PHASE11_DELEGATED_TOOLS.has(name)) {
     try {
+      const toolContext = toolCall?.context || {};
       const response = await executeTool({
         tool_name: name,
         arguments: args,
-        context: { computer_mode: currentMode === "computer" },
+        context: {
+          computer_mode: currentMode === "computer",
+          ...(toolContext.confirmation_id ? { confirmation_id: String(toolContext.confirmation_id) } : {}),
+        },
       });
       return adaptPythonToolResponse(response, name);
     } catch (error) {

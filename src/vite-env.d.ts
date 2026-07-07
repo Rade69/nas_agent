@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+/// <reference types="vite-plugin-svgr/client" />
 
 import type { VoiceState } from "./lib/voiceState";
 
@@ -25,6 +26,7 @@ export type RickyToolSpec = {
   name: string;
   description: string;
   parameters: Record<string, unknown>;
+  risk?: "low" | "medium" | "high" | "critical";
 };
 
 export type RickyToolCall = {
@@ -59,6 +61,7 @@ export type Confirmation = {
   risk_level: RiskLevel;
   plan_id?: string | null;
   summary?: string | null;
+  tool_name?: string | null;
   created_at: string;
   resolved_at?: string | null;
 };
@@ -132,6 +135,7 @@ declare global {
         risk_level?: RiskLevel;
         plan_id?: string | null;
         summary?: string | null;
+        tool_name?: string | null;
       }) => Promise<Confirmation>;
       approveConfirmation: (confirmationId: string) => Promise<ConfirmationDecisionResponse>;
       rejectConfirmation: (confirmationId: string) => Promise<ConfirmationDecisionResponse>;

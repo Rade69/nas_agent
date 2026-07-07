@@ -1,7 +1,23 @@
 import { useEffect, useState } from "react";
-import { Check, ShieldAlert, X } from "lucide-react";
 import type { Confirmation, RiskLevel } from "../vite-env";
-import { voiceStateLabel } from "../lib/voiceState";
+import IconWarning from "../../assets/brending/icons/safety/icon-warning.svg?react";
+import IconConfirm from "../../assets/brending/icons/safety/icon-confirm.svg?react";
+import IconCancel from "../../assets/brending/icons/safety/icon-cancel.svg?react";
+
+// Common payload keys across tool arguments, mapped to the mockup's field
+// labels (assets/GUI-SETS/GUI-SET-3.png) so e.g. an email-send confirmation
+// shows "Prima" / "Predmet" instead of a raw JSON dump. Falls back to JSON
+// for payloads that don't match any of these (e.g. computer_click's x/y).
+const PAYLOAD_FIELD_LABELS: Record<string, string> = {
+  to: "Prima",
+  recipient: "Prima",
+  email: "Prima",
+  subject: "Predmet",
+  title: "Predmet",
+  text: "Sadržaj",
+  body: "Sadržaj",
+  appName: "Aplikacija",
+};
 
 type ConfirmationDialogProps = {
   confirmation: Confirmation | null;
@@ -12,10 +28,10 @@ type ConfirmationDialogProps = {
 };
 
 const RISK_LABEL: Record<RiskLevel, string> = {
-  low: "Low risk",
-  medium: "Medium risk",
-  high: "High risk — requires confirmation",
-  critical: "Critical risk — requires confirmation",
+  low: "Nizak rizik",
+  medium: "Srednji rizik",
+  high: "Visok rizik — potrebna potvrda",
+  critical: "Kritičan rizik — potrebna potvrda",
 };
 
 function riskClassName(risk: RiskLevel): string {
@@ -42,29 +58,38 @@ export function ConfirmationDialog({
   if (!visible || !confirmation) return null;
   const isPending = confirmation.status === "pending";
 
-  const payloadPreview = Object.keys(confirmation.payload || {}).length
-    ? JSON.stringify(confirmation.payload, null, 2)
-    : "—";
+  const payload = confirmation.payload || {};
+  const recognizedEntries = Object.entries(payload).filter(([key]) => key in PAYLOAD_FIELD_LABELS);
+  const unrecognizedPayload = Object.fromEntries(
+    Object.entries(payload).filter(([key]) => !(key in PAYLOAD_FIELD_LABELS)),
+  );
+  const hasUnrecognized = Object.keys(unrecognizedPayload).length > 0;
+
+  // Dynamic confirm label matching the mockup's "Pošalji email" pattern —
+  // falls back to a generic verb for actions this heuristic doesn't cover.
+  const confirmLabel = /email|mail/i.test(confirmation.action_name)
+    ? "Pošalji email"
+    : "Pokreni";
 
   return (
-    <div className="confirmation-overlay" role="dialog" aria-modal="true" aria-label="Ricky proposes an action">
+    <div className="confirmation-overlay" role="dialog" aria-modal="true" aria-label="Ricky predlaže akciju">
       <div className="confirmation-dialog">
         <header className="confirmation-header">
           <span className="confirmation-icon">
-            <ShieldAlert size={18} />
+            <IconWarning className="confirmation-icon-svg" />
           </span>
           <div className="confirmation-title-block">
-            <strong>Ricky predlaže akciju</strong>
-            <small>Waiting confirmation</small>
+            <strong>Ricky želi izvršiti ovu akciju</strong>
+            <small>Pažljivo provjeri detalje prije potvrde.</small>
           </div>
           <button
             className="confirmation-close"
             onClick={() => confirmation && onCancel(confirmation.id)}
             disabled={!isPending || busy}
-            aria-label="Dismiss confirmation"
-            title="Dismiss"
+            aria-label="Odbaci potvrdu"
+            title="Odbaci"
           >
-            <X size={14} />
+            <IconCancel className="confirmation-icon-svg" />
           </button>
         </header>
 
@@ -79,6 +104,12 @@ export function ConfirmationDialog({
               <span className="confirmation-value">{confirmation.summary}</span>
             </div>
           ) : null}
+          {recognizedEntries.map(([key, value]) => (
+            <div className="confirmation-row" key={key}>
+              <span className="confirmation-label">{PAYLOAD_FIELD_LABELS[key]}</span>
+              <span className="confirmation-value">{String(value)}</span>
+            </div>
+          ))}
           <div className="confirmation-row">
             <span className="confirmation-label">Rizik</span>
             <span className={riskClassName(confirmation.risk_level)}>
@@ -91,10 +122,12 @@ export function ConfirmationDialog({
               <span className="confirmation-value confirmation-mono">{confirmation.plan_id}</span>
             </div>
           ) : null}
-          <div className="confirmation-row confirmation-row-payload">
-            <span className="confirmation-label">Payload</span>
-            <pre className="confirmation-payload">{payloadPreview}</pre>
-          </div>
+          {hasUnrecognized ? (
+            <div className="confirmation-row confirmation-row-payload">
+              <span className="confirmation-label">Detalji</span>
+              <pre className="confirmation-payload">{JSON.stringify(unrecognizedPayload, null, 2)}</pre>
+            </div>
+          ) : null}
         </section>
 
         <footer className="confirmation-actions">
@@ -103,7 +136,7 @@ export function ConfirmationDialog({
             onClick={() => confirmation && onReject(confirmation.id)}
             disabled={!isPending || busy}
           >
-            <X size={14} />
+            <IconCancel className="confirmation-icon-svg" />
             <span>Otkaži</span>
           </button>
           <button
@@ -111,15 +144,10 @@ export function ConfirmationDialog({
             onClick={() => confirmation && onApprove(confirmation.id)}
             disabled={!isPending || busy}
           >
-            <Check size={14} />
-            <span>Pokreni</span>
+            <IconConfirm className="confirmation-icon-svg" />
+            <span>{confirmLabel}</span>
           </button>
         </footer>
-
-        <p className="confirmation-hint">
-          Voice command "da"/"pokreni" or "ne"/"otkaži" must bind to this same confirmation_id —
-          see voiceState: {voiceStateLabel("waiting_confirmation")}.
-        </p>
       </div>
     </div>
   );

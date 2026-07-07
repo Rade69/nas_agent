@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Ricky R logo">
+  <defs>
+    <linearGradient id="rickyBlue" x1="80" y1="80" x2="432" y2="432" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#5FEAFF"/>
+      <stop offset="0.45" stop-color="#2EA7FF"/>
+      <stop offset="1" stop-color="#176BFF"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="10" result="blur"/>
+      <feColorMatrix in="blur" type="matrix" values="0 0 0 0 0.05  0 0 0 0 0.55  0 0 0 0 1  0 0 0 0.85 0"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <path filter="url(#glow)" fill="url(#rickyBlue)" d="M92 151c0-22 18-40 40-40h210c53 0 96 43 96 96s-43 96-96 96h-42l111 98c13 12 5 34-13 34h-68c-10 0-20-4-27-11L178 312h-8v83c0 22-18 40-40 40h-38V151zm78 32v67h166c19 0 35-15 35-34s-16-33-35-33H170z"/>
+  <path fill="#7CF6FF" opacity=".55" d="M100 146c7-21 23-35 44-35h207c18 0 37 6 52 16H145c-20 0-36 8-45 19z"/>
+</svg>

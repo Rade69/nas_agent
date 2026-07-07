@@ -1,13 +1,22 @@
 import type { ActivityEvent } from "../lib/voiceState";
 import type { TranscriptEntry } from "../lib/realtime";
+import { categoryForActivity } from "../lib/activityIcons";
 
 type ActivityTimelineProps = {
   transcript: TranscriptEntry[];
   activityEvents: ActivityEvent[];
 };
 
+type ActivityRow = {
+  id: string;
+  kind: string;
+  title: string;
+  detail: string;
+  at: string;
+};
+
 export function ActivityTimeline({ transcript, activityEvents }: ActivityTimelineProps) {
-  const rows = [
+  const rows: ActivityRow[] = [
     ...activityEvents.map((event) => ({
       id: event.id,
       kind: event.kind,
@@ -26,21 +35,32 @@ export function ActivityTimeline({ transcript, activityEvents }: ActivityTimelin
 
   return (
     <section className="transcript activity-timeline">
-      <div className="section-title">
-        <span>Activity</span>
-        <small>{rows.length} events</small>
-      </div>
       <div className="transcript-list">
-        {rows.map((row) => (
-          <article className={`entry entry-${row.kind}`} key={row.id}>
-            <div>
-              <strong>{row.title}</strong>
-              <time>{row.at}</time>
-            </div>
-            {row.detail ? <p>{row.detail}</p> : null}
-          </article>
-        ))}
+        {rows.length === 0 ? (
+          <p className="activity-empty">Još nema aktivnosti.</p>
+        ) : (
+          rows.map((row) => {
+            const { Icon, className } = categoryForActivity(row);
+            return (
+              <article className={`entry entry-${row.kind}`} key={row.id}>
+                <span className={`activity-icon ${className}`}>
+                  <Icon className="activity-icon-svg" />
+                </span>
+                <div className="activity-entry-body">
+                  <div className="activity-entry-head">
+                    <strong>{row.title}</strong>
+                    <time>{row.at}</time>
+                  </div>
+                  {row.detail ? <p>{row.detail}</p> : null}
+                </div>
+              </article>
+            );
+          })
+        )}
       </div>
+      {rows.length > 0 ? (
+        <button className="activity-history-btn" type="button">Prikaži cijelu historiju</button>
+      ) : null}
     </section>
   );
 }

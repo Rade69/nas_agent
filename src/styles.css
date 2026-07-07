@@ -136,6 +136,16 @@ button:disabled {
 }
 
 .artifact-panel {
+  /* Explicit grid placement is required here: .app-shell-redesign's grid only
+     defines 2 columns x 3 rows, and every cell is already explicitly claimed
+     (sidebar, top-bar, main-content). Without this, the grid auto-placement
+     algorithm creates an implicit new row to fit this panel, which shrinks
+     the 1fr main-content row down to near-zero height (the idle screen's
+     headline/CTA/input all became invisible because their container
+     collapsed) and visually shoves this panel into the sidebar's column.
+     Sharing main-content's exact cell makes it overlay in place instead. */
+  grid-column: 2;
+  grid-row: 2 / 4;
   position: relative;
   display: flex;
   min-width: 0;
@@ -460,32 +470,41 @@ button:disabled {
 }
 
 .entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   border-radius: 8px;
   padding: 10px;
   background: rgba(255, 255, 255, 0.045);
   border: 1px solid rgba(255, 255, 255, 0.055);
 }
 
-.entry div {
+.activity-entry-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.activity-entry-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  margin-bottom: 5px;
+  margin-bottom: 3px;
   color: #f5f7ff;
   font-size: 12px;
-  text-transform: capitalize;
 }
 
 .entry time {
   color: #7e8497;
   font-size: 11px;
+  flex-shrink: 0;
 }
 
 .entry p {
   font-size: 13px;
   line-height: 1.45;
   white-space: pre-wrap;
+  color: var(--text-muted);
 }
 
 .entry-ricky {
@@ -498,6 +517,48 @@ button:disabled {
 
 .entry-tool {
   background: rgba(255, 209, 102, 0.07);
+}
+
+/* ---- Activity item category icons (assets/GUI-SETS/GUI-SET-4.png) ---- */
+
+.activity-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.activity-icon-svg {
+  width: 14px;
+  height: 14px;
+}
+
+.activity-icon-success {
+  background: rgba(34, 197, 94, 0.16);
+  color: var(--success);
+}
+
+.activity-icon-error {
+  background: rgba(239, 68, 68, 0.16);
+  color: var(--danger);
+}
+
+.activity-icon-voice {
+  background: rgba(62, 166, 255, 0.16);
+  color: var(--primary);
+}
+
+.activity-icon-screenshot {
+  background: rgba(168, 85, 247, 0.16);
+  color: #c084fc;
+}
+
+.activity-icon-tool {
+  background: rgba(245, 165, 36, 0.16);
+  color: var(--warning);
 }
 
 .artifact-fullscreen {
@@ -1616,56 +1677,42 @@ td {
 }
 
 .plans-panel {
-  position: fixed;
-  right: 14px;
-  bottom: 116px;
-  z-index: 95;
-  width: min(360px, 88vw);
-  max-height: 60vh;
+  /* Renders inside the generic .drawer-panel (App.tsx activeDrawer overlay),
+     which already provides the card background/border/radius — this just
+     needs to fill that drawer's body area. */
+  position: relative;
+  flex: 1;
   display: flex;
   flex-direction: column;
-  background: #0d1117;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.5);
+  min-height: 0;
   overflow: hidden;
 }
 
-.plans-header {
+.plans-tabs {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  gap: 4px;
+  padding: 8px 10px 0;
 }
 
-.plans-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
+.plans-tab {
   flex: 1;
-}
-
-.plans-header small {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.plans-close {
+  padding: 7px 0;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
   background: transparent;
-  color: rgba(255, 255, 255, 0.55);
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  display: grid;
-  place-items: center;
+  transition: background 120ms ease, color 120ms ease;
 }
 
-.plans-close:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: #fff;
+.plans-tab.active {
+  background: rgba(62, 166, 255, 0.14);
+  color: var(--primary);
+}
+
+.plans-tab:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
 }
 
 .plans-list {
@@ -1702,6 +1749,65 @@ td {
 
 .plan-card-header strong {
   font-size: 13px;
+}
+
+.plan-card-titles {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.plan-card-titles .plan-summary {
+  margin: 0;
+}
+
+.plan-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.plan-badge-active {
+  background: rgba(89, 239, 161, 0.16);
+  color: var(--success);
+}
+
+.plan-badge-pending {
+  background: rgba(245, 165, 36, 0.16);
+  color: var(--warning);
+}
+
+.plan-badge-done {
+  background: rgba(89, 239, 161, 0.16);
+  color: var(--success);
+}
+
+.plan-badge-rejected {
+  background: rgba(239, 68, 68, 0.14);
+  color: var(--danger);
+}
+
+.plans-new-btn {
+  margin: 8px;
+  padding: 10px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--border-soft);
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.plans-new-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text-main);
 }
 
 .plan-status-pill {
@@ -1892,6 +1998,20 @@ td {
   display: grid;
   place-items: center;
   position: relative;
+}
+
+.companion-orb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0.72;
+  transition: opacity 200ms ease;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.companion-orb-button:hover .companion-orb-img {
+  opacity: 0.92;
 }
 
 .companion-state-pill {
@@ -2099,4 +2219,973 @@ td {
 
 .companion-toggle-button:hover {
   background: rgba(125, 223, 255, 0.22);
+}
+
+.confirmation-icon-svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ========================================================================
+   FAZA 19+ UI REDESIGN — Dark premium voice-first shell
+   ======================================================================== */
+
+:root {
+  --bg-root: #080B10;
+  --bg-panel: #11161D;
+  --bg-panel2: #151B24;
+  --bg-panel3: #0D1117;
+  --border: #263241;
+  --border-soft: #1C2530;
+  --primary: #3EA6FF;
+  --primary-dark: #1877D2;
+  --primary-soft: #9DDCFF;
+  --text-main: #F4F7FB;
+  --text-secondary: #C9D3DF;
+  --text-muted: #8D9AAA;
+  --success: #22C55E;
+  --warning: #F5A524;
+  --high-risk: #F97316;
+  --danger: #EF4444;
+  --critical: #DC2626;
+  --input-bg: #111821;
+  --button-bg: #17212C;
+  --button-hover: #1E2B38;
+}
+
+/* ---- New app layout ---- */
+
+.app-shell-redesign {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: 48px 1fr 52px;
+  height: 100vh;
+  background: var(--bg-root);
+  color: var(--text-main);
+}
+
+/* ---- Sidebar ----
+   Structural: the top bar spans the FULL width (grid-column 1/3) and the
+   sidebar sits BELOW it (grid-row 2/4), matching GUI-SET-1.png where
+   "Ricky ● Spreman" is a single full-width header above the nav rail. */
+
+.sidebar {
+  grid-column: 1;
+  grid-row: 2 / 4;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  padding: 8px;
+  gap: 2px;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 14px;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.03em;
+  color: var(--text-main);
+}
+
+.sidebar-brand svg {
+  color: var(--primary);
+}
+
+.sidebar-logo-icon {
+  width: 19px;
+  height: 19px;
+}
+
+.sidebar-item-icon {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+
+.sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  font-weight: 500;
+  background: transparent;
+  transition: background 140ms ease, color 140ms ease;
+  cursor: pointer;
+  border: none;
+}
+
+.sidebar-item:hover {
+  background: var(--bg-panel2);
+  color: var(--text-main);
+}
+
+.sidebar-item.active {
+  background: rgba(62, 166, 255, 0.1);
+  color: var(--primary);
+}
+
+.sidebar-footer {
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-footer-version {
+  color: var(--text-muted);
+}
+
+.sidebar-footer-backend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidebar-backend-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.sidebar-backend-dot.connected { background: var(--success); }
+.sidebar-backend-dot.disconnected { background: var(--danger); }
+
+/* ---- Top Bar ---- */
+
+.top-bar {
+  grid-column: 1 / 3;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+
+.top-bar-spacer {
+  flex: 1;
+}
+
+.top-bar-logo {
+  width: 20px;
+  height: 20px;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.top-bar-brand {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.03em;
+  margin-right: 12px;
+}
+
+.top-bar-btn-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.idle-cta-icon {
+  width: 22px;
+  height: 22px;
+  color: #fff;
+}
+
+.voice-state-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.voice-state-pill .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.voice-state-idle       { background: rgba(62,166,255,0.1); color: var(--primary); }
+.voice-state-listening  { background: rgba(62,166,255,0.18); color: var(--primary-soft); }
+.voice-state-thinking   { background: rgba(139,92,246,0.14); color: #A78BFA; }
+.voice-state-speaking   { background: rgba(34,197,94,0.14); color: var(--success); }
+.voice-state-waiting_confirmation,
+.voice-state-interrupted { background: rgba(245,165,36,0.14); color: var(--warning); }
+.voice-state-muted      { background: rgba(141,154,170,0.14); color: var(--text-muted); }
+.voice-state-error      { background: rgba(239,68,68,0.14); color: var(--danger); }
+
+.voice-state-idle       .dot { background: var(--primary); }
+.voice-state-listening  .dot { background: var(--primary-soft); animation: dot-pulse 1.2s infinite; }
+.voice-state-thinking   .dot { background: #A78BFA; animation: dot-pulse 1.5s infinite; }
+.voice-state-speaking   .dot { background: var(--success); }
+.voice-state-waiting_confirmation .dot,
+.voice-state-interrupted .dot { background: var(--warning); }
+.voice-state-muted      .dot { background: var(--text-muted); }
+.voice-state-error      .dot { background: var(--danger); }
+
+@keyframes dot-pulse {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.4); }
+}
+
+.computer-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: 1px solid;
+  transition: all 140ms ease;
+}
+
+.computer-mode-pill.off {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: var(--border-soft);
+}
+
+.computer-mode-pill.on {
+  background: rgba(239,68,68,0.14);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* ---- Top bar window controls ---- */
+
+.top-bar-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.top-bar-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  background: transparent;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.top-bar-btn:hover {
+  background: var(--bg-panel2);
+  color: var(--text-main);
+}
+
+.top-bar-btn.close:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+/* ---- Main content area ---- */
+
+.main-content {
+  position: relative;
+  grid-column: 2;
+  grid-row: 2 / 4;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-root);
+}
+
+/* ---- Drawer overlay (Activity/Plans/Memory/Snimci/Postavke) ----
+   Mockup principle: "Jedan sadržaj po ekranu (state machine)" +
+   "Paneli dostupni po potrebi (drawers)" — see GUI-SET-4.png/GUI-SET-5.png.
+   The drawer floats over the current screen (sidebar stays reachable to
+   switch/close it) instead of replacing main-content like a router tab. */
+
+.drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 8, 16, 0.55);
+  display: flex;
+  justify-content: flex-end;
+  padding: 20px;
+  z-index: 20;
+  animation: drawer-fade-in 160ms ease-out;
+}
+
+.drawer-panel {
+  width: min(420px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel, #0e1420);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+  overflow: hidden;
+  animation: drawer-slide-in 200ms ease-out;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+
+.drawer-header strong {
+  font-size: 15px;
+}
+
+.drawer-close {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.drawer-close:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-main);
+}
+
+.drawer-close-icon {
+  width: 13px;
+  height: 13px;
+}
+
+.drawer-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.drawer-placeholder-text {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 16px 18px;
+}
+
+@keyframes drawer-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes drawer-slide-in {
+  from { transform: translateX(16px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* ---- Idle / Ready screen ---- */
+
+.idle-screen {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 24px;
+  padding: 32px;
+  overflow: auto;
+}
+
+.idle-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.idle-headline {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-main);
+  letter-spacing: -0.03em;
+}
+
+.idle-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.idle-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  cursor: pointer;
+  border: none;
+  transition: background 140ms ease, transform 140ms ease;
+  box-shadow: 0 0 30px rgba(62,166,255,0.45);
+}
+
+.idle-cta:hover {
+  background: var(--primary-dark);
+  transform: scale(1.06);
+}
+
+.idle-cta.stop {
+  background: var(--danger);
+  box-shadow: 0 0 24px rgba(239,68,68,0.35);
+}
+
+.idle-cta.stop:hover {
+  background: var(--critical);
+}
+
+.idle-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.idle-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+/* Sentence-case header matching GUI-SET-1.png ("Zadnja aktivnost" /
+   "Brze komande") — was ALL-CAPS letterspaced, which the mockup does not use. */
+.idle-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 10px;
+}
+
+.idle-card h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+
+.idle-card-link {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.idle-card-link:hover {
+  color: var(--primary-soft);
+}
+
+.idle-card ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.idle-card li {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.idle-activity-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.idle-activity-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.idle-activity-text {
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.idle-activity-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.idle-activity-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.idle-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.activity-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 8px 4px;
+}
+
+/* "Prikaži cijelu historiju" footer button — GUI-SET-4.png */
+.activity-history-btn {
+  margin: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 120ms ease;
+}
+
+.activity-history-btn:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-main);
+}
+
+.activity-icon-sm {
+  width: 20px;
+  height: 20px;
+}
+
+.activity-icon-sm .activity-icon-svg {
+  width: 11px;
+  height: 11px;
+}
+
+.idle-card .cmd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--primary-soft);
+  transition: color 120ms ease;
+}
+
+.idle-card .cmd:hover {
+  color: var(--primary);
+}
+
+.cmd-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* ---- Dictation screen ---- */
+
+.dictation-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 32px;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.dictation-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dictation-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.dictation-badge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(62,166,255,0.12);
+  color: var(--primary);
+}
+
+.dictation-editor {
+  flex: 1;
+  width: 100%;
+  padding: 16px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-main);
+  font-size: 15px;
+  line-height: 1.65;
+  resize: none;
+  font-family: inherit;
+}
+
+.dictation-editor:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.dictation-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.dictation-actions .spacer {
+  flex: 1;
+}
+
+.btn-primary {
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark);
+}
+
+.btn-secondary {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--button-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-soft);
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.btn-secondary:hover {
+  background: var(--button-hover);
+  color: var(--text-main);
+}
+
+.btn-danger {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(239,68,68,0.12);
+  color: var(--danger);
+  border: 1px solid rgba(239,68,68,0.25);
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.btn-danger:hover {
+  background: rgba(239,68,68,0.22);
+}
+
+/* ---- Ricky Orb (FAZA 19+ redesign — branding assets) ---- */
+
+.ricky-orb {
+  /* Sized to dominate the idle-screen center like GUI-SET-1.png. The
+     ricky-orb-main.png asset carries its own jagged aura/glow, so the orb
+     reads as the hero element at this size. */
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 300px;
+  height: 300px;
+}
+
+.ricky-orb-small {
+  width: 80px;
+  height: 80px;
+}
+
+.ricky-orb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.ricky-orb-ring {
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+  border: 1px solid rgba(62,166,255,0.12);
+  pointer-events: none;
+  transition: border-color 400ms ease, box-shadow 400ms ease;
+}
+
+/* Orb states — ring animation only, image handles the visual */
+
+.ricky-orb.idle .ricky-orb-ring {
+  border-color: rgba(62,166,255,0.1);
+  box-shadow: 0 0 40px rgba(62,166,255,0.05);
+}
+
+.ricky-orb.listening .ricky-orb-ring,
+.ricky-orb.transcribing .ricky-orb-ring {
+  border-color: rgba(62,166,255,0.5);
+  animation: orb-pulse-listen 1.8s infinite ease-in-out;
+}
+
+.ricky-orb.thinking .ricky-orb-ring {
+  border-color: rgba(139,92,246,0.35);
+  animation: orb-pulse-think 2.4s infinite ease-in-out;
+}
+
+.ricky-orb.speaking .ricky-orb-ring {
+  border-color: rgba(34,197,94,0.4);
+  animation: orb-pulse-speak 1s infinite ease-in-out;
+}
+
+.ricky-orb.waiting_confirmation .ricky-orb-ring {
+  border-color: rgba(245,165,36,0.5);
+  box-shadow: 0 0 20px rgba(245,165,36,0.16);
+}
+
+.ricky-orb.error .ricky-orb-ring {
+  border-color: rgba(239,68,68,0.45);
+  animation: orb-shake 0.5s ease-in-out;
+}
+
+.ricky-orb.muted .ricky-orb-ring,
+.ricky-orb.interrupted .ricky-orb-ring {
+  border-color: rgba(141,154,170,0.2);
+}
+
+.ricky-orb.muted .ricky-orb-img,
+.ricky-orb.interrupted .ricky-orb-img {
+  opacity: 0.5;
+}
+
+@keyframes orb-pulse-listen {
+  0%,100% { box-shadow: 0 0 12px rgba(62,166,255,0.1); transform: scale(1); }
+  50% { box-shadow: 0 0 30px rgba(62,166,255,0.25); transform: scale(1.03); }
+}
+
+@keyframes orb-pulse-think {
+  0%,100% { box-shadow: 0 0 10px rgba(139,92,246,0.08); }
+  50% { box-shadow: 0 0 24px rgba(139,92,246,0.2); }
+}
+
+@keyframes orb-pulse-speak {
+  0%,100% { box-shadow: 0 0 14px rgba(34,197,94,0.12); transform: scale(1); }
+  50% { box-shadow: 0 0 32px rgba(34,197,94,0.3); transform: scale(1.04); }
+}
+
+@keyframes orb-shake {
+  0%,100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+
+/* ---- Confirmation modal restyle ---- */
+
+.confirmation-overlay-v2 {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  animation: overlay-in 200ms ease;
+}
+
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.confirmation-modal {
+  width: min(480px, calc(100vw - 48px));
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+  animation: modal-in 240ms ease;
+}
+
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.confirmation-modal h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.confirmation-modal .subtitle {
+  margin: 0 0 20px;
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+
+.confirmation-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.confirmation-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.confirmation-row .label {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.confirmation-row .value {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.risk-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.risk-badge.low      { background: rgba(34,197,94,0.12); color: var(--success); }
+.risk-badge.medium   { background: rgba(62,166,255,0.12); color: var(--primary); }
+.risk-badge.high     { background: rgba(249,115,22,0.14); color: var(--high-risk); }
+.risk-badge.critical { background: rgba(220,38,38,0.14); color: var(--critical); }
+
+.confirmation-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ---- Bottom voice bar ---- */
+
+.bottom-voice-bar {
+  grid-column: 2;
+  grid-row: 3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-root);
+}
+
+.bottom-voice-status-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 120px;
+}
+
+.bottom-voice-input {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bottom-voice-input input {
+  flex: 1;
+  padding: 7px 12px;
+  border-radius: 8px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-soft);
+  color: var(--text-main);
+  font-size: 13px;
+}
+
+.bottom-voice-input input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.bottom-voice-input input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ---- Layout for panels inside main-content (non-idle/dictation) ---- */
+
+.main-content-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  padding: 20px 24px;
+}
+
+.main-content-panel h3 {
+  margin: 0 0 14px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-main);
 }

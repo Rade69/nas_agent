@@ -39,23 +39,23 @@ export function createActivityEvent(
 export function voiceStateLabel(state: VoiceState): string {
   switch (state) {
     case "listening":
-      return "Listening";
+      return "Slušam";
     case "transcribing":
-      return "Transcribing";
+      return "Obrađujem";
     case "thinking":
-      return "Thinking";
+      return "Razmišljam";
     case "speaking":
-      return "Speaking";
+      return "Govorim";
     case "waiting_confirmation":
-      return "Waiting confirmation";
+      return "Čekam potvrdu";
     case "interrupted":
-      return "Interrupted";
+      return "Prekinuto";
     case "muted":
-      return "Muted";
+      return "Utišano";
     case "error":
-      return "Error";
+      return "Greška";
     case "idle":
     default:
-      return "Ready";
+      return "Spreman";
   }
 }

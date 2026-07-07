@@ -294,6 +294,35 @@ export class RickyRealtimeClient {
         if (loadingResult.artifact) this.callbacks.onArtifact(loadingResult.artifact);
       }
       const result = await window.ricky.executeTool({ name, arguments: parsedArgs } satisfies RickyToolCall);
+      // FAZA 13/14 confirmation bridge: when the backend blocks a tool call
+      // because it needs an approved confirmation, auto-propose one and tell
+      // the model to wait instead of retrying blindly.
+      // Context: docs/RICKY_CONFIRMATION_BRIDGE_BRIEF.md
+      if (result.errorCode === "CONFIRMATION_REQUIRED") {
+        const spec = this.toolSpecs.find((t) => t.name === name);
+        const risk = (spec?.risk as string) || "high";
+        await window.ricky.createConfirmation({
+          action_name: name,
+          payload: parsedArgs as Record<string, unknown>,
+          risk_level: risk as "low" | "medium" | "high" | "critical",
+          tool_name: name,
+        });
+        this.callbacks.onActivity(createActivityEvent("tool", `Waiting for approval: ${name}`));
+        this.callbacks.onVoiceState("waiting_confirmation");
+        await this.returnToolOutput(callId, {
+          ok: false,
+          waiting_confirmation: true,
+          message: "I need your approval before I can do that. Please confirm in the dialog.",
+        } as RickyToolResult);
+        // continue, not return: this may not be the last function_call in the
+        // batch (e.g. set_mode + computer_type_text in one turn) — returning
+        // here would skip every remaining call and never send it a
+        // function_call_output, leaving the model waiting on a reply that
+        // never comes. shouldCreateResponse=true so the model can actually
+        // tell the user it needs approval instead of going silent.
+        shouldCreateResponse = true;
+        continue;
+      }
       if (result.mode === "display" || result.mode === "computer") {
         this.callbacks.onMode(result.mode);
       }

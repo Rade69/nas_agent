@@ -14,7 +14,7 @@ Trenutno stanje (2026-07-04): kopija baseline-a iz `RileyJarvis-Windows` repo-a,
 
 ## Jezik
 
-Komunikacija sa korisnikom i sadržaj dokumenata/izvještaja: srpski/bosanski, latinica. Kod, imena simbola i commit poruke mogu ostati na engleskom gdje je to konvencija (npr. postojeći JS/TS kod).
+Komunikacija sa korisnikom i sadržaj dokumenata/izvještaja: srpski/bosanski, latinica. **I interni razgovor sa sobom (thinking / razmišljanja) se piše na srpskom** — korisnik uči uz agenta, pa i proces razmišljanja treba biti na istom jeziku. Kod, imena simbola i commit poruke mogu ostati na engleskom gdje je to konvencija (npr. postojeći JS/TS kod).
 
 ## Arhitektonsko pravilo (ne pregovara se)
 
@@ -60,7 +60,7 @@ Nema MCP memory servera podešenog za ovaj projekat. Izvor istine je repo dokume
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **nas_agent** (3516 symbols, 5728 relationships, 127 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **nas_agent** (3580 symbols, 5789 relationships, 129 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
