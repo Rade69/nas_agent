@@ -123,6 +123,8 @@ declare global {
       executeTool: (toolCall: RickyToolCall) => Promise<RickyToolResult>;
       getToolSpecs: () => Promise<RickyToolSpec[]>;
       quitApp: () => Promise<void>;
+      minimizeApp: () => Promise<void>;
+      toggleMaximizeApp: () => Promise<void>;
       // FAZA 9: confirmations + plans
       listConfirmations: (filter?: {
         status?: ConfirmationStatus;

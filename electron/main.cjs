@@ -590,6 +590,23 @@ function handleAppQuit() {
   app.quit();
 }
 
+function handleAppMinimize() {
+  const win = getMainWindow();
+  if (win && !win.isDestroyed()) {
+    win.minimize();
+  }
+}
+
+function handleAppToggleMaximize() {
+  const win = getMainWindow();
+  if (!win || win.isDestroyed()) return;
+  if (win.isMaximized()) {
+    win.unmaximize();
+  } else {
+    win.maximize();
+  }
+}
+
 // --- FAZA 9: confirmations + plans IPC handlers ---
 // Context: agent_reports/2026-07-05_faza9-confirmations-plans.md
 // Thin pass-through handlers that forward to the Python backend. No business
@@ -1715,6 +1732,8 @@ function fallbackMermaidDiagram(title) {
 registerIpcHandlers({
   "tools:list": handleToolsList,
   "app:quit": handleAppQuit,
+  "app:minimize": handleAppMinimize,
+  "app:toggle-maximize": handleAppToggleMaximize,
   "realtime:create-token": handleRealtimeCreateToken,
   "tools:execute": handleToolsExecute,
   // FAZA 9: confirmations + plans IPC channels (allowlist entries).

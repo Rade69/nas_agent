@@ -11,10 +11,10 @@ let normalWindowBounds = null;
 async function createWindow({ beforeShow } = {}) {
   if (beforeShow) await beforeShow();
   const win = new BrowserWindow({
-    width: 1120,
-    height: 760,
-    minWidth: 420,
-    minHeight: 520,
+    width: 1440,
+    height: 900,
+    minWidth: 1120,
+    minHeight: 700,
     title: "Ricky",
     frame: false,
     transparent: true,
@@ -77,11 +77,11 @@ function setWindowMode(mode) {
   mainWindow.setAlwaysOnTop(false);
   mainWindow.setVisibleOnAllWorkspaces(false);
   mainWindow.setResizable(true);
-  mainWindow.setMinimumSize(420, 520);
+  mainWindow.setMinimumSize(1120, 700);
   if (normalWindowBounds) {
     mainWindow.setBounds(normalWindowBounds);
   } else {
-    mainWindow.setBounds({ width: 1120, height: 760 });
+    mainWindow.setBounds({ width: 1440, height: 900 });
     mainWindow.center();
   }
 }
