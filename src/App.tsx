@@ -209,6 +209,19 @@ export default function App() {
     if (activeDrawer === "plans") void refreshPlans();
   }, [activeDrawer]);
 
+  // FAZA S-4: global kill-switch. Main fires this (via a global hotkey) to stop
+  // everything immediately — tear down the voice/mic session and reset UI state,
+  // even when the window is unfocused.
+  useEffect(() => {
+    const unsubscribe = window.ricky.onKillSwitch?.(() => {
+      clientRef.current?.disconnect();
+      setVoiceState("idle");
+      setMode("display");
+      addActivityEvent(createActivityEvent("status", "Kill-switch", "Sve zaustavljeno (globalni hotkey)"));
+    });
+    return () => unsubscribe?.();
+  }, []);
+
   function addActivityEvent(event: ActivityEvent) {
     setActivityEvents((items) => [event, ...items].slice(0, 80));
   }

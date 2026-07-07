@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog } = require("electron");
+const { app, BrowserWindow, dialog, globalShortcut } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs/promises");
 const crypto = require("node:crypto");
@@ -1761,6 +1761,35 @@ registerIpcHandlers({
   "companion:toggle-lock": handleCompanionToggleLock,
 });
 
+// FAZA S-4: kill-switch hotkey fallback chain (user choice: F10 primary,
+// then F11, then Ctrl+Alt+K). globalShortcut.register returns false when the
+// accelerator is already taken, so we bind the first one that succeeds.
+const KILL_SWITCH_ACCELERATORS = ["F10", "F11", "CommandOrControl+Alt+K"];
+
+function triggerKillSwitch() {
+  // Force Computer Mode off so no acting tool can run post-stop.
+  currentMode = "display";
+  const win = getMainWindow && getMainWindow();
+  if (win && !win.isDestroyed()) {
+    win.webContents.send("app:kill-switch");
+  }
+}
+
+function registerKillSwitch() {
+  for (const accelerator of KILL_SWITCH_ACCELERATORS) {
+    try {
+      if (globalShortcut.register(accelerator, triggerKillSwitch)) {
+        console.log(`[kill-switch] registered on ${accelerator}`);
+        return accelerator;
+      }
+    } catch (error) {
+      console.warn(`[kill-switch] could not register ${accelerator}:`, error);
+    }
+  }
+  console.warn("[kill-switch] no accelerator could be registered; kill-switch hotkey unavailable");
+  return null;
+}
+
 app.whenReady().then(async () => {
   // FAZA 12: wire companion orb callbacks so the companion module can bring
   // the main window forward and quit the app without circular imports.
@@ -1802,6 +1831,13 @@ app.whenReady().then(async () => {
 
   await createWindow({ beforeShow: prepareWindowData });
 
+  // FAZA S-4 (docs/SECURITY_GAP_ANALYSIS_AND_PLAN.md S33): global kill-switch.
+  // Registers the first available hotkey from a fallback chain so it still
+  // binds if the preferred key is taken by another app. On trigger it tears
+  // down the voice/mic session in the renderer (even when unfocused) and forces
+  // Computer Mode back off — a single always-available "stop everything".
+  registerKillSwitch();
+
   // FAZA 12: create the companion orb after the main window so the user has
   // a quick voice entry point. Tray is best-effort (may be unavailable on
   // some CI/headless setups); the orb window itself is the primary surface.
@@ -1814,6 +1850,7 @@ app.whenReady().then(async () => {
 });
 
 app.on("before-quit", () => {
+  globalShortcut.unregisterAll();
   stopPythonBackend();
 });
 

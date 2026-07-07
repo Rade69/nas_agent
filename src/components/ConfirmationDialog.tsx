@@ -46,13 +46,21 @@ export function ConfirmationDialog({
   onCancel,
 }: ConfirmationDialogProps) {
   const [visible, setVisible] = useState(false);
+  // FAZA S-4 (S30): rate-limit the confirm action. The approve button stays
+  // disabled for a short window after the dialog appears so a stray
+  // double-click, macro, or programmatic click can't sail through a high-risk
+  // confirmation the instant it renders.
+  const [armed, setArmed] = useState(false);
 
   useEffect(() => {
     if (confirmation && confirmation.status === "pending") {
       setVisible(true);
-    } else {
-      setVisible(false);
+      setArmed(false);
+      const timer = setTimeout(() => setArmed(true), 250);
+      return () => clearTimeout(timer);
     }
+    setVisible(false);
+    return undefined;
   }, [confirmation]);
 
   if (!visible || !confirmation) return null;
@@ -142,7 +150,8 @@ export function ConfirmationDialog({
           <button
             className="confirmation-button confirmation-approve"
             onClick={() => confirmation && onApprove(confirmation.id)}
-            disabled={!isPending || busy}
+            disabled={!isPending || busy || !armed}
+            title={!armed ? "Pričekaj trenutak…" : undefined}
           >
             <IconConfirm className="confirmation-icon-svg" />
             <span>{confirmLabel}</span>

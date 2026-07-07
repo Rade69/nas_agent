@@ -59,11 +59,11 @@ Legenda statusa: ✅ URAĐENO · 🟡 DJELIMIČNO · ❌ RUPA
 | S26 | Clipboard eksplicitni read, ne background polling | ❓ | Provjeriti postoji li clipboard tool i da nije pasivni polling. (Trenutno nema clipboard toola u registry — ako se doda, mora biti on-demand.) |
 | S27 | Kucanje samo iz potvrđenog nacrta, ne direktno iz govora | 🟡 | `computer_type_text` traži confirmation; potvrditi da tekst ide iz nacrta, ne live transkripta. |
 | S28 | **TOCTOU: fokus prozora + fajl putanja** | 🟡/❌ | Fokus: `check_active_window` provjerava proces prije izvršenja (dobro), ali postoji prozor između confirmation i exec-a. Fajl: `path_sandbox.resolve_within_roots` postoji ali se NE poziva (nijedan tool još ne prima putanju). |
-| S29 | Fail-closed defaulti (Computer Mode OFF na startu, mic timeout) | 🟡 | Self-test fail-closed postoji. Potvrditi da se Computer Mode NE pamti kao ON i da mic ima idle timeout. |
-| S30 | Rate limit na confirm dugme (200-300ms) | ❌ | Nema minimalnog vremena prije klikabilnosti confirm dugmeta. |
+| S29 | Fail-closed defaulti (Computer Mode OFF na startu, mic timeout) | ✅ | **URAĐENO (FAZA S-4, 2026-07-07).** Computer Mode: `currentMode="display"` na svakom startu, bez perzistencije na disk (potvrđeno). Mic idle timeout 5 min u `realtime.ts` (reset na svaki server event / text send, auto-disconnect na isteku). |
+| S30 | Rate limit na confirm dugme (200-300ms) | ✅ | **URAĐENO (FAZA S-4).** `ConfirmationDialog` approve dugme neaktivno prvih 250ms nakon pojave dijaloga (`armed` state) — spriječava automatizovan/slučajan klik kroz potvrdu. |
 | S31 | Potpisani auto-update | ❌/N/A | Nema auto-update mehanizma (FAZA 19 packaging). Ako se doda — potpisivanje obavezno. |
 | S32 | **Red-team test set (prompt injection payloadi)** | 🟡 | **POČETO (FAZA S-9, 2026-07-07).** `tests/test_security_redteam.py` — 8 testova: delimiter breakout, escalation read→act lanac blokiran, wrap u konverzaciji. Proširiti daljim payloadima kako se dodaju alatke. |
-| S33 | Global kill-switch hotkey (uvijek dostupan) | ❌ | Nema `globalShortcut` u `electron/`. Postoji in-app Stop, ne globalni. |
+| S33 | Global kill-switch hotkey (uvijek dostupan) | ✅ | **URAĐENO (FAZA S-4).** `globalShortcut` fallback lanac F10→F11→Ctrl+Alt+K (registruje prvi slobodan); na okidanje `main` šalje `app:kill-switch` rendereru (disconnect voice/mic) i forsira Computer Mode OFF. Radi i kad je prozor nefokusiran; unregister na quit. |
 | S34 | Mikrofonski indikator koji nikad ne laže | 🟡 | Postoji voice state UI; potvrditi da odražava STVARNO stanje mic-a bez kašnjenja. |
 | S35 | Offline degradacija | 🟡 | Provjeriti da diktat/lokalne akcije rade bez neta (samo LLM javlja nedostupnost). |
 
@@ -95,11 +95,12 @@ Redoslijed je biran tako da se prvo rade **arhitekturne stvari koje se ne mogu z
 - ⚠️ **Treba vizuelni smoke test u packaged buildu:** glasovni WebRTC poziv i mermaid/katex render dijagrama. Ako mermaid pukne uz `'wasm-unsafe-eval'`, dodati `'unsafe-eval'` (dokumentovani tradeoff) ili predkompajlirati dijagrame.
 - Report: `agent_reports/2026-07-07_faza-s3-csp.md`.
 
-### FAZA S-4 — Fail-closed defaulti + kill switch (S29, S33, S30) 🟠
-- Computer Mode uvijek OFF na startu (ne perzistira ON).
-- Mic idle timeout.
-- `globalShortcut` kill-switch (npr. Ctrl+Alt+Esc) koji trenutno gasi glas + akcije u toku + mic; uvijek vidljivo dugme u UI-ju.
-- Rate limit: confirm dugme neaktivno prvih ~250ms.
+### FAZA S-4 — Fail-closed defaulti + kill switch (S29, S33, S30) ✅ URAĐENO (2026-07-07)
+- ✅ Computer Mode uvijek OFF na startu (`currentMode="display"`, bez disk perzistencije).
+- ✅ Mic idle timeout 5 min (`realtime.ts`, reset na aktivnost, auto-disconnect).
+- ✅ `globalShortcut` kill-switch, fallback lanac F10→F11→Ctrl+Alt+K; gasi glas/mic (IPC `app:kill-switch` → renderer disconnect) + Computer Mode OFF; radi nefokusiran.
+- ✅ Rate limit: confirm dugme neaktivno prvih 250ms (`armed` state).
+- ⚠️ **Vizuelni smoke test:** pritisnuti hotkey tokom aktivne glasovne sesije i potvrditi da se mic ugasi (indikator + `getUserMedia` track stopped). Report: `agent_reports/2026-07-07_faza-s4-failclosed-killswitch.md`.
 
 ### FAZA S-5 — Supply chain (S17, S18) 🟠
 - Python: preći na `uv.lock` ili `pip-compile --generate-hashes`; `pip install --require-hashes` u build/packaging.

@@ -61,6 +61,12 @@ type ResponseOutputItem = {
 
 const realtimeUrl = "https://api.openai.com/v1/realtime/calls";
 
+// FAZA S-4 (docs/SECURITY_GAP_ANALYSIS_AND_PLAN.md S29): fail-closed mic idle
+// timeout. An open microphone that is forgotten is a standing privacy risk, so
+// the Realtime session auto-disconnects after this much inactivity (reset on
+// every server event and text send).
+const MIC_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+
 export class RickyRealtimeClient {
   private pc: RTCPeerConnection | null = null;
   private dc: RTCDataChannel | null = null;
@@ -73,9 +79,21 @@ export class RickyRealtimeClient {
   private outputAnalyser: AnalyserNode | null = null;
   private outputMeterFrame = 0;
   private smoothedMouthShape: MouthShape = silentMouthShape();
+  private idleTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(callbacks: RealtimeCallbacks) {
     this.callbacks = callbacks;
+  }
+
+  // Reset the fail-closed idle timer; called on connect + any voice/text
+  // activity. On expiry the mic session is torn down.
+  private bumpIdleTimer(): void {
+    if (this.idleTimer) clearTimeout(this.idleTimer);
+    this.idleTimer = setTimeout(() => {
+      this.callbacks.onStatus("Mikrofon ugašen zbog neaktivnosti.");
+      this.callbacks.onActivity(createActivityEvent("status", "Mikrofon ugašen (idle timeout)"));
+      this.disconnect();
+    }, MIC_IDLE_TIMEOUT_MS);
   }
 
   async connect(): Promise<void> {
@@ -114,8 +132,10 @@ export class RickyRealtimeClient {
         this.callbacks.onVoiceState("idle");
         this.callbacks.onStatus("Ricky is live. Start talking naturally.");
         this.callbacks.onActivity(createActivityEvent("status", "WebRTC connected"));
+        this.bumpIdleTimer();
       });
       dc.addEventListener("message", (event) => {
+        this.bumpIdleTimer();
         void this.handleServerEvent(event.data);
       });
 
@@ -152,6 +172,10 @@ export class RickyRealtimeClient {
   }
 
   disconnect(): void {
+    if (this.idleTimer) {
+      clearTimeout(this.idleTimer);
+      this.idleTimer = null;
+    }
     this.dc?.close();
     this.pc?.close();
     this.micStream?.getTracks().forEach((track) => track.stop());
@@ -171,6 +195,7 @@ export class RickyRealtimeClient {
       this.callbacks.onStatus("Connect Ricky before sending a text prompt.");
       return;
     }
+    this.bumpIdleTimer();
     this.callbacks.onTranscript(newEntry("user", text));
     this.callbacks.onVoiceState("thinking");
     this.callbacks.onActivity(createActivityEvent("transcript", "Typed prompt", text));

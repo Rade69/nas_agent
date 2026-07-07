@@ -56,4 +56,15 @@ contextBridge.exposeInMainWorld("ricky", {
       ipcRenderer.removeListener("companion:toggle-voice", listener);
     };
   },
+  // FAZA S-4: global kill-switch. Main registers a global hotkey and pushes
+  // this event so the renderer can tear down the voice/mic session immediately,
+  // even when the window is not focused. Single named channel, no generic
+  // ipcRenderer.on pass-through (Security Gate 0 preload surface check).
+  onKillSwitch: (handler) => {
+    const listener = () => handler();
+    ipcRenderer.on("app:kill-switch", listener);
+    return () => {
+      ipcRenderer.removeListener("app:kill-switch", listener);
+    };
+  },
 });
