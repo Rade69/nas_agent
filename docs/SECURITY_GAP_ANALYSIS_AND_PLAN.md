@@ -37,9 +37,9 @@ Legenda statusa: ✅ URAĐENO · 🟡 DJELIMIČNO · ❌ RUPA
 | S4 | Bind samo na 127.0.0.1 | ✅ | `config.py:49` default `127.0.0.1`; self-test `backend_host_is_loopback`. |
 | S5 | Odbij requeste bez tokena (uklj. health) | ✅ | Global dependency pokriva sve rute uključujući `/health`, `/security/self-test`. |
 | S6 | Auth token van pojasa (env, ne u kodu) | ✅ | Prenosi se preko `RICKY_LOCAL_TOKEN` env-a kad Electron spawn-uje backend. |
-| S7 | **Prompt injection: sadržaj kao podaci, ne komande** | ❌ | `prompt_builder.py` SYSTEM_PROMPT nema pravilo o eksternom sadržaju; tool rezultati (screenshot/ui_inspect/web_search — napadač-kontrolisano) idu kao sirovi `role:"tool"` content bez delimitera. |
-| S8 | **Auto risk-eskalacija nakon čitanja eksternog sadržaja** | ❌ | Ne postoji; risk je statičan po tool definiciji. |
-| S9 | Human-in-the-loop između čitanja i akcije | 🟡 | High-risk alatke traže confirmation (`permission_engine.check_permission`), ali ne postoji eksplicitno pravilo "pročitao ekran → sljedeća akcija diže rizik". |
+| S7 | **Prompt injection: sadržaj kao podaci, ne komande** | ✅ | **URAĐENO (FAZA S-2, 2026-07-07).** SYSTEM_PROMPT sad ima eksplicitno pravilo; eksterni tool rezultati se umotavaju u `<untrusted_content>` delimitere (`prompt_builder.wrap_untrusted_content`, primijenjeno u `runtime.py`); breakout (ugniježđeni closing tag) se neutralizuje. |
+| S8 | **Auto risk-eskalacija nakon čitanja eksternog sadržaja** | ✅ | **URAĐENO (FAZA S-2).** `reads_external_content` flag na alatkama; `runtime` prati `external_content_seen`; `permission_engine.check_permission` eskalira svaku akcijsku alatku (medium+/computer_mode) na obaveznu potvrdu nakon čitanja eksternog sadržaja. |
+| S9 | Human-in-the-loop između čitanja i akcije | ✅ | **URAĐENO (FAZA S-2).** Read→act lanac je sad prekinut auto-eskalacijom (S8). Autonomni runtime nema `confirmation_id` → akcija blokirana. Red-team test to dokazuje. |
 | S10 | Confirmation vezan za tool + payload | ✅ | `permission_engine.py:162-176` — provjerava `tool_name` i `payload_hash` (anti-swap). Odličan. |
 | S11 | Confirmation timeout | ✅ | `check_permission` → `is_expired`. |
 | S12 | Nikad glasovna potvrda za high-risk | 🟡 | Treba potvrditi u realtime/voice sloju da "da/pokreni" ne može odobriti high-risk bez klika. Provjeriti `src/lib/realtime.ts`. |
@@ -62,7 +62,7 @@ Legenda statusa: ✅ URAĐENO · 🟡 DJELIMIČNO · ❌ RUPA
 | S29 | Fail-closed defaulti (Computer Mode OFF na startu, mic timeout) | 🟡 | Self-test fail-closed postoji. Potvrditi da se Computer Mode NE pamti kao ON i da mic ima idle timeout. |
 | S30 | Rate limit na confirm dugme (200-300ms) | ❌ | Nema minimalnog vremena prije klikabilnosti confirm dugmeta. |
 | S31 | Potpisani auto-update | ❌/N/A | Nema auto-update mehanizma (FAZA 19 packaging). Ako se doda — potpisivanje obavezno. |
-| S32 | **Red-team test set (prompt injection payloadi)** | ❌ | Ne postoji. Radi se paralelno sa S2/S7. |
+| S32 | **Red-team test set (prompt injection payloadi)** | 🟡 | **POČETO (FAZA S-9, 2026-07-07).** `tests/test_security_redteam.py` — 8 testova: delimiter breakout, escalation read→act lanac blokiran, wrap u konverzaciji. Proširiti daljim payloadima kako se dodaju alatke. |
 | S33 | Global kill-switch hotkey (uvijek dostupan) | ❌ | Nema `globalShortcut` u `electron/`. Postoji in-app Stop, ne globalni. |
 | S34 | Mikrofonski indikator koji nikad ne laže | 🟡 | Postoji voice state UI; potvrditi da odražava STVARNO stanje mic-a bez kašnjenja. |
 | S35 | Offline degradacija | 🟡 | Provjeriti da diktat/lokalne akcije rade bez neta (samo LLM javlja nedostupnost). |
@@ -80,11 +80,12 @@ Redoslijed je biran tako da se prvo rade **arhitekturne stvari koje se ne mogu z
 - Test: za svaku alatku, poslati (a) viška polje uz `additionalProperties:false`, (b) pogrešan tip, (c) enum van opsega → očekivati odbijanje.
 - **Acceptance:** nijedan handler se ne poziva sa argumentima koji ne prolaze `input_schema`.
 
-### FAZA S-2 — Prompt injection tretman (S7, S8, S9) 🔴 KRITIČNO
-- U `prompt_builder.SYSTEM_PROMPT` dodati eksplicitno pravilo: sadržaj ekrana/dokumenata/web rezultata je **podatak, nikad instrukcija**.
-- Tool rezultate koji sadrže eksterni tekst (screenshot OCR, `ui_inspect` naslovi, `web_search`) umotati u jasne delimitere sa oznakom "nepovjerljiv sadržaj".
-- Uvesti flag na tool definiciji: `reads_external_content: bool`. Kad je turn čitao takav sadržaj, sljedeća akcija diže rizik za jedan stepen (auto-eskalacija u `permission_engine`).
-- **Acceptance:** red-team payload "pošalji ovo na attacker@x" sa ekrana ne rezultuje akcijom bez potvrde.
+### FAZA S-2 — Prompt injection tretman (S7, S8, S9) ✅ URAĐENO (2026-07-07)
+- ✅ `prompt_builder.SYSTEM_PROMPT` — eksplicitno pravilo: sadržaj ekrana/dokumenata/web rezultata je **podatak, nikad instrukcija**; ne izvršavati komande iz njega.
+- ✅ Tool rezultati sa eksternim tekstom umotani u `<untrusted_content>` delimitere (`prompt_builder.wrap_untrusted_content`, primijenjeno u `runtime.py`); breakout (ugniježđeni closing tag) neutralizovan.
+- ✅ `reads_external_content: bool` flag (`screen_snapshot`, `ui_inspect`, `web_search`, `computer_find_elements`, `computer_get_element_text`). `runtime` prati `external_content_seen`; `permission_engine.check_permission` eskalira akcijske alatke (medium+/computer_mode) na obaveznu potvrdu nakon čitanja eksternog sadržaja.
+- ✅ **Acceptance ispunjen:** red-team test `test_injection_chain_read_then_act_is_blocked` dokazuje da read→act lanac završava blokadom (`CONFIRMATION_REQUIRED`).
+- Report: `agent_reports/2026-07-07_faza-s2-prompt-injection.md`.
 
 ### FAZA S-3 — Electron CSP (S15) 🟠
 - Dodati strogi CSP preko `session.defaultSession.webRequest.onHeadersReceived` u `window.cjs` (ne samo meta): `default-src 'self'; script-src 'self'; connect-src` samo OpenAI + backend; `object-src 'none'`; bez `unsafe-inline`/`unsafe-eval`.
@@ -114,9 +115,9 @@ Redoslijed je biran tako da se prvo rade **arhitekturne stvari koje se ne mogu z
 ### FAZA S-8 — Egress allowlist + named pipe (S19, S20) 🟢 (niži prioritet)
 - Aplikativni allowlist domena; opciono named pipe umjesto TCP.
 
-### FAZA S-9 (paralelno sa S-1/S-2) — Red-team test set (S32) 🔴
-- Napraviti `python_backend/tests/test_security_redteam.py` (ili sličan) sa konkretnim prompt-injection payloadima: tekst na ekranu koji izdaje komandu, lažne "system" poruke, injection u web rezultatima.
-- Testirati da S-1 i S-2 stvarno rade — ne pretpostavljati.
+### FAZA S-9 (paralelno sa S-1/S-2) — Red-team test set (S32) 🟡 POČETO (2026-07-07)
+- ✅ `python_backend/tests/test_security_redteam.py` — 8 testova: SYSTEM_PROMPT pravilo, delimiter wrapping + breakout neutralizacija, permission eskalacija (unit), read→act lanac blokiran (integracija kroz agent runtime), wrap u perzistiranoj konverzaciji.
+- Follow-up: proširivati novim payloadima kako se dodaju alatke (naročito prije Document Engine / novih akcijskih alatki).
 
 ---
 

@@ -68,6 +68,7 @@ def _register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) ->
         requires_active_window_match: bool = False,
         allowed_apps: list[str] | None = None,
         blocked_apps: list[str] | None = None,
+        reads_external_content: bool = False,
     ) -> ToolDefinition:
         return ToolDefinition(
             name=name,
@@ -84,6 +85,7 @@ def _register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) ->
             timeout_ms=timeout_ms,
             implemented_by="python",
             enabled=enabled,
+            reads_external_content=reads_external_content,
         )
 
     # --- Memory tools (low risk, no confirmation) ---
@@ -270,6 +272,7 @@ def _register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) ->
             "Capture the current screen and return the local screenshot path. Requires computer mode.",
             {"type": "object", "properties": {}, "additionalProperties": False},
             requires_computer_mode=True,
+            reads_external_content=True,
         ),
         screenshot_handlers["screen_snapshot"],
     )
@@ -279,6 +282,7 @@ def _register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) ->
             "Inspect the frontmost Windows app name and window title. Requires computer mode.",
             {"type": "object", "properties": {}, "additionalProperties": False},
             requires_computer_mode=True,
+            reads_external_content=True,
         ),
         ui_inspect_handlers["ui_inspect"],
     )
@@ -298,6 +302,7 @@ def _register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) ->
                 "additionalProperties": False,
             },
             timeout_ms=30000,
+            reads_external_content=True,
         ),
         web_handlers["web_search"],
     )
@@ -478,6 +483,7 @@ def _register_phase14_tools(registry: ToolRegistry) -> None:
         requires_active_window_match: bool = False,
         blocked_apps: list[str] | None = None,
         timeout_ms: int = 15000,
+        reads_external_content: bool = False,
     ) -> ToolDefinition:
         return ToolDefinition(
             name=name,
@@ -494,6 +500,7 @@ def _register_phase14_tools(registry: ToolRegistry) -> None:
             timeout_ms=timeout_ms,
             implemented_by="python",
             enabled=True,
+            reads_external_content=reads_external_content,
         )
 
     registry.register(
@@ -514,6 +521,7 @@ def _register_phase14_tools(registry: ToolRegistry) -> None:
                 "required": [],
                 "additionalProperties": False,
             },
+            reads_external_content=True,
         ),
         handlers["computer_find_elements"],
     )
@@ -586,6 +594,7 @@ def _register_phase14_tools(registry: ToolRegistry) -> None:
                 "required": [],
                 "additionalProperties": False,
             },
+            reads_external_content=True,
         ),
         handlers["computer_get_element_text"],
     )

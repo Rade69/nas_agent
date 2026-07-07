@@ -36,6 +36,13 @@ class ToolDefinition(BaseModel):
     timeout_ms: int
     implemented_by: ImplementedBy
     enabled: bool
+    # FAZA S-2 (prompt injection containment): True for tools that return
+    # untrusted external text into the conversation (screen/window titles, web
+    # results, UI element text). The runtime wraps their output in
+    # untrusted-content delimiters, and any subsequent action tool in the same
+    # turn is auto-escalated to require confirmation. See
+    # docs/SECURITY_GAP_ANALYSIS_AND_PLAN.md (S7/S8).
+    reads_external_content: bool = False
 
 
 class ToolsListResponse(BaseModel):
@@ -50,6 +57,11 @@ class ToolExecutionContext(BaseModel):
     # Must reference an "approved" confirmation bound to this exact tool_name
     # and payload (see app/agent/permission_engine.py).
     confirmation_id: str | None = None
+    # FAZA S-2: set by the agent runtime once an untrusted-external-content tool
+    # has run earlier in the same turn. When True, permission_engine escalates
+    # any acting tool to require confirmation — a model that just read
+    # attacker-controlled content must not chain straight into an action.
+    external_content_seen: bool = False
 
 
 class ToolExecutionRequest(BaseModel):

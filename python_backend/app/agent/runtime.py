@@ -20,7 +20,7 @@ from typing import Any
 
 from app.agent.conversation_state import ConversationStateService
 from app.agent.model_client import ModelClient
-from app.agent.prompt_builder import build_messages, tools_to_openai_schema
+from app.agent.prompt_builder import build_messages, tools_to_openai_schema, wrap_untrusted_content
 from app.agent.tool_executor import ToolExecutor
 from app.schemas.tool import ToolExecutionContext, ToolExecutionRequest
 
@@ -57,6 +57,11 @@ class LocalDesktopAssistant:
         executed_tool_calls: list[dict[str, Any]] = []
         artifact_ids: list[str] = []
         event_ids: list[str] = []
+        # FAZA S-2: once any untrusted-external-content tool has run this turn,
+        # every later acting tool is forced through confirmation (which the
+        # autonomous runtime cannot supply, so it is blocked) — see
+        # permission_engine.check_permission.
+        external_content_seen = False
 
         for _ in range(MAX_TOOL_ITERATIONS):
             history = self._conversations.raw_history_for_prompt(resolved_conversation_id)
@@ -95,6 +100,7 @@ class LocalDesktopAssistant:
                         context=ToolExecutionContext(
                             computer_mode=computer_mode,
                             conversation_id=resolved_conversation_id,
+                            external_content_seen=external_content_seen,
                         ),
                     )
                 )
@@ -110,10 +116,22 @@ class LocalDesktopAssistant:
                 artifact_ids.extend(tool_response.artifact_ids)
                 event_ids.extend(tool_response.event_ids)
 
+                # FAZA S-2: mark that untrusted external content has entered the
+                # conversation, and wrap this tool's serialized result in
+                # untrusted-content delimiters before the model sees it.
+                registered = self._tool_executor.registry.get(call.tool_name)
+                reads_external = bool(registered and registered.definition.reads_external_content)
+                if reads_external and tool_response.ok:
+                    external_content_seen = True
+
+                tool_content = json.dumps(tool_response.model_dump(mode="json"), ensure_ascii=False)
+                if reads_external:
+                    tool_content = wrap_untrusted_content(tool_content)
+
                 self._conversations.append_message(
                     conversation_id=resolved_conversation_id,
                     role="tool",
-                    content=json.dumps(tool_response.model_dump(mode="json"), ensure_ascii=False),
+                    content=tool_content,
                     tool_call_id=call.id,
                     tool_name=call.tool_name,
                 )

@@ -112,6 +112,21 @@ def check_permission(
     # a tool definition forgot to set requires_confirmation explicitly.
     requires_confirmation = tool.requires_confirmation or tool.risk == "critical"
 
+    # FAZA S-2 (docs/SECURITY_GAP_ANALYSIS_AND_PLAN.md S8): prompt-injection
+    # containment. Once an untrusted-external-content tool has run earlier in
+    # this turn (external_content_seen), any tool that *acts* on the system —
+    # medium+ risk or anything requiring Computer Mode — is escalated to require
+    # confirmation, even if its own definition wouldn't. This breaks the
+    # "read attacker-controlled screen/web text -> act without approval" chain.
+    # Pure readers (reads_external_content) are exempt so chained inspection
+    # doesn't lock itself out.
+    if (
+        request.context.external_content_seen
+        and not tool.reads_external_content
+        and (tool.risk in ("medium", "high", "critical") or tool.requires_computer_mode)
+    ):
+        requires_confirmation = True
+
     if tool.requires_computer_mode and not request.context.computer_mode:
         return AppError(
             "COMPUTER_MODE_REQUIRED",
