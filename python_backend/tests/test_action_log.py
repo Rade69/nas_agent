@@ -49,4 +49,7 @@ def test_failed_tool_execution_creates_tool_run(tmp_path) -> None:
     assert row["tool_name"] == "echo"
     assert row["status"] == "failed"
     assert row["error_code"] == "INVALID_ARGUMENTS"
-    assert "echo requires" in row["error_message"]
+    # FAZA S-1: the missing required "text" is now caught by runtime schema
+    # validation (before the handler's own ValueError), so the message is the
+    # schema-driven one rather than echo_tool's ad-hoc "echo requires ..." text.
+    assert "text" in row["error_message"]

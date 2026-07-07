@@ -15,6 +15,9 @@ dependencies = [
   "pytest",
   "httpx",
   "uiautomation",
+  # FAZA S-1: runtime enforcement of each tool's input_schema (was already
+  # present transitively; declared explicitly so it is not an accidental dep).
+  "jsonschema",
 ]
 
 [tool.setuptools.packages.find]

@@ -3,6 +3,7 @@ from __future__ import annotations
 from time import perf_counter
 from uuid import uuid4
 
+from app.agent.arg_validation import validate_tool_arguments
 from app.agent.cancellation import CancellationRegistry
 from app.agent.permission_engine import check_active_window, check_permission
 from app.agent.tool_registry import RegisteredTool, ToolRegistry
@@ -55,6 +56,25 @@ class ToolExecutor:
                 started,
                 "TOOL_DISABLED",
                 f"Tool '{request.tool_name}' is disabled.",
+                execution_id=execution_id,
+                tool_state="failed",
+            )
+            self._log(request=request, response=response, tool=tool)
+            return response
+
+        # FAZA S-1 (docs/SECURITY_GAP_ANALYSIS_AND_PLAN.md): enforce the tool's
+        # input_schema at runtime before anything else runs. Until now the
+        # schema was only advertised to the model, never checked on the backend,
+        # so a model/injection/malformed call could pass extra fields, wrong
+        # types, or out-of-range enum values straight to the handler.
+        schema_error = validate_tool_arguments(tool.definition.input_schema, request.arguments)
+        if schema_error is not None:
+            response = self._error_response(
+                request.tool_name,
+                action_log_id,
+                started,
+                "INVALID_ARGUMENTS",
+                schema_error,
                 execution_id=execution_id,
                 tool_state="failed",
             )
