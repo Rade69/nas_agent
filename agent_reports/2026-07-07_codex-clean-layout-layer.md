@@ -65,6 +65,30 @@ Prvi čisti GUI layout sloj za Ricky aplikaciju prema `assets/Ricky-agent.png`, 
   - right card spacing u `SPREMAN` sekciji je dodatno zbijen,
   - confirmation preview card je pomjeren ka vrhu i dodatno kompaktiran,
   - confirmation tabela, link i dugmad su smanjeni da donji action row stane u sekciju.
+- Nakon pregleda `Skro-gotov-gui.png`:
+  - sekcijski naslovi su prevedeni sa engleskog na srpski: `SPREMAN`, `DIKTIRANJE`, `POTVRDA`, `AKTIVNOST`, `PLANOVI`,
+  - dictation badge je preveden u `DIKTIRANJE`,
+  - uklonjen je hardkodovani demo tekst iz dictation editora; editor sada kreće prazan i koristi neutralan placeholder,
+  - uklonjeni su hardkodovani demo događaji iz `Zadnja aktivnost` i activity drawer preview-a,
+  - uklonjeni su hardkodovani demo planovi iz plans drawer preview-a,
+  - activity/plans preview-i sada renderuju stvarne runtime liste ili jasno prazno stanje,
+  - footer više ne opisuje dizajn/responsive pravila, nego prikazuje runtime stanje: backend, lokalna aplikacija, glas, režim, broj aktivnosti/planova i zaštitne statuse,
+  - realtime/activity poruke koje korisnik može vidjeti prevedene su na srpski.
+- Nakon pregleda `footer-3.png` i odluke da veliki footer nema dovoljno funkcionalno opravdanje:
+  - veliki status/footer panel je zamijenjen tankom sigurnosno-statusnom trakom,
+  - traka sadrži samo stalno korisne informacije: `Stop sve`, mikrofon, backend, režim i privatnost,
+  - `Stop sve` dugme poziva isti `runKillSwitch()` tok kao `Esc` i globalni hotkey,
+  - master grid je preraspoređen tako da footer zauzima samo tanki donji red, a oslobođeni prostor ide glavnim GUI sekcijama.
+- Nakon pregleda `footer-4.png`:
+  - uklonjen je i tanki footer jer je ostatak širine ostajao prazan i nije imao jasnu funkcionalnu svrhu,
+  - `Stop sve` je premješteno u topbar prve `SPREMAN` sekcije,
+  - master grid je prebačen na dva reda bez footer area,
+  - oslobođena visina je vraćena glavnim sekcijama (`SPREMAN/DIKTIRANJE` i `POTVRDA/AKTIVNOST/PLANOVI`).
+- Nakon pregleda `prva seksija.png`:
+  - `SPREMAN` hero je vraćen sa top-aligned na centriraniji vertikalni ritam,
+  - mikrofon je blago povećan i odmaknut od tekstualnog inputa,
+  - tekstualni input je proširen sa kompaktnog `270px` limita na širi kanal,
+  - input/send kontrole su povećane da izgledaju kao stvarni tekstualni kanal, a ne samo mali placeholder.
 - Sačuvani su postojeći realtime, confirmation, plans, artifact i backend event callback tokovi.
 
 ## Zašto je urađeno
@@ -90,6 +114,14 @@ Claude report `agent_reports/2026-07-07_gui-mockup-match-attempt.md` pokazuje da
 
 - `npm run typecheck` — prolazi.
 - `npm run build` — prolazi nakon master-board prelamanja i tightening pass-a.
+- `npm run typecheck` — prolazi nakon uklanjanja demo placeholder podataka.
+- `npm run build` — prolazi nakon uklanjanja demo placeholder podataka.
+- `npm run typecheck` — prolazi nakon zamjene velikog footera sigurnosnom trakom.
+- `npm run build` — prolazi nakon zamjene velikog footera sigurnosnom trakom.
+- `npm run typecheck` — prolazi nakon potpunog uklanjanja footera i premještanja `Stop sve` u topbar.
+- `npm run build` — prolazi nakon potpunog uklanjanja footera i premještanja `Stop sve` u topbar.
+- `npm run typecheck` — prolazi nakon korekcije input/mic razmaka u `SPREMAN` sekciji.
+- `npm run build` — prolazi nakon korekcije input/mic razmaka u `SPREMAN` sekciji.
 - Vite prijavljuje postojeći warning za chunkove veće od 500 kB; nije uveden ovim layout slojem.
 
 ## Rizici/ograničenja

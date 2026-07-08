@@ -12,9 +12,6 @@ import IconOpenApp from "../assets/brending/icons/actions/icon-open-app.svg?reac
 import IconScreenshot from "../assets/brending/icons/actions/icon-screenshot.svg?react";
 import IconWarning from "../assets/brending/icons/safety/icon-warning.svg?react";
 import IconSuccess from "../assets/brending/icons/status/icon-status-success.svg?react";
-import IconStatusError from "../assets/brending/icons/status/icon-status-error.svg?react";
-import IconStatusReady from "../assets/brending/icons/status/icon-status-ready.svg?react";
-import IconStatusRunning from "../assets/brending/icons/status/icon-status-running.svg?react";
 import IconBackend from "../assets/brending/icons/system/icon-backend.svg?react";
 import IconChevronDown from "../assets/brending/icons/ui/icon-chevron-down.svg?react";
 import IconChevronRight from "../assets/brending/icons/ui/icon-chevron-right.svg?react";
@@ -44,15 +41,7 @@ type RickyMode = "display" | "computer";
 type ScreenState = "home" | "dictation";
 type DrawerState = "activity" | "plans" | "memory" | "screens" | "settings" | null;
 
-const SYSTEM_NOISE_TITLES = ["Backend ready", "Renderer ready", "Voice-first shell"];
-
-const SAMPLE_DICTATION = `Poštovani,
-
-Molim vas da mi dostavite izvještaj o prodaji za prošli mjesec,
-uključujući ukupne rezultate, poređenje sa prethodnim mjesecom
-i ključne zaključke.
-
-Hvala unaprijed.`;
+const SYSTEM_NOISE_TITLES = ["Backend ready", "Renderer ready", "Voice-first shell", "Backend spreman", "Renderer spreman"];
 
 export default function App() {
   const [connectionState, setConnectionState] = useState<RickyConnectionState>("idle");
@@ -64,10 +53,10 @@ export default function App() {
   const [artifactFullscreen, setArtifactFullscreen] = useState(false);
   const [, setMouthShape] = useState<MouthShape>({ open: 0, width: 0.18, round: 0, teeth: 0 });
   const [transcript, setTranscript] = useState<TranscriptEntry[]>([
-    newEntry("system", "Ricky is ready. Connect voice, then talk naturally."),
+    newEntry("system", "Ricky je spreman. Pokreni glas i govori prirodno."),
   ]);
   const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([
-    createActivityEvent("status", "Renderer ready", "Voice-first shell loaded."),
+    createActivityEvent("status", "Renderer spreman", "GUI je učitan."),
   ]);
   const [, setStatus] = useState("Idle");
   const [textPrompt, setTextPrompt] = useState("");
@@ -78,7 +67,8 @@ export default function App() {
   const [busyStepId, setBusyStepId] = useState<string | null>(null);
   const [screen, setScreen] = useState<ScreenState>("home");
   const [activeDrawer, setActiveDrawer] = useState<DrawerState>(null);
-  const [dictationText, setDictationText] = useState(SAMPLE_DICTATION);
+  const [killFlash, setKillFlash] = useState(false);
+  const [dictationText, setDictationText] = useState("");
   const [backendConnected, setBackendConnected] = useState(false);
   const clientRef = useRef<RickyRealtimeClient | null>(null);
 
@@ -154,7 +144,7 @@ export default function App() {
           } else if (event.type === "backend.ready") {
             setBackendConnected(true);
             if (replayingHistory) continue;
-            addActivityEvent(createActivityEvent("status", "Backend ready", "Python backend connected"));
+            addActivityEvent(createActivityEvent("status", "Backend spreman", "Python backend povezan"));
           }
         }
       } catch {
@@ -209,17 +199,34 @@ export default function App() {
     if (activeDrawer === "plans") void refreshPlans();
   }, [activeDrawer]);
 
-  // FAZA S-4: global kill-switch. Main fires this (via a global hotkey) to stop
-  // everything immediately — tear down the voice/mic session and reset UI state,
-  // even when the window is unfocused.
+  // FAZA S-4: kill-switch — stop everything (voice/mic + Computer Mode) with a
+  // brief on-screen confirmation. Two triggers:
+  //  1. Escape while Ricky is focused (fast, local; does NOT hijack Esc in other
+  //     apps). Skipped while typing in an input/textarea so text editing works.
+  //  2. Ctrl+Alt+K global hotkey (main process) — works even when unfocused.
+  function runKillSwitch() {
+    clientRef.current?.disconnect();
+    setVoiceState("idle");
+    setMode("display");
+    addActivityEvent(createActivityEvent("status", "Kill-switch", "Sve zaustavljeno"));
+    setKillFlash(true);
+    window.setTimeout(() => setKillFlash(false), 2200);
+  }
+
   useEffect(() => {
-    const unsubscribe = window.ricky.onKillSwitch?.(() => {
-      clientRef.current?.disconnect();
-      setVoiceState("idle");
-      setMode("display");
-      addActivityEvent(createActivityEvent("status", "Kill-switch", "Sve zaustavljeno (globalni hotkey)"));
-    });
-    return () => unsubscribe?.();
+    const unsubscribe = window.ricky.onKillSwitch?.(() => runKillSwitch());
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key !== "Escape") return;
+      const tag = (document.activeElement as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      runKillSwitch();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      unsubscribe?.();
+      window.removeEventListener("keydown", onKeyDown);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function addActivityEvent(event: ActivityEvent) {
@@ -279,7 +286,7 @@ export default function App() {
       const result = await window.ricky.approveConfirmation(confirmationId);
       const approved = result?.confirmation ?? null;
       setPendingConfirmation(approved);
-      addActivityEvent(createActivityEvent("status", "Confirmation approved", `Approved ${confirmationId}`));
+      addActivityEvent(createActivityEvent("status", "Potvrda odobrena", `Odobreno ${confirmationId}`));
       if (approved?.tool_name) {
         try {
           const retryResult = await window.ricky.executeTool({
@@ -292,8 +299,8 @@ export default function App() {
             addActivityEvent(
               createActivityEvent(
                 "error",
-                `Retry of ${approved.tool_name} was blocked`,
-                typeof retryResultObj.error === "string" ? retryResultObj.error : "Tool execution failed after approval.",
+                `Ponovno izvršenje alata ${approved.tool_name} je blokirano`,
+                typeof retryResultObj.error === "string" ? retryResultObj.error : "Alat nije izvršen poslije potvrde.",
               ),
             );
           } else {
@@ -301,14 +308,14 @@ export default function App() {
               setArtifact(retryResultObj.artifact as RickyArtifact);
               setArtifactVisible(true);
             }
-            addActivityEvent(createActivityEvent("tool", `Retried ${approved.tool_name}`, `Approved re-execution of ${confirmationId}`));
+            addActivityEvent(createActivityEvent("tool", `Ponovo izvršen alat ${approved.tool_name}`, `Potvrda ${confirmationId}`));
           }
         } catch (retryErr) {
-          addActivityEvent(createActivityEvent("error", "Retry failed", retryErr instanceof Error ? retryErr.message : String(retryErr)));
+          addActivityEvent(createActivityEvent("error", "Ponovno izvršenje nije uspjelo", retryErr instanceof Error ? retryErr.message : String(retryErr)));
         }
       }
     } catch (error) {
-      addActivityEvent(createActivityEvent("error", "Approval failed", error instanceof Error ? error.message : String(error)));
+      addActivityEvent(createActivityEvent("error", "Odobrenje nije uspjelo", error instanceof Error ? error.message : String(error)));
     } finally {
       setConfirmationBusy(false);
       setVoiceState("idle");
@@ -320,9 +327,9 @@ export default function App() {
     try {
       const result = await window.ricky.rejectConfirmation(confirmationId);
       setPendingConfirmation(result?.confirmation ?? null);
-      addActivityEvent(createActivityEvent("status", "Confirmation rejected", `Rejected ${confirmationId}`));
+      addActivityEvent(createActivityEvent("status", "Potvrda odbijena", `Odbijeno ${confirmationId}`));
     } catch (error) {
-      addActivityEvent(createActivityEvent("error", "Rejection failed", error instanceof Error ? error.message : String(error)));
+      addActivityEvent(createActivityEvent("error", "Odbijanje nije uspjelo", error instanceof Error ? error.message : String(error)));
     } finally {
       setConfirmationBusy(false);
       setVoiceState("idle");
@@ -367,7 +374,7 @@ export default function App() {
   function handleStop() {
     clientRef.current?.disconnect();
     setVoiceState("interrupted");
-    addActivityEvent(createActivityEvent("status", "Stopped", "User pressed Stop"));
+    addActivityEvent(createActivityEvent("status", "Zaustavljeno", "Korisnik je pritisnuo Stop"));
   }
 
   function openDrawer(drawer: Exclude<DrawerState, null>) {
@@ -385,14 +392,17 @@ export default function App() {
 
   return (
     <main className="pixel-app-shell pixel-board-shell">
-      <div className="pixel-global-window-controls" aria-label="Window controls">
-        <button className="pixel-icon-button" onClick={() => void window.ricky.minimizeApp()} title="Minimize">
+      {killFlash ? (
+        <div className="kill-switch-flash" role="status">⛔ Zaustavljeno — glas i mikrofon isključeni</div>
+      ) : null}
+      <div className="pixel-global-window-controls" aria-label="Kontrole prozora">
+        <button className="pixel-icon-button" onClick={() => void window.ricky.minimizeApp()} title="Minimizuj">
           <IconMinimize />
         </button>
-        <button className="pixel-icon-button" onClick={() => void window.ricky.toggleMaximizeApp()} title="Maximize">
+        <button className="pixel-icon-button" onClick={() => void window.ricky.toggleMaximizeApp()} title="Maksimizuj">
           <IconMaximize />
         </button>
-        <button className="pixel-icon-button pixel-close" onClick={() => void window.ricky.quitApp()} title="Close">
+        <button className="pixel-icon-button pixel-close" onClick={() => void window.ricky.quitApp()} title="Zatvori">
           <IconClose />
         </button>
       </div>
@@ -430,6 +440,7 @@ export default function App() {
           if (dictationText.trim()) sendText(dictationText.trim());
           setScreen("home");
         }}
+        onStopAll={runKillSwitch}
         onCloseDrawer={() => setActiveDrawer(null)}
         onUpdatePlanStatus={handleUpdatePlanStatus}
         onUpdateStepStatus={handleUpdateStepStatus}
@@ -485,6 +496,7 @@ function PixelMockupBoard({
   onDictationChange,
   onDictationCancel,
   onDictationSend,
+  onStopAll,
   onCloseDrawer,
   onUpdatePlanStatus,
   onUpdateStepStatus,
@@ -517,6 +529,7 @@ function PixelMockupBoard({
   onDictationChange: (value: string) => void;
   onDictationCancel: () => void;
   onDictationSend: () => void;
+  onStopAll: () => void;
   onCloseDrawer: () => void;
   onUpdatePlanStatus: (planId: string, status: string) => Promise<void>;
   onUpdateStepStatus: (planId: string, stepId: string, status: string) => Promise<void>;
@@ -527,16 +540,17 @@ function PixelMockupBoard({
       <MockupSection
         className="pixel-section-idle"
         number="1"
-        title="IDLE / SPREMAN"
+        title="SPREMAN"
         description="Mirno stanje. Fokus na mikrofon i zadnju aktivnost. Sve ostalo dostupno po potrebi."
       >
-        <section className="pixel-window pixel-window-idle" aria-label="Idle / Spreman">
+        <section className="pixel-window pixel-window-idle" aria-label="Spreman">
           <TopBar
             mode={mode}
             screen={screen}
             voiceState={voiceState}
             onToggleMode={onToggleMode}
             onOpenPlans={onOpenPlans}
+            onStopAll={onStopAll}
           />
           <Sidebar activeTab={activeDrawer ?? screen} onTabChange={onSidebarChange} backendConnected={backendConnected} />
           <section className="pixel-main">
@@ -569,9 +583,9 @@ function PixelMockupBoard({
                     onCreatePlan={onCreatePlan}
                   />
                 ) : null}
-                {activeDrawer === "memory" ? <p className="drawer-placeholder-text">Memorija će se prikazati ovdje.</p> : null}
-                {activeDrawer === "screens" ? <p className="drawer-placeholder-text">Snimci ekrana će se prikazati ovdje.</p> : null}
-                {activeDrawer === "settings" ? <p className="drawer-placeholder-text">Postavke će se prikazati ovdje.</p> : null}
+                {activeDrawer === "memory" ? <p className="drawer-placeholder-text">Nema sačuvane memorije.</p> : null}
+                {activeDrawer === "screens" ? <p className="drawer-placeholder-text">Nema snimaka ekrana.</p> : null}
+                {activeDrawer === "settings" ? <p className="drawer-placeholder-text">Postavke nisu dostupne u ovom prikazu.</p> : null}
               </Drawer>
             ) : null}
           </section>
@@ -581,10 +595,10 @@ function PixelMockupBoard({
       <MockupSection
         className="pixel-section-dictation"
         number="2"
-        title="DICTATION MODE"
+        title="DIKTIRANJE"
         description="Editor je u fokusu. Samo najvažnije akcije. Ostali paneli skriveni."
       >
-        <section className="pixel-window pixel-window-dictation" aria-label="Dictation Mode">
+        <section className="pixel-window pixel-window-dictation" aria-label="Diktiranje">
           <TopBar mode={mode} screen="dictation" voiceState={voiceState} onToggleMode={onToggleMode} onOpenPlans={onOpenPlans} />
           <section className="pixel-main pixel-main-full">
             <DictationScreen
@@ -600,7 +614,7 @@ function PixelMockupBoard({
       <MockupSection
         className="pixel-section-confirmation"
         number="3"
-        title="CONFIRMATION MODAL"
+        title="POTVRDA"
         description="Dominantna potvrda. Ne može se previdjeti. Detalji jasni, rizik istaknut."
       >
         <ConfirmationPreview />
@@ -609,24 +623,21 @@ function PixelMockupBoard({
       <MockupSection
         className="pixel-section-activity"
         number="4"
-        title="ACTIVITY DRAWER"
+        title="AKTIVNOST"
         description="Detaljna historija svih događaja i akcija."
       >
-        <ActivityDrawerPreview />
+        <ActivityDrawerPreview activityEvents={recentActivity} />
       </MockupSection>
 
       <MockupSection
         className="pixel-section-plans"
         number="5"
-        title="PLANS DRAWER"
+        title="PLANOVI"
         description="Tvoji planovi, zadaci i podsjetnici."
       >
-        <PlansDrawerPreview />
+        <PlansDrawerPreview plans={plans} />
       </MockupSection>
 
-      <MockupSection className="pixel-section-footer">
-        <PrinciplesFooter />
-      </MockupSection>
     </div>
   );
 }
@@ -709,15 +720,7 @@ function ConfirmationPreview() {
   );
 }
 
-function ActivityDrawerPreview() {
-  const rows = [
-    { icon: <IconSuccess />, tone: "success", title: "Email poslan šefu", detail: "sef@firma.com", time: "12:47" },
-    { icon: <IconMic />, tone: "voice", title: "Nacrt izvještaja spreman", detail: "41 riječi", time: "12:35" },
-    { icon: <IconMic />, tone: "voice", title: "Otvoren dictation mode", detail: "Auto-čuvanje uključeno", time: "12:31" },
-    { icon: <IconScreenshot />, tone: "violet", title: "Screenshot snimljen", detail: "ekran_2025-07-06_12-22.png", time: "12:22" },
-    { icon: <IconOpenApp />, tone: "warning", title: "Alat izvršen", detail: "Otvori aplikaciju: Notepad", time: "12:20" },
-  ];
-
+function ActivityDrawerPreview({ activityEvents }: { activityEvents: ActivityEvent[] }) {
   return (
     <aside className="pixel-preview-drawer">
       <header>
@@ -725,29 +728,32 @@ function ActivityDrawerPreview() {
         <IconClose />
       </header>
       <div className="pixel-preview-list">
-        {rows.map((row) => (
-          <article className="pixel-preview-row" key={row.title}>
-            <span className={`pixel-preview-icon ${row.tone}`}>{row.icon}</span>
-            <span>
-              <strong>{row.title}</strong>
-              <small>{row.detail}</small>
-            </span>
-            <time>{row.time}</time>
-          </article>
-        ))}
+        {activityEvents.length > 0 ? (
+          activityEvents.slice(0, 5).map((event) => {
+            const { Icon, className } = categoryForActivity(event);
+            return (
+              <article className="pixel-preview-row" key={event.id}>
+                <span className={`pixel-preview-icon ${className}`}>
+                  <Icon />
+                </span>
+                <span>
+                  <strong>{event.title}</strong>
+                  {event.detail ? <small>{event.detail}</small> : null}
+                </span>
+                <time>{event.at}</time>
+              </article>
+            );
+          })
+        ) : (
+          <EmptyPreviewState title="Još nema aktivnosti" detail="Događaji će se pojaviti ovdje kada Ricky nešto uradi." />
+        )}
       </div>
       <button className="pixel-full-history">Prikaži cijelu historiju</button>
     </aside>
   );
 }
 
-function PlansDrawerPreview() {
-  const rows = [
-    { icon: <IconSuccess />, tone: "success", title: "Sedmični izvještaj prodaje", detail: "Svakog petka u 14:00", status: "AKTIVAN" },
-    { icon: <IconMic />, tone: "voice", title: "Podsjetnik: Sastanak tim", detail: "Sutra u 10:00", status: "AKTIVAN" },
-    { icon: <IconBackend />, tone: "warning", title: "Analiza konkurencije", detail: "Rok: 10.07.2025", status: "NA ČEKANJU" },
-  ];
-
+function PlansDrawerPreview({ plans }: { plans: Plan[] }) {
   return (
     <aside className="pixel-preview-drawer pixel-preview-plans">
       <header>
@@ -760,55 +766,56 @@ function PlansDrawerPreview() {
         <button>Završeni</button>
       </div>
       <div className="pixel-preview-list">
-        {rows.map((row) => (
-          <article className="pixel-plan-row" key={row.title}>
-            <span className={`pixel-preview-icon ${row.tone}`}>{row.icon}</span>
-            <span>
-              <strong>{row.title}</strong>
-              <small>{row.detail}</small>
-            </span>
-            <em className={row.status === "AKTIVAN" ? "active" : "pending"}>{row.status}</em>
-          </article>
-        ))}
+        {plans.length > 0 ? (
+          plans.slice(0, 4).map((plan) => {
+            const status = planStatusLabel(plan.status);
+            return (
+              <article className="pixel-plan-row" key={plan.id}>
+                <span className={`pixel-preview-icon ${plan.status === "completed" ? "success" : "voice"}`}>
+                  {plan.status === "completed" ? <IconSuccess /> : <IconBackend />}
+                </span>
+                <span>
+                  <strong>{plan.title}</strong>
+                  <small>{plan.summary || `${plan.steps.length} koraka`}</small>
+                </span>
+                <em className={status.tone}>{status.label}</em>
+              </article>
+            );
+          })
+        ) : (
+          <EmptyPreviewState title="Nema aktivnih planova" detail="Napravi novi plan kada želiš da Ricky prati zadatke." />
+        )}
       </div>
       <button className="pixel-full-history">Novi plan</button>
     </aside>
   );
 }
 
-function PrinciplesFooter() {
+function EmptyPreviewState({ title, detail }: { title: string; detail: string }) {
   return (
-    <footer className="pixel-principles">
-      <section>
-        <h3>STATUS INDIKATORI</h3>
-        <div className="pixel-status-grid">
-          <span><IconStatusReady /> Završeno / uspjeh</span>
-          <span><IconStatusRunning /> U toku / aktivno</span>
-          <span><IconWarning /> Pažnja / potvrda</span>
-          <span><IconStatusError /> Greška / opasno</span>
-          <span><IconBackend /> Planjeri pravopis</span>
-        </div>
-      </section>
-      <section>
-        <h3>KLJUČNI PRINCIPI PRIMIJENJENI</h3>
-        <div className="pixel-check-grid">
-          <span><IconSuccess /> Jedan sadržaj po ekranu (state machine)</span>
-          <span><IconSuccess /> Potvrda kao modal (neizbježna)</span>
-          <span><IconSuccess /> Jedan izvor istine za status</span>
-          <span><IconSuccess /> Warning boja samo za rizik</span>
-          <span><IconSuccess /> Editor fokus tokom diktiranja</span>
-          <span><IconSuccess /> Paneli dostupni po potrebi (drawers)</span>
-        </div>
-      </section>
-      <section className="pixel-responsive">
-        <h3>RESPONSIVE PRAVILA</h3>
-        <p>&lt; 1366px: drawers prioritet</p>
-        <p>&lt; 1024px: sidebar skriven</p>
-        <p>Modal uvijek na vrhu</p>
-      </section>
-      <RickyOrb voiceState="idle" size="small" />
-    </footer>
+    <div className="pixel-empty-preview">
+      <strong>{title}</strong>
+      <span>{detail}</span>
+    </div>
   );
+}
+
+function planStatusLabel(status: Plan["status"]): { label: string; tone: "active" | "pending" } {
+  switch (status) {
+    case "approved":
+    case "running":
+      return { label: "AKTIVAN", tone: "active" };
+    case "completed":
+      return { label: "ZAVRŠEN", tone: "active" };
+    case "rejected":
+    case "cancelled":
+      return { label: "OTKAZAN", tone: "pending" };
+    case "draft":
+      return { label: "NACRT", tone: "pending" };
+    case "proposed":
+    default:
+      return { label: "NA ČEKANJU", tone: "pending" };
+  }
 }
 
 function TopBar({
@@ -817,12 +824,14 @@ function TopBar({
   voiceState,
   onToggleMode,
   onOpenPlans,
+  onStopAll,
 }: {
   mode: RickyMode;
   screen: ScreenState;
   voiceState: VoiceState;
   onToggleMode: () => void;
   onOpenPlans: () => void;
+  onStopAll?: () => void;
 }) {
   return (
     <header className="pixel-top-bar">
@@ -846,8 +855,14 @@ function TopBar({
         </span>
       </div>
       <div className="pixel-top-actions">
+        {onStopAll ? (
+          <button className="pixel-top-stop-all" onClick={onStopAll} title="Zaustavi sve aktivnosti">
+            <IconStop />
+            Stop sve
+          </button>
+        ) : null}
         <button className={`pixel-mode-pill ${mode === "computer" ? "on" : ""}`} onClick={onToggleMode}>
-          Computer mode: {mode === "computer" ? "UKLJUČEN" : "ISKLJUČEN"}
+          Računarski režim: {mode === "computer" ? "UKLJUČEN" : "ISKLJUČEN"}
         </button>
         <button className="pixel-icon-button" title="Glas">
           <IconWave />
@@ -885,12 +900,6 @@ function IdleScreen({
   onOpenActivity: () => void;
   onQuickCommand: (text: string) => void;
 }) {
-  const activity = recentActivity.length > 0 ? recentActivity : [
-    createActivityEvent("tool", "Nacrt izvještaja spreman", "41 riječi"),
-    createActivityEvent("voice", "Otvoren dictation mode", "Auto-čuvanje uključeno"),
-    createActivityEvent("tool", "Screenshot snimljen", "ekran_2025-07-06_12-22.png"),
-  ];
-
   return (
     <div className="pixel-idle">
       <section className="pixel-hero">
@@ -925,21 +934,25 @@ function IdleScreen({
             <button onClick={onOpenActivity}>Prikaži sve</button>
           </header>
           <div className="pixel-list">
-            {activity.slice(0, 4).map((event) => {
-              const { Icon, className } = categoryForActivity(event);
-              return (
-                <article className="pixel-list-row" key={event.id}>
-                  <span className={`pixel-row-icon ${className}`}>
-                    <Icon />
-                  </span>
-                  <span>
-                    <strong>{event.title}</strong>
-                    {event.detail ? <small>{event.detail}</small> : null}
-                  </span>
-                  <time>{event.at}</time>
-                </article>
-              );
-            })}
+            {recentActivity.length > 0 ? (
+              recentActivity.slice(0, 4).map((event) => {
+                const { Icon, className } = categoryForActivity(event);
+                return (
+                  <article className="pixel-list-row" key={event.id}>
+                    <span className={`pixel-row-icon ${className}`}>
+                      <Icon />
+                    </span>
+                    <span>
+                      <strong>{event.title}</strong>
+                      {event.detail ? <small>{event.detail}</small> : null}
+                    </span>
+                    <time>{event.at}</time>
+                  </article>
+                );
+              })
+            ) : (
+              <EmptyPreviewState title="Nema aktivnosti" detail="Historija će se popuniti kada pokreneš glas ili alat." />
+            )}
           </div>
         </section>
         <section className="pixel-card pixel-command-card">
@@ -981,7 +994,7 @@ function DictationScreen({
     <section className="pixel-dictation">
       <header className="pixel-dictation-head">
         <div>
-          <span className="pixel-dictation-badge">DICTATION MODE</span>
+          <span className="pixel-dictation-badge">DIKTIRANJE</span>
           <span className="pixel-autosave">
             <span />
             auto-čuvanje uključeno
@@ -992,7 +1005,11 @@ function DictationScreen({
         </button>
       </header>
       <div className="pixel-editor-wrap">
-        <textarea value={text} onChange={(event) => onChange(event.target.value)} />
+        <textarea
+          value={text}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="Diktirani tekst će se pojaviti ovdje..."
+        />
         <span className="pixel-word-count">{wordCount} riječi</span>
       </div>
       <footer className="pixel-dictation-actions">

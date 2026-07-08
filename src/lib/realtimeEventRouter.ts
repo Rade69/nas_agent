@@ -19,27 +19,27 @@ export function routeRealtimeEvent(event: RealtimeRouterEvent): RoutedRealtimeEv
     case "error":
       return {
         voiceState: "error",
-        activity: createActivityEvent("error", "Realtime error", event.error?.message, rawType),
+        activity: createActivityEvent("error", "Realtime greška", event.error?.message, rawType),
       };
     case "input_audio_buffer.speech_started":
       return {
         voiceState: "listening",
-        activity: createActivityEvent("voice", "Speech started", undefined, rawType),
+        activity: createActivityEvent("voice", "Govor započet", undefined, rawType),
       };
     case "input_audio_buffer.speech_stopped":
       return {
         voiceState: "transcribing",
-        activity: createActivityEvent("voice", "Speech stopped", undefined, rawType),
+        activity: createActivityEvent("voice", "Govor završen", undefined, rawType),
       };
     case "conversation.item.input_audio_transcription.completed":
       return {
         voiceState: "thinking",
-        activity: createActivityEvent("transcript", "Final transcript", event.transcript, rawType),
+        activity: createActivityEvent("transcript", "Završen transkript", event.transcript, rawType),
       };
     case "response.created":
       return {
         voiceState: "thinking",
-        activity: createActivityEvent("status", "Response started", undefined, rawType),
+        activity: createActivityEvent("status", "Odgovor započet", undefined, rawType),
       };
     case "response.audio.delta":
     case "response.output_audio.delta":
@@ -48,17 +48,17 @@ export function routeRealtimeEvent(event: RealtimeRouterEvent): RoutedRealtimeEv
     case "response.audio.done":
       return {
         voiceState: "idle",
-        activity: createActivityEvent("voice", "Audio response completed", undefined, rawType),
+        activity: createActivityEvent("voice", "Glasovni odgovor završen", undefined, rawType),
       };
     case "response.done":
       return {
         voiceState: "idle",
-        activity: createActivityEvent("status", "Response completed", undefined, rawType),
+        activity: createActivityEvent("status", "Odgovor završen", undefined, rawType),
       };
     case "response.cancelled":
       return {
         voiceState: "interrupted",
-        activity: createActivityEvent("status", "Response interrupted", undefined, rawType),
+        activity: createActivityEvent("status", "Odgovor prekinut", undefined, rawType),
       };
     default:
       return {};

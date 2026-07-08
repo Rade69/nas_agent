@@ -101,8 +101,8 @@ export class RickyRealtimeClient {
     this.callbacks.onConnectionState("connecting");
     this.callbacks.onMood("thinking");
     this.callbacks.onVoiceState("thinking");
-    this.callbacks.onStatus("Minting a Realtime client secret.");
-    this.callbacks.onActivity(createActivityEvent("status", "Realtime session requested"));
+    this.callbacks.onStatus("Pripremam Realtime sesiju.");
+    this.callbacks.onActivity(createActivityEvent("status", "Realtime sesija zatražena"));
 
     try {
       this.toolSpecs = await window.ricky.getToolSpecs();
@@ -130,8 +130,8 @@ export class RickyRealtimeClient {
         this.callbacks.onConnectionState("connected");
         this.callbacks.onMood("idle");
         this.callbacks.onVoiceState("idle");
-        this.callbacks.onStatus("Ricky is live. Start talking naturally.");
-        this.callbacks.onActivity(createActivityEvent("status", "WebRTC connected"));
+        this.callbacks.onStatus("Ricky je uživo. Govori prirodno.");
+        this.callbacks.onActivity(createActivityEvent("status", "WebRTC povezan"));
         this.bumpIdleTimer();
       });
       dc.addEventListener("message", (event) => {
@@ -192,13 +192,13 @@ export class RickyRealtimeClient {
 
   sendText(text: string): void {
     if (!this.dc || this.dc.readyState !== "open") {
-      this.callbacks.onStatus("Connect Ricky before sending a text prompt.");
+      this.callbacks.onStatus("Poveži Rickyja prije slanja tekstualne poruke.");
       return;
     }
     this.bumpIdleTimer();
     this.callbacks.onTranscript(newEntry("user", text));
     this.callbacks.onVoiceState("thinking");
-    this.callbacks.onActivity(createActivityEvent("transcript", "Typed prompt", text));
+    this.callbacks.onActivity(createActivityEvent("transcript", "Tekstualna poruka", text));
     this.sendEvent({
       type: "conversation.item.create",
       item: {
@@ -291,19 +291,19 @@ export class RickyRealtimeClient {
       if (!knownTool) {
         await this.returnToolOutput(callId, {
           ok: false,
-          error: `Tool is not available: ${name}`,
+          error: `Alat nije dostupan: ${name}`,
         });
         shouldCreateResponse = true;
         continue;
       }
 
-      this.callbacks.onTranscript(newEntry("tool", `Running ${name}`));
-      this.callbacks.onActivity(createActivityEvent("tool", `Running ${name}`));
+      this.callbacks.onTranscript(newEntry("tool", `Izvršavam ${name}`));
+      this.callbacks.onActivity(createActivityEvent("tool", `Izvršavam ${name}`));
       if (name === "image_generate") {
         this.callbacks.onArtifact({
-          title: "Generating Image",
+          title: "Generisanje slike",
           kind: "imageLoading",
-          content: typeof parsedArgs.prompt === "string" ? parsedArgs.prompt : "Ricky is generating an image.",
+          content: typeof parsedArgs.prompt === "string" ? parsedArgs.prompt : "Ricky generiše sliku.",
         });
       }
       if (name === "thumbnail_generate" || name === "thumbnail_edit") {
@@ -332,12 +332,12 @@ export class RickyRealtimeClient {
           risk_level: risk as "low" | "medium" | "high" | "critical",
           tool_name: name,
         });
-        this.callbacks.onActivity(createActivityEvent("tool", `Waiting for approval: ${name}`));
+        this.callbacks.onActivity(createActivityEvent("tool", `Čekam potvrdu: ${name}`));
         this.callbacks.onVoiceState("waiting_confirmation");
         await this.returnToolOutput(callId, {
           ok: false,
           waiting_confirmation: true,
-          message: "I need your approval before I can do that. Please confirm in the dialog.",
+          message: "Potrebna je tvoja potvrda prije izvršenja. Potvrdi u dijalogu.",
         } as RickyToolResult);
         // continue, not return: this may not be the last function_call in the
         // batch (e.g. set_mode + computer_type_text in one turn) — returning
