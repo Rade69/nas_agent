@@ -1761,12 +1761,15 @@ registerIpcHandlers({
   "companion:toggle-lock": handleCompanionToggleLock,
 });
 
-// FAZA S-4: kill-switch hotkey fallback chain (user choice: F10 primary,
-// then F11, then Ctrl+Alt+K). globalShortcut.register returns false when the
-// accelerator is already taken, so we bind the first one that succeeds.
-const KILL_SWITCH_ACCELERATORS = ["F10", "F11", "CommandOrControl+Alt+K"];
+// FAZA S-4: global kill-switch hotkey. Ctrl+Alt+K only — F10/F11 were dropped
+// because Windows reserves them (menu bar / fullscreen) and swallows them
+// before a globalShortcut callback can fire, so they registered but never
+// triggered. The fast "Escape while focused" path lives in the renderer
+// (App.tsx); this global one covers the unfocused/minimized case.
+const KILL_SWITCH_ACCELERATORS = ["CommandOrControl+Alt+K"];
 
 function triggerKillSwitch() {
+  console.log("[kill-switch] TRIGGERED — stopping voice/mic and forcing display mode");
   // Force Computer Mode off so no acting tool can run post-stop.
   currentMode = "display";
   const win = getMainWindow && getMainWindow();
@@ -1776,18 +1779,24 @@ function triggerKillSwitch() {
 }
 
 function registerKillSwitch() {
+  const registered = [];
   for (const accelerator of KILL_SWITCH_ACCELERATORS) {
     try {
       if (globalShortcut.register(accelerator, triggerKillSwitch)) {
-        console.log(`[kill-switch] registered on ${accelerator}`);
-        return accelerator;
+        registered.push(accelerator);
+      } else {
+        console.warn(`[kill-switch] ${accelerator} is already taken by another app`);
       }
     } catch (error) {
       console.warn(`[kill-switch] could not register ${accelerator}:`, error);
     }
   }
-  console.warn("[kill-switch] no accelerator could be registered; kill-switch hotkey unavailable");
-  return null;
+  if (registered.length > 0) {
+    console.log(`[kill-switch] active on: ${registered.join(", ")}`);
+  } else {
+    console.warn("[kill-switch] no accelerator could be registered; kill-switch hotkey unavailable");
+  }
+  return registered;
 }
 
 app.whenReady().then(async () => {
