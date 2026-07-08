@@ -13,7 +13,9 @@
     "test": "cd python_backend && python -m pytest -q",
     "quality": "npm run typecheck && npm run check && npm run build && npm run test && npm run smoke",
     "package:dir": "npm run build && electron-builder --win --dir",
-    "package:win": "npm run build && electron-builder --win"
+    "package:win": "npm run build && electron-builder --win",
+    "ci": "npm ci",
+    "audit": "npm audit --omit=dev"
   },
   "keywords": [
     "electron",
