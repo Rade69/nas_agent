@@ -52,7 +52,7 @@ Legenda statusa: ✅ URAĐENO · 🟡 DJELIMIČNO · ❌ RUPA
 | S19 | Network egress allowlist | ❌ | Nema eksplicitne liste dozvoljenih domena na nivou aplikacije. |
 | S20 | Named pipe umjesto TCP | 🟡 | TCP 127.0.0.1 + token (prihvatljiv minimum). Named pipe je "nice-to-have", ne blokira. |
 | S21 | **API ključevi u OS keyring, ne plaintext** | ❌ | `config.py` čita iz `.env.local` (plaintext na disku). Nema `safeStorage`/DPAPI. |
-| S22 | Enkripcija baze (SQLCipher/file-level) | ❌ | `db.py` SQLite plaintext; transkripti/nacrti/historija nešifrovani. |
+| S22 | Enkripcija baze (SQLCipher/file-level) | 🟡 | **DJELIMIČNO (B3/O3, 2026-07-08).** `action_log` sad **redaktuje** osjetljiv payload (text/body/content/transcript/token…→`[REDACTED]`) prije upisa u `tool_runs` — plaintext-content leak zatvoren cross-platform. DB fajl dobija `0600` (pun na POSIX; Windows treba ACL). Puna enkripcija (SQLCipher) + Windows ACL ostaju follow-up. Report: `agent_reports/2026-07-08_faza-b3-payload-redaction.md`. |
 | S23 | Log hygiene (nema punog transkripta/base64 u logovima) | 🟡 | `logging.py` redaktuje TAJNE (ključeve, token), ali ne PII/transkript/screenshot. Treba audit `console.log`/`logger` poziva. |
 | S24 | Screenshot preview prije slanja modelu | 🟡 | Postoji artifact panel; treba potvrditi da se capture PRIKAZUJE prije slanja i da se aktivni prozor šalje umjesto cijelog ekrana. |
 | S25 | Privacy blacklist prozora (banking/pass mgr) | 🟡 | `DEFAULT_BLOCKED_APPS` blokira type/click u osjetljive procese, ALI screenshot/capture nema blacklist prozora; toast 2FA notifikacije nisu pokrivene. |

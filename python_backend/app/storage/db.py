@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
@@ -213,3 +214,12 @@ def initialize_database(settings: Settings) -> None:
         for table, column, definition in MIGRATIONS:
             _ensure_column(connection, table, column, definition)
         connection.commit()
+    # FAZA S-4 / B3: restrict the SQLite file to the owner. This is fully
+    # effective on POSIX; on Windows os.chmod only toggles the read-only bit and
+    # does NOT enforce owner-only ACLs — real Windows-at-rest protection
+    # (icacls ACLs and/or SQLCipher encryption) remains a B3 follow-up. Best
+    # effort: never let a chmod failure break startup.
+    try:
+        os.chmod(settings.database_path, 0o600)
+    except OSError:
+        pass
