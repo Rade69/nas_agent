@@ -547,6 +547,20 @@ const PHASE11_DELEGATED_TOOLS = new Set([
   "computer_get_element_text",
 ]);
 
+// FAZA S-4 fail-closed (audit R2, agent_reports/2026-07-07_pi-security-audit-d1-d2.md):
+// high-risk tools whose Python definitions set requires_confirmation=true. The
+// backend's permission_engine is the ONLY place a confirmation_id is verified;
+// the legacy PowerShell fallback cannot verify one (it runs precisely because
+// the backend is unavailable). So these must NEVER execute via the legacy path —
+// running them there would perform a confirmed-only action unconfirmed. They
+// fail closed instead, matching the S-4 "backend down => high-risk blocked" rule.
+const LEGACY_FAIL_CLOSED_TOOLS = new Set([
+  "computer_type_text",
+  "computer_click",
+  "computer_click_element",
+  "computer_set_text_element",
+]);
+
 // Adapt a Python ToolExecutionResponse into the legacy {ok, artifact, ...}
 // shape that App.tsx and the Realtime function-call flow expect. Python handlers
 // embed an `artifact` inside `result`; surface it so the artifact panel updates.
@@ -689,9 +703,31 @@ function handleCompanionToggle() {
   return { ok: true };
 }
 
+// Valid VoiceState values (mirror of src/lib/voiceState.ts VoiceState union).
+// Kept here so the main process can validate before forwarding to the companion
+// renderer without importing TS.
+const VALID_VOICE_STATES = new Set([
+  "idle",
+  "listening",
+  "transcribing",
+  "thinking",
+  "speaking",
+  "waiting_confirmation",
+  "interrupted",
+  "muted",
+  "error",
+]);
+
 // Main renderer -> main process -> companion renderer: forward VoiceState so
 // the orb can display it without running its own Realtime client.
+// FAZA S-4 (audit R3): validate against a fixed allowlist before forwarding.
+// The payload comes from the (potentially XSS-compromised) main renderer and is
+// pushed into a *second* renderer; only known state strings are allowed through
+// so an attacker can't smuggle an arbitrary object/markup across windows.
 function handleCompanionVoiceStateUpdate(_event, state) {
+  if (typeof state !== "string" || !VALID_VOICE_STATES.has(state)) {
+    return { ok: false, error: "Invalid voice state." };
+  }
   forwardVoiceStateToCompanion(state);
   return { ok: true };
 }
@@ -803,6 +839,18 @@ async function handleToolsExecute(_event, toolCall) {
           ok: false,
           error: `Tool '${name}' failed via Python backend and legacy fallback is disabled (${LEGACY_FLAG}=0): ${error instanceof Error ? error.message : error}`,
           errorCode: "PYTHON_FAILED_LEGACY_DISABLED",
+        };
+      }
+      // FAZA S-4 fail-closed (audit R2): even with legacy enabled, high-risk
+      // confirmation-required tools must NOT run through the legacy path, which
+      // cannot verify the approved confirmation_id the backend would require.
+      // Blocking here keeps a backend outage from turning into unconfirmed
+      // keystrokes/clicks.
+      if (LEGACY_FAIL_CLOSED_TOOLS.has(name)) {
+        return {
+          ok: false,
+          error: `Tool '${name}' requires an approved confirmation, which only the Python backend can verify. The backend is unavailable, so it will not run via the unconfirmed legacy fallback.`,
+          errorCode: "HIGH_RISK_LEGACY_BLOCKED",
         };
       }
       // Fall through to legacy handler below — keeps the app working if the
