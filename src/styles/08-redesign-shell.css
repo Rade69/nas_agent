@@ -1,0 +1,715 @@
+.confirmation-icon-svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ========================================================================
+   FAZA 19+ UI REDESIGN — Dark premium voice-first shell
+   ======================================================================== */
+
+:root {
+  --bg-root: #080B10;
+  --bg-panel: #11161D;
+  --bg-panel2: #151B24;
+  --bg-panel3: #0D1117;
+  --border: #263241;
+  --border-soft: #1C2530;
+  --primary: #3EA6FF;
+  --primary-dark: #1877D2;
+  --primary-soft: #9DDCFF;
+  --text-main: #F4F7FB;
+  --text-secondary: #C9D3DF;
+  --text-muted: #8D9AAA;
+  --success: #22C55E;
+  --warning: #F5A524;
+  --high-risk: #F97316;
+  --danger: #EF4444;
+  --critical: #DC2626;
+  --input-bg: #111821;
+  --button-bg: #17212C;
+  --button-hover: #1E2B38;
+}
+
+/* ---- New app layout ---- */
+
+.app-shell-redesign {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  grid-template-rows: 48px 1fr 52px;
+  height: 100vh;
+  background: var(--bg-root);
+  color: var(--text-main);
+}
+
+/* ---- Sidebar ----
+   Structural: the top bar spans the FULL width (grid-column 1/3) and the
+   sidebar sits BELOW it (grid-row 2/4), matching GUI-SET-1.png where
+   "Ricky ● Spreman" is a single full-width header above the nav rail. */
+
+.sidebar {
+  grid-column: 1;
+  grid-row: 2 / 4;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  padding: 8px;
+  gap: 2px;
+}
+
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px 14px;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.03em;
+  color: var(--text-main);
+}
+
+.sidebar-brand svg {
+  color: var(--primary);
+}
+
+.sidebar-logo-icon {
+  width: 19px;
+  height: 19px;
+}
+
+.sidebar-item-icon {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+}
+
+.sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  font-weight: 500;
+  background: transparent;
+  transition: background 140ms ease, color 140ms ease;
+  cursor: pointer;
+  border: none;
+}
+
+.sidebar-item:hover {
+  background: var(--bg-panel2);
+  color: var(--text-main);
+}
+
+.sidebar-item.active {
+  background: rgba(62, 166, 255, 0.1);
+  color: var(--primary);
+}
+
+.sidebar-footer {
+  padding: 8px 12px;
+  font-size: 11px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-soft);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-footer-version {
+  color: var(--text-muted);
+}
+
+.sidebar-footer-backend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sidebar-backend-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+.sidebar-backend-dot.connected { background: var(--success); }
+.sidebar-backend-dot.disconnected { background: var(--danger); }
+
+/* ---- Top Bar ---- */
+
+.top-bar {
+  grid-column: 1 / 3;
+  grid-row: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+
+.top-bar-spacer {
+  flex: 1;
+}
+
+.top-bar-logo {
+  width: 20px;
+  height: 20px;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.top-bar-brand {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-main);
+  letter-spacing: -0.03em;
+  margin-right: 12px;
+}
+
+.top-bar-btn-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.idle-cta-icon {
+  width: 22px;
+  height: 22px;
+  color: #fff;
+}
+
+.voice-state-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.voice-state-pill .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.voice-state-idle       { background: rgba(62,166,255,0.1); color: var(--primary); }
+.voice-state-listening  { background: rgba(62,166,255,0.18); color: var(--primary-soft); }
+.voice-state-thinking   { background: rgba(139,92,246,0.14); color: #A78BFA; }
+.voice-state-speaking   { background: rgba(34,197,94,0.14); color: var(--success); }
+.voice-state-waiting_confirmation,
+.voice-state-interrupted { background: rgba(245,165,36,0.14); color: var(--warning); }
+.voice-state-muted      { background: rgba(141,154,170,0.14); color: var(--text-muted); }
+.voice-state-error      { background: rgba(239,68,68,0.14); color: var(--danger); }
+
+.voice-state-idle       .dot { background: var(--primary); }
+.voice-state-listening  .dot { background: var(--primary-soft); animation: dot-pulse 1.2s infinite; }
+.voice-state-thinking   .dot { background: #A78BFA; animation: dot-pulse 1.5s infinite; }
+.voice-state-speaking   .dot { background: var(--success); }
+.voice-state-waiting_confirmation .dot,
+.voice-state-interrupted .dot { background: var(--warning); }
+.voice-state-muted      .dot { background: var(--text-muted); }
+.voice-state-error      .dot { background: var(--danger); }
+
+@keyframes dot-pulse {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.4); }
+}
+
+.computer-mode-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: 1px solid;
+  transition: all 140ms ease;
+}
+
+.computer-mode-pill.off {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: var(--border-soft);
+}
+
+.computer-mode-pill.on {
+  background: rgba(239,68,68,0.14);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* ---- Top bar window controls ---- */
+
+.top-bar-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.top-bar-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  background: transparent;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.top-bar-btn:hover {
+  background: var(--bg-panel2);
+  color: var(--text-main);
+}
+
+.top-bar-btn.close:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+/* ---- Main content area ---- */
+
+.main-content {
+  position: relative;
+  grid-column: 2;
+  grid-row: 2 / 4;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-root);
+}
+
+/* ---- Drawer overlay (Activity/Plans/Memory/Snimci/Postavke) ----
+   Mockup principle: "Jedan sadržaj po ekranu (state machine)" +
+   "Paneli dostupni po potrebi (drawers)" — see GUI-SET-4.png/GUI-SET-5.png.
+   The drawer floats over the current screen (sidebar stays reachable to
+   switch/close it) instead of replacing main-content like a router tab. */
+
+.drawer-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 8, 16, 0.55);
+  display: flex;
+  justify-content: flex-end;
+  padding: 20px;
+  z-index: 20;
+  animation: drawer-fade-in 160ms ease-out;
+}
+
+.drawer-panel {
+  width: min(420px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel, #0e1420);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+  overflow: hidden;
+  animation: drawer-slide-in 200ms ease-out;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-shrink: 0;
+}
+
+.drawer-header strong {
+  font-size: 15px;
+}
+
+.drawer-close {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.drawer-close:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-main);
+}
+
+.drawer-close-icon {
+  width: 13px;
+  height: 13px;
+}
+
+.drawer-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  padding: 4px 0;
+}
+
+.drawer-placeholder-text {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 16px 18px;
+}
+
+@keyframes drawer-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes drawer-slide-in {
+  from { transform: translateX(16px); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* ---- Idle / Ready screen ---- */
+
+.idle-screen {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 24px;
+  padding: 32px;
+  overflow: auto;
+}
+
+.idle-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+}
+
+.idle-headline {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-main);
+  letter-spacing: -0.03em;
+}
+
+.idle-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.idle-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  cursor: pointer;
+  border: none;
+  transition: background 140ms ease, transform 140ms ease;
+  box-shadow: 0 0 30px rgba(62,166,255,0.45);
+}
+
+.idle-cta:hover {
+  background: var(--primary-dark);
+  transform: scale(1.06);
+}
+
+.idle-cta.stop {
+  background: var(--danger);
+  box-shadow: 0 0 24px rgba(239,68,68,0.35);
+}
+
+.idle-cta.stop:hover {
+  background: var(--critical);
+}
+
+.idle-right {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.idle-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+/* Sentence-case header matching GUI-SET-1.png ("Zadnja aktivnost" /
+   "Brze komande") — was ALL-CAPS letterspaced, which the mockup does not use. */
+.idle-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 10px;
+}
+
+.idle-card h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+  letter-spacing: -0.01em;
+}
+
+.idle-card-link {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--primary);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.idle-card-link:hover {
+  color: var(--primary-soft);
+}
+
+.idle-card ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.idle-card li {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.idle-activity-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.idle-activity-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.idle-activity-text {
+  color: var(--text-main);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.idle-activity-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.idle-activity-time {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  align-self: flex-start;
+}
+
+.idle-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.activity-empty {
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 8px 4px;
+}
+
+/* "Prikaži cijelu historiju" footer button — GUI-SET-4.png */
+.activity-history-btn {
+  margin: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 120ms ease;
+}
+
+.activity-history-btn:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-main);
+}
+
+.activity-icon-sm {
+  width: 20px;
+  height: 20px;
+}
+
+.activity-icon-sm .activity-icon-svg {
+  width: 11px;
+  height: 11px;
+}
+
+.idle-card .cmd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--primary-soft);
+  transition: color 120ms ease;
+}
+
+.idle-card .cmd:hover {
+  color: var(--primary);
+}
+
+.cmd-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* ---- Dictation screen ---- */
+
+.dictation-screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 32px;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.dictation-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dictation-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.dictation-badge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(62,166,255,0.12);
+  color: var(--primary);
+}
+
+.dictation-editor {
+  flex: 1;
+  width: 100%;
+  padding: 16px;
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-main);
+  font-size: 15px;
+  line-height: 1.65;
+  resize: none;
+  font-family: inherit;
+}
+
+.dictation-editor:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.dictation-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.dictation-actions .spacer {
+  flex: 1;
+}
+
+.btn-primary {
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+.btn-primary:hover {
+  background: var(--primary-dark);
+}
+
+.btn-secondary {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  background: var(--button-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-soft);
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.btn-secondary:hover {
+  background: var(--button-hover);
+  color: var(--text-main);
+}
+
+.btn-danger {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(239,68,68,0.12);
+  color: var(--danger);
+  border: 1px solid rgba(239,68,68,0.25);
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.btn-danger:hover {
+  background: rgba(239,68,68,0.22);
+}
+

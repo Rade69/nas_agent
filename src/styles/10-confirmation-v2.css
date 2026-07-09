@@ -1,0 +1,152 @@
+/* ---- Confirmation modal restyle ---- */
+
+.confirmation-overlay-v2 {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  display: grid;
+  place-items: center;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(4px);
+  animation: overlay-in 200ms ease;
+}
+
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.confirmation-modal {
+  width: min(480px, calc(100vw - 48px));
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+  animation: modal-in 240ms ease;
+}
+
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.confirmation-modal h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.confirmation-modal .subtitle {
+  margin: 0 0 20px;
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+
+.confirmation-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.confirmation-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.confirmation-row .label {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.confirmation-row .value {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.risk-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.risk-badge.low      { background: rgba(34,197,94,0.12); color: var(--success); }
+.risk-badge.medium   { background: rgba(62,166,255,0.12); color: var(--primary); }
+.risk-badge.high     { background: rgba(249,115,22,0.14); color: var(--high-risk); }
+.risk-badge.critical { background: rgba(220,38,38,0.14); color: var(--critical); }
+
+.confirmation-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ---- Bottom voice bar ---- */
+
+.bottom-voice-bar {
+  grid-column: 2;
+  grid-row: 3;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-root);
+}
+
+.bottom-voice-status-text {
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 120px;
+}
+
+.bottom-voice-input {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bottom-voice-input input {
+  flex: 1;
+  padding: 7px 12px;
+  border-radius: 8px;
+  background: var(--input-bg);
+  border: 1px solid var(--border-soft);
+  color: var(--text-main);
+  font-size: 13px;
+}
+
+.bottom-voice-input input:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.bottom-voice-input input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ---- Layout for panels inside main-content (non-idle/dictation) ---- */
+
+.main-content-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  padding: 20px 24px;
+}
+
+.main-content-panel h3 {
+  margin: 0 0 14px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-main);
+}

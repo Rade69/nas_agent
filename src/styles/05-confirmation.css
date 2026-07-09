@@ -1,0 +1,195 @@
+/* ============================================================
+   FAZA 9 — Confirmation dialog + Plans panel
+   Context: agent_reports/2026-07-05_faza9-confirmations-plans.md
+   ============================================================ */
+
+.confirmation-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  background: rgba(4, 6, 10, 0.62);
+  backdrop-filter: blur(4px);
+  -webkit-app-region: no-drag;
+}
+
+.confirmation-dialog {
+  width: min(440px, 92vw);
+  background: #0d1117;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  padding: 18px 18px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.confirmation-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.confirmation-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 178, 62, 0.14);
+  color: #ffb23e;
+}
+
+.confirmation-title-block {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.confirmation-title-block strong {
+  font-size: 14px;
+  letter-spacing: 0.2px;
+}
+
+.confirmation-title-block small {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.confirmation-close {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+}
+
+.confirmation-close:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.confirmation-body {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.confirmation-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.confirmation-row-payload {
+  align-items: stretch;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.confirmation-label {
+  flex: 0 0 78px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.confirmation-value {
+  flex: 1;
+  word-break: break-word;
+}
+
+.confirmation-mono {
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+  font-size: 12px;
+}
+
+.confirmation-payload {
+  margin: 0;
+  padding: 9px 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+  font-size: 12px;
+  font-family: ui-monospace, "Cascadia Code", "SF Mono", monospace;
+  color: rgba(255, 255, 255, 0.82);
+  max-height: 160px;
+  overflow: auto;
+}
+
+.confirmation-risk-pill {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+}
+
+.confirmation-risk-low {
+  background: rgba(89, 239, 161, 0.14);
+  color: #59efa1;
+}
+
+.confirmation-risk-medium {
+  background: rgba(125, 223, 255, 0.14);
+  color: #7ddfff;
+}
+
+.confirmation-risk-high {
+  background: rgba(255, 178, 62, 0.16);
+  color: #ffb23e;
+}
+
+.confirmation-risk-critical {
+  background: rgba(255, 91, 114, 0.16);
+  color: #ff5b72;
+}
+
+.confirmation-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.confirmation-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 600;
+  transition: background 0.12s ease, opacity 0.12s ease;
+}
+
+.confirmation-reject {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.confirmation-reject:hover:not(:disabled) {
+  background: rgba(255, 91, 114, 0.18);
+  color: #ff8197;
+}
+
+.confirmation-approve {
+  background: rgba(89, 239, 161, 0.16);
+  color: #7df0a8;
+}
+
+.confirmation-approve:hover:not(:disabled) {
+  background: rgba(89, 239, 161, 0.28);
+}
+
+.confirmation-hint {
+  margin: 0;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 1.4;
+}

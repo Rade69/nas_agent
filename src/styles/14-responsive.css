@@ -1,0 +1,27 @@
+@media (max-width: 1366px) {
+  .pixel-mockup-board {
+    grid-template-rows: minmax(0, 59fr) minmax(0, 41fr);
+  }
+
+  .pixel-window-idle .pixel-idle {
+    grid-template-columns: minmax(210px, 1fr) 188px;
+    gap: 8px;
+  }
+
+  .pixel-window-idle .pixel-hero .ricky-orb {
+    width: 188px;
+    height: 188px;
+  }
+
+  .pixel-section-label h2 {
+    font-size: 16px;
+  }
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}

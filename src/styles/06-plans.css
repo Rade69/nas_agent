@@ -1,0 +1,316 @@
+/* Plans panel */
+.plans-toggle-button {
+  position: absolute;
+  right: 14px;
+  bottom: 76px;
+  z-index: 90;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.plans-toggle-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.plans-toggle-button.active {
+  background: rgba(125, 223, 255, 0.18);
+  color: #cdeeff;
+}
+
+.plans-panel {
+  /* Renders inside the generic .drawer-panel (App.tsx activeDrawer overlay),
+     which already provides the card background/border/radius — this just
+     needs to fill that drawer's body area. */
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.plans-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 10px 0;
+}
+
+.plans-tab {
+  flex: 1;
+  padding: 7px 0;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.plans-tab.active {
+  background: rgba(62, 166, 255, 0.14);
+  color: var(--primary);
+}
+
+.plans-tab:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+}
+
+.plans-list {
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plans-empty {
+  margin: 16px 8px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 12px;
+}
+
+.plan-card {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 10px 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plan-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.plan-card-header strong {
+  font-size: 13px;
+}
+
+.plan-card-titles {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.plan-card-titles .plan-summary {
+  margin: 0;
+}
+
+.plan-badge {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+}
+
+.plan-badge-active {
+  background: rgba(89, 239, 161, 0.16);
+  color: var(--success);
+}
+
+.plan-badge-pending {
+  background: rgba(245, 165, 36, 0.16);
+  color: var(--warning);
+}
+
+.plan-badge-done {
+  background: rgba(89, 239, 161, 0.16);
+  color: var(--success);
+}
+
+.plan-badge-rejected {
+  background: rgba(239, 68, 68, 0.14);
+  color: var(--danger);
+}
+
+.plans-new-btn {
+  margin: 8px;
+  padding: 10px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid var(--border-soft);
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.plans-new-btn:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text-main);
+}
+
+.plan-status-pill {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.plan-status-proposed {
+  background: rgba(125, 223, 255, 0.14);
+  color: #7ddfff;
+}
+
+.plan-status-draft {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.plan-status-approved {
+  background: rgba(89, 239, 161, 0.14);
+  color: #59efa1;
+}
+
+.plan-status-running {
+  background: rgba(255, 178, 62, 0.14);
+  color: #ffb23e;
+}
+
+.plan-status-completed {
+  background: rgba(89, 239, 161, 0.18);
+  color: #59efa1;
+}
+
+.plan-status-rejected {
+  background: rgba(255, 91, 114, 0.14);
+  color: #ff8197;
+}
+
+.plan-status-cancelled {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.plan-summary {
+  margin: 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.4;
+}
+
+.plan-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.plan-step {
+  display: grid;
+  grid-template-columns: 18px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 12px;
+}
+
+.plan-step-index {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.plan-step-title {
+  word-break: break-word;
+}
+
+.plan-step-status {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.plan-step-completed .plan-step-status {
+  color: #59efa1;
+}
+
+.plan-step-in_progress .plan-step-status {
+  color: #ffb23e;
+}
+
+.plan-step-failed .plan-step-status {
+  color: #ff8197;
+}
+
+.plan-step-advance {
+  background: rgba(89, 239, 161, 0.14);
+  color: #59efa1;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+}
+
+.plan-step-advance:hover:not(:disabled) {
+  background: rgba(89, 239, 161, 0.26);
+}
+
+.plan-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.plan-action {
+  padding: 5px 10px;
+  border-radius: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.plan-action:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.plan-approve {
+  background: rgba(89, 239, 161, 0.16);
+  color: #7df0a8;
+}
+
+.plan-run {
+  background: rgba(125, 223, 255, 0.16);
+  color: #9ee9ff;
+}
+
+.plan-complete {
+  background: rgba(89, 239, 161, 0.2);
+  color: #7df0a8;
+}
+
+.plan-reject {
+  background: rgba(255, 91, 114, 0.14);
+  color: #ff8197;
+}

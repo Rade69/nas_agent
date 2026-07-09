@@ -1,0 +1,255 @@
+/* ---- Ricky Orb (FAZA 19+ redesign — branding assets) ---- */
+
+.ricky-orb {
+  /* Sized to dominate the idle-screen center like GUI-SET-1.png. The
+     ricky-orb-main.png asset carries its own jagged aura/glow, so the orb
+     reads as the hero element at this size. */
+  position: relative;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+  width: 300px;
+  height: 300px;
+  pointer-events: auto;
+}
+
+.ricky-orb-small {
+  width: 80px;
+  height: 80px;
+}
+
+.ricky-orb-floating {
+  width: 84px;
+  height: 84px;
+  opacity: 0.78;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease,
+    filter 180ms ease;
+}
+
+.ricky-orb-floating:hover {
+  opacity: 1;
+  transform: scale(1.04);
+}
+
+.ricky-orb-img {
+  position: relative;
+  z-index: 4;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter:
+    drop-shadow(0 0 16px rgba(62, 166, 255, 0.4))
+    drop-shadow(0 0 36px rgba(62, 166, 255, 0.16));
+}
+
+/* ---- Triple-ring voice system (RICKY_ORB_ANIMATION_PLAN.md §6) ---- */
+
+.ricky-orb__ring {
+  position: absolute;
+  inset: 12%;
+  border-radius: 50%;
+  border: 1px solid rgba(91, 209, 255, 0.35);
+  z-index: 1;
+  pointer-events: none;
+  transition: border-color 400ms ease, box-shadow 400ms ease;
+}
+
+.ricky-orb__ring--outer {
+  inset: 1%;
+  border-color: rgba(62, 166, 255, 0.22);
+  box-shadow:
+    0 0 22px rgba(62, 166, 255, 0.22),
+    inset 0 0 22px rgba(62, 166, 255, 0.1);
+}
+
+.ricky-orb__ring--middle {
+  inset: 8%;
+  border-color: rgba(157, 220, 255, 0.32);
+  box-shadow:
+    0 0 18px rgba(62, 166, 255, 0.22),
+    inset 0 0 18px rgba(157, 220, 255, 0.1);
+}
+
+.ricky-orb__ring--inner {
+  inset: 18%;
+  border-color: rgba(126, 246, 255, 0.25);
+  box-shadow:
+    0 0 14px rgba(126, 246, 255, 0.24),
+    inset 0 0 14px rgba(126, 246, 255, 0.1);
+}
+
+/* ---- Per-state animation (idle = calm breathe) ---- */
+
+.ricky-orb--idle .ricky-orb__ring--outer {
+  animation: ricky-idle-breathe 3.8s ease-in-out infinite;
+}
+
+.ricky-orb--idle .ricky-orb__ring--middle {
+  animation: ricky-idle-breathe 4.4s ease-in-out infinite reverse;
+}
+
+.ricky-orb--idle .ricky-orb-img {
+  animation: ricky-soft-float 5s ease-in-out infinite;
+}
+
+/* listening = active ring, stronger cyan glow */
+
+.ricky-orb--listening .ricky-orb__ring--outer {
+  border-color: rgba(91, 209, 255, 0.55);
+  animation: ricky-listening-pulse 1.25s ease-in-out infinite;
+}
+
+.ricky-orb--listening .ricky-orb__ring--middle {
+  border-color: rgba(126, 246, 255, 0.45);
+  animation: ricky-listening-pulse 0.95s ease-in-out infinite reverse;
+}
+
+.ricky-orb--listening .ricky-orb-img {
+  filter:
+    drop-shadow(0 0 22px rgba(62, 166, 255, 0.65))
+    drop-shadow(0 0 48px rgba(126, 246, 255, 0.2));
+}
+
+/* thinking = slow glow + gentle orbit, less audio-like */
+
+.ricky-orb--thinking .ricky-orb__ring--outer {
+  border-color: rgba(116, 104, 255, 0.35);
+  animation: ricky-thinking-orbit 3.2s ease-in-out infinite;
+}
+
+.ricky-orb--thinking .ricky-orb__ring--middle {
+  border-color: rgba(62, 166, 255, 0.28);
+  animation: ricky-thinking-pulse 2.4s ease-in-out infinite;
+}
+
+/* speaking = liveliest, multi-tempo voice pulse */
+
+.ricky-orb--speaking .ricky-orb__ring--outer {
+  border-color: rgba(91, 209, 255, 0.65);
+  animation: ricky-speaking-wave 0.9s ease-in-out infinite;
+}
+
+.ricky-orb--speaking .ricky-orb__ring--middle {
+  border-color: rgba(159, 122, 255, 0.5);
+  animation: ricky-speaking-wave 0.72s ease-in-out infinite reverse;
+}
+
+.ricky-orb--speaking .ricky-orb__ring--inner {
+  border-color: rgba(126, 246, 255, 0.5);
+  animation: ricky-speaking-inner 0.55s ease-in-out infinite;
+}
+
+.ricky-orb--speaking .ricky-orb-img {
+  animation: ricky-speaking-image 0.9s ease-in-out infinite;
+}
+
+/* warning = calm, must not steal focus from confirmation modal */
+
+.ricky-orb--warning .ricky-orb__ring--outer {
+  border-color: rgba(245, 165, 36, 0.55);
+  box-shadow:
+    0 0 20px rgba(245, 165, 36, 0.22),
+    inset 0 0 20px rgba(245, 165, 36, 0.1);
+  animation: ricky-warning-pulse 1.8s ease-in-out infinite;
+}
+
+/* error = visible but short, not infinitely aggressive */
+
+.ricky-orb--error .ricky-orb__ring--outer {
+  border-color: rgba(239, 68, 68, 0.65);
+  box-shadow:
+    0 0 22px rgba(239, 68, 68, 0.25),
+    inset 0 0 22px rgba(239, 68, 68, 0.1);
+  animation: ricky-error-pulse 0.55s ease-in-out 3;
+}
+
+/* muted = Ricky not listening */
+
+.ricky-orb--muted {
+  opacity: 0.52;
+  filter: grayscale(0.45);
+}
+
+.ricky-orb--muted .ricky-orb__ring {
+  animation: none;
+  border-color: rgba(141, 154, 170, 0.22);
+  box-shadow: none;
+}
+
+@keyframes ricky-idle-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.55; }
+  50% { transform: scale(1.035); opacity: 0.85; }
+}
+
+@keyframes ricky-soft-float {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-2px) scale(1.01); }
+}
+
+@keyframes ricky-listening-pulse {
+  0%, 100% { transform: scale(0.98); opacity: 0.55; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+@keyframes ricky-thinking-orbit {
+  0%, 100% { transform: rotate(0deg) scale(1); opacity: 0.48; }
+  50% { transform: rotate(6deg) scale(1.045); opacity: 0.82; }
+}
+
+@keyframes ricky-thinking-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.45; }
+  50% { transform: scale(1.06); opacity: 0.72; }
+}
+
+@keyframes ricky-speaking-wave {
+  0%, 100% { transform: scale(0.96); opacity: 0.48; }
+  35% { transform: scale(1.1); opacity: 0.95; }
+  65% { transform: scale(1.03); opacity: 0.72; }
+}
+
+@keyframes ricky-speaking-inner {
+  0%, 100% { transform: scale(1); opacity: 0.45; }
+  50% { transform: scale(1.12); opacity: 0.9; }
+}
+
+@keyframes ricky-speaking-image {
+  0%, 100% {
+    transform: scale(1);
+    filter:
+      drop-shadow(0 0 18px rgba(62, 166, 255, 0.55))
+      drop-shadow(0 0 40px rgba(126, 246, 255, 0.2));
+  }
+  50% {
+    transform: scale(1.025);
+    filter:
+      drop-shadow(0 0 26px rgba(62, 166, 255, 0.8))
+      drop-shadow(0 0 58px rgba(126, 246, 255, 0.28));
+  }
+}
+
+@keyframes ricky-warning-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.58; }
+  50% { transform: scale(1.04); opacity: 0.9; }
+}
+
+@keyframes ricky-error-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.045); }
+}
+
+/* Accessibility — respect OS reduced-motion preference (plan §9) */
+
+@media (prefers-reduced-motion: reduce) {
+  .ricky-orb,
+  .ricky-orb *,
+  .ricky-orb::before,
+  .ricky-orb::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+

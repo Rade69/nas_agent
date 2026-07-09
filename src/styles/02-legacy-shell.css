@@ -1,0 +1,293 @@
+.artifact-panel {
+  /* Explicit grid placement is required here: .app-shell-redesign's grid only
+     defines 2 columns x 3 rows, and every cell is already explicitly claimed
+     (sidebar, top-bar, main-content). Without this, the grid auto-placement
+     algorithm creates an implicit new row to fit this panel, which shrinks
+     the 1fr main-content row down to near-zero height (the idle screen's
+     headline/CTA/input all became invisible because their container
+     collapsed) and visually shoves this panel into the sidebar's column.
+     Sharing main-content's exact cell makes it overlay in place instead. */
+  grid-column: 2;
+  grid-row: 2 / 4;
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+  background: #0b0c12;
+}
+
+.artifact-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 76px;
+  padding: 22px 52px 22px 28px;
+}
+
+.artifact-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+}
+
+.entry p,
+.empty-artifact p {
+  margin: 0;
+  color: #a6abb9;
+}
+
+.face-stage {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  min-height: 0;
+  padding: 18px;
+}
+
+.face {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: clamp(420px, 43vw, 720px);
+  height: clamp(420px, 43vw, 720px);
+  border-radius: 999px;
+  background: #08090d;
+  border: clamp(8px, 1.1vw, 16px) solid rgba(86, 189, 255, 0.82);
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.app-shell-mini .face {
+  width: min(154px, calc(100vw - 28px));
+  height: min(154px, calc(100vh - 28px));
+  border-width: 5px;
+  background: rgba(8, 9, 13, 0.62);
+  backdrop-filter: blur(14px);
+}
+
+.app-shell-mini .face::after {
+  inset: 7px;
+}
+
+.app-shell-mini .eye-row {
+  gap: 24px;
+  transform: translateY(-14px);
+}
+
+.app-shell-mini .eye {
+  width: 24px;
+  height: 32px;
+}
+
+.app-shell-mini .eye span {
+  inset: 24% 31% 32%;
+}
+
+.app-shell-mini .mouth-wrap {
+  bottom: 24%;
+  width: 76px;
+  height: 42px;
+}
+
+.app-shell-mini .mouth {
+  width: calc(42px + (var(--mouth-width) * 28px) - (var(--mouth-round) * 12px));
+  height: calc(3px + (var(--mouth-open) * 15px));
+}
+
+.app-shell-mini .mouth-teeth {
+  width: calc(22px + (var(--mouth-width) * 16px));
+  height: 2px;
+}
+
+.app-shell-mini .face-speaking .mouth {
+  width: calc(44px + (var(--mouth-width) * 30px) - (var(--mouth-round) * 14px));
+  height: calc(3px + (var(--mouth-open) * 17px));
+}
+
+.face::after {
+  content: "";
+  position: absolute;
+  inset: 18px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+}
+
+.eye-row {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  gap: clamp(60px, 8vw, 112px);
+  transform: translateY(-42px);
+  animation: eye-look-row 6.5s infinite ease-in-out;
+}
+
+.eye {
+  position: relative;
+  width: clamp(68px, 6vw, 92px);
+  height: clamp(78px, 6.8vw, 108px);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #f8fbff, #88e9ff);
+  box-shadow: none;
+  animation: blink 4.6s infinite;
+  overflow: hidden;
+}
+
+.eye span {
+  position: absolute;
+  inset: 24% 30% 32%;
+  border-radius: 999px;
+  background: #071019;
+  opacity: 0.82;
+  animation: pupil-look 6.5s infinite ease-in-out;
+}
+
+.face-thinking .eye,
+.face-working .eye {
+  transform: scaleY(0.72);
+}
+
+.face-error .eye {
+  background: linear-gradient(180deg, #fff5f7, #ff5b72);
+}
+
+.mouth-wrap {
+  position: absolute;
+  z-index: 2;
+  bottom: 24%;
+  display: grid;
+  place-items: center;
+  width: 240px;
+  height: 112px;
+  filter: none;
+}
+
+.mouth {
+  position: relative;
+  width: calc(96px + (var(--mouth-width) * 92px) - (var(--mouth-round) * 34px));
+  height: calc(5px + (var(--mouth-open) * 44px));
+  transform-origin: center;
+  transition: width 55ms linear, height 55ms linear, transform 55ms linear;
+  transform: translateY(calc(var(--mouth-open) * -5px)) scaleX(calc(1 - (var(--mouth-round) * 0.28)));
+}
+
+.mouth-line {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: calc(999px - (var(--mouth-round) * 400px));
+  background: #dff8ff;
+  transform: scaleY(calc(0.35 + (var(--mouth-open) * 0.9)));
+}
+
+.mouth-teeth {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 18%;
+  width: calc(52px + (var(--mouth-width) * 44px));
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  opacity: var(--mouth-teeth);
+  transform: translateX(-50%);
+}
+
+.face-speaking .mouth {
+  width: calc(104px + (var(--mouth-width) * 104px) - (var(--mouth-round) * 42px));
+  height: calc(5px + (var(--mouth-open) * 52px));
+}
+
+.mood-row span,
+.eyebrow {
+  color: #7ddfff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.bottom-console {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  padding: 12px 28px 18px;
+}
+
+.prompt-box {
+  display: grid;
+  width: min(380px, 100%);
+  grid-template-columns: 1fr 34px;
+  gap: 6px;
+}
+
+.prompt-box input {
+  width: 100%;
+  min-height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 7px;
+  outline: 0;
+  color: #f8f9ff;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.prompt-box input:focus {
+  border-color: rgba(125, 223, 255, 0.45);
+}
+
+.prompt-box button,
+.simple-button,
+.artifact-actions button,
+.artifact-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  border-radius: 7px;
+  color: #e8ebf5;
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition:
+    background 160ms ease,
+    border 160ms ease,
+    color 160ms ease;
+}
+
+.prompt-box button:hover,
+.simple-button:hover,
+.artifact-actions button:hover,
+.artifact-tab:hover {
+  background: rgba(255, 255, 255, 0.105);
+}
+
+.control-strip {
+  display: grid;
+  width: max-content;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.simple-button {
+  width: 34px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+}
+
+.simple-button.active {
+  color: #081015;
+  background: #e8f8ff;
+  border-color: #e8f8ff;
+}
+
+.simple-button.danger.active {
+  color: #fff;
+  background: #8f3546;
+  border-color: #a84758;
+}
