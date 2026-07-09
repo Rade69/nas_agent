@@ -10,7 +10,7 @@
 
 | Fajl | Linije | Status | Redoslijed |
 |---|---|---|---|
-| `electron/main.cjs` | 1922 | 🔒 Codex nekomitovan | R2 (poslije Codexa) |
+| `electron/main.cjs` | 1922→923 | ✅ **R2a/R2b/R2c ZAVRŠENI** (toolSpecs `9322064`; legacyDb.cjs; legacyMedia.cjs — Claude verifikovao). R2d/R2e odgođeni | R2 |
 | `src/App.tsx` | 1115→503 | ✅ **R3 ZAVRŠEN** (Claude verifikovao: 0 redova promijenjeno) | ✔ |
 | `python_backend/app/agent/tool_registry.py` | 637→78 | ✅ **R1 ZAVRŠEN** (Claude verifikovao) | ✔ |
 | `src/lib/realtime.ts` | 534 | 🟡 tik preko | R4 (opciono) |
@@ -132,9 +132,85 @@ src/components/pixel/
 4. `gitnexus detect_changes` — potvrda da su pogođeni samo očekivani simboli (premještanje, ne izmjena logike).
 5. Ako čisto → zeleno za sljedeći R-korak + ažuriram status ovdje. Ako ne → pošaljem pi precizne korekcije.
 
+## R2 — `electron/main.cjs` split (IZVODI pi, SADA — R2b pa R2c)
+
+### Kontekst i mreža
+`main.cjs` je sad **1601 ln** (poslije R2a koji je izvadio toolSpecs → `core/realtimeToolSpecs.cjs`, commit `9322064`). Mapa preostalog sadržaja (potvrđeno ručnim pregledom korisnika):
+
+| Blok | ~ln | Pripada tu? |
+|---|---|---|
+| RICKY_INSTRUCTIONS system prompt | ~28 | da (config-ish, ostaje) |
+| legacy JSON DB helperi | ~95 | **ne → R2b** |
+| legacy web/image/thumbnail poslovna logika (orig. 1092–1750) | ~660 | **ne → R2c** (glavni krivac za debljinu) |
+| handleToolsExecute (tool exec + legacy fallback) | ~280 | ostaje (za sada) |
+| IPC handleri (thin) | ~180 | ostaje (R2d, odgođeno) |
+| kill-switch + lifecycle + `currentMode` dijeljeno stanje | ~60 | ostaje (R2e, odgođeno) |
+
+**Odluka o obimu (Claude, token-svjesno): radi se SAMO R2b + R2c ove sesije, tim redom, pa STANI i javi. R2d/R2e su odgođeni** (manji dobitak, R2e dira dijeljeno `currentMode` stanje → zaseban fokusiran pregled drugi put).
+
+### Safety net (KRITIČNO — main.cjs NEMA unit testove)
+Za razliku od R1 (pytest 199) i R3 (tsc+build), `main.cjs` je Electron main proces bez automatskih testova. Zato:
+- **Verbatim move** je jedina garancija — premještaš funkcije **bajt-identično**, ne prepravljaš logiku, imena, redoslijed argumenata, ništa.
+- Poslije svakog koraka: `npm run build` mora proći + **load-smoke**: `node -e "require('./electron/core/legacyDb.cjs')"` (i za tools_legacy module) — mora se učitati bez `SyntaxError`/circular-require greške.
+- Ako ne možeš dokazati čist move nekim automatskim sredstvom → napravi `diff` originalnog bloka (iz `git show HEAD:electron/main.cjs`) vs novog fajla (skinut `module.exports`/wrapper) = **nula razlika u tijelu funkcija**. Priloži taj dokaz u izvještaj (isto kao R3 verbatim dokaz).
+
+### Pravila specifična za R2 (uz opšta pravila gore)
+1. **NE brisati legacy kod.** Premještaš u nove module, `main.cjs` ih `require`-uje i poziva isto kao prije. Legacy PowerShell/Node toolovi ostaju živi dok Python zamjena nije potvrđena (CLAUDE.md pravilo). Ovo je RE-LOKACIJA, ne uklanjanje.
+2. **Ne dirati:** `src/*`, `python_backend/*`, druge `electron/core/*` fajlove osim onih koje sam kreiraš, `handleToolsExecute`, IPC handlere, kill-switch/lifecycle/`currentMode`. Samo dva bloka (DB helperi, web/image/thumbnail) izlaze.
+3. Ako neki od dva bloka poziva `handleToolsExecute` ili dijeljeno stanje (`currentMode`, mainWindow, itd.) → to se prosljeđuje kao **argument funkcije / parametar modula**, NE importuje se natrag iz `main.cjs` (izbjeći circular require). Ako se pojavi ciklus koji ne možeš riješiti prosljeđivanjem parametra → STANI i javi Claude-u, ne prepravljaj logiku.
+4. **Ne commitovati** — kad završiš R2b, javi (Claude verifikuje) pa onda R2c; kad završiš R2c, javi ponovo. Zaseban Claude pregled po koraku.
+
+---
+
+### R2b — legacy JSON DB helperi → `electron/core/legacyDb.cjs` (PRVI, nizak rizik)
+**Cilj:** izvući ~95 ln legacy JSON DB helper funkcija u `electron/core/legacyDb.cjs`, `main.cjs` ih uvozi.
+
+**Koraci:**
+1. Identifikuj tačan skup DB helper funkcija (JSON read/write/load/save legacy DB). Izlistaj ih po imenu u izvještaju PRIJE premještanja.
+2. Kreiraj `electron/core/legacyDb.cjs`; premjesti te funkcije **verbatim**; na dnu `module.exports = { ...sve premještene funkcije };`. Dodaj na vrh samo `require`-e koje te funkcije stvarno koriste (`fs`, `path`, app userData putanja — ako zavise od Electron `app`, primi `app` ili resolved path kao parametar/argument, ne importuj `electron` u data-modulu ako se može izbjeći).
+3. U `main.cjs`: obriši premještene funkcije, dodaj `const { ... } = require("./core/legacyDb.cjs");`.
+4. `npm run build` + `node -e "require('./electron/core/legacyDb.cjs')"` (load-smoke). `grep` da nijedno staro ime funkcije nije ostalo definisano dvaput u `main.cjs`.
+
+**Acceptance:** `main.cjs` ~1506 ln; `legacyDb.cjs` postoji sa svim DB helperima; build čist; load-smoke čist; verbatim diff dokaz priložen.
+
+---
+
+### R2c — web/image/thumbnail poslovna logika → `electron/tools_legacy/` (DRUGI, srednji rizik)
+**Cilj:** izvući ~660 ln legacy web/image/thumbnail logike (orig. 1092–1750) iz `main.cjs` u `electron/tools_legacy/` module. Ovo je glavni dobitak — ta poslovna logika arhitektonski NE pripada app-shell fajlu.
+
+**Predložena struktura** (pi finalizuje po stvarnim granicama funkcija — grupiši po domenu, ne po proizvoljnom broju linija):
+```text
+electron/tools_legacy/
+  webSearch.cjs      # legacy web search / fetch logika
+  image.cjs          # legacy image generation/obrada
+  thumbnail.cjs      # thumbnail generacija
+  index.cjs          # re-export javnog API-ja koji main.cjs poziva
+```
+Ako su web/image/thumbnail međusobno isprepleteni tako da razdvajanje traži mijenjanje logike → stavi ih u JEDAN `tools_legacy/legacyMedia.cjs` umjesto da lomiš tijela funkcija. Grupisanje je sekundarno; **verbatim move je primarno.**
+
+**Koraci:**
+1. Mapiraj tačne funkcije u rasponu (orig. 1092–1750) i njihove zavisnosti: koje zovu DB helpere (sad iz `legacyDb.cjs` — R2b mora biti gotov prvo), koje diraju `currentMode`/`mainWindow`/`handleToolsExecute`. Izlistaj u izvještaju.
+2. Zavisnosti koje su u `main.cjs` (dijeljeno stanje, `handleToolsExecute`) → proslijedi kao **parametre** funkcijama/factory-ju modula, NE importuj `main.cjs`. DB helpere importuj iz `./legacyDb.cjs` (ili `../core/legacyDb.cjs` zavisno od putanje).
+3. Premjesti funkcije **verbatim** u module; `module.exports`; u `main.cjs` zamijeni inline definicije sa `require` + pozivom (prosljeđujući potrebno stanje).
+4. `npm run build` + load-smoke svakog novog modula (`node -e "require('./electron/tools_legacy/index.cjs')"`).
+5. **Funkcionalni smoke (obavezno bar minimalan):** pokreni app sa `RICKY_USE_LEGACY_POWERSHELL_TOOLS=1` i pozovi bar jedan legacy put (image ILI thumbnail) da potvrdiš da migracija nije slomila runtime. Ako je to preskupo/nemoguće u tvom okruženju → eksplicitno navedi u izvještaju da funkcionalni smoke NIJE urađen i osloni se na verbatim diff dokaz (Claude će tražiti od korisnika ručni smoke prije commita).
+
+**Acceptance:** `main.cjs` ~850 ln (oslobođen legacy poslovne logike); `tools_legacy/` moduli postoje; build čist; load-smoke čist; verbatim diff dokaz; jasno naznačeno da li je funkcionalni smoke urađen ili ne.
+
+---
+
+### Izvještaj pi (poslije SVAKOG od R2b/R2c, zasebno)
+`agent_reports/2026-07-09_pi-refactor-r2b-legacy-db.md` i `...r2c-legacy-media.md`, svaki sa: tačna lista funkcija po imenu i gdje su otišle, koraci, `build`+load-smoke izlaz, verbatim diff dokaz (nula razlika u tijelima), status funkcionalnog smoke-a (R2c), tačna lista diranih/kreiranih fajlova, potvrda "ponašanje nepromijenjeno, legacy kod NIJE obrisan". **NE commitovati** — čeka Claude pregled.
+
+### Claude R2 pregled (dopuna opšteg protokola)
+- `npm run build` sam → čisto; load-smoke svakog novog modula.
+- **Diff pregled:** za premještene funkcije uporediti tijelo sa `git show HEAD:electron/main.cjs` — bajt-identično.
+- `gitnexus detect_changes` — pogođeni samo main.cjs + novi moduli.
+- Za R2c: ako funkcionalni smoke nije urađen, tražiti od korisnika ručni smoke (legacy image/thumbnail put) prije commita.
+
 ## Sekvenca poslije R1
-- **R2 `main.cjs`** — tek kad Codex commituje. NEMA unit testova → Claude prvo piše karakterizacione/smoke provjere ILI radi sam. NE delegirati slijepo na pi.
-- **R3 `App.tsx`** — kad Codex završi avatar kozmetiku i commituje. Izdvojiti pixel pod-komponente (PixelMockupBoard, TopBar, IdleScreen, DictationScreen, *Preview, Drawer) u zasebne fajlove.
+- **R2 `main.cjs`** — R2a ✅ (commit `9322064`). R2b+R2c SADA (pi, brief gore). R2d (IPC handleri) + R2e (kill-switch/`currentMode`) ODGOĐENI — manji dobitak, R2e dira dijeljeno stanje → zaseban pregled.
+- **R3 `App.tsx`** — ✅ ZAVRŠEN.
 - **R4 `realtime.ts`** — opciono, nisko.
 
 ## Found issues (popuniti usput, popravljati ODVOJENO)
