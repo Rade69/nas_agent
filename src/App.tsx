@@ -24,6 +24,7 @@ import IconSend from "../assets/brending/icons/voice/icon-send.svg?react";
 import IconStop from "../assets/brending/icons/voice/icon-stop.svg?react";
 import IconWave from "../assets/brending/icons/voice/icon-audio-wave.svg?react";
 import IconLogoR from "../assets/brending/logo/ricky-logo-r.svg?react";
+import rikiAvatar from "../assets/Riki-avatar.png";
 import {
   createActivityEvent,
   newEntry,
@@ -43,11 +44,30 @@ type DrawerState = "activity" | "plans" | "memory" | "screens" | "settings" | nu
 
 const SYSTEM_NOISE_TITLES = ["Backend ready", "Renderer ready", "Voice-first shell", "Backend spreman", "Renderer spreman"];
 
+function getInitialMode(): RickyMode {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("mode") === "computer" ? "computer" : "display";
+}
+
+function isMiniWindow() {
+  return new URLSearchParams(window.location.search).get("window") === "mini";
+}
+
+function debugRenderer(label: string, payload: Record<string, unknown> = {}) {
+  const snapshot = {
+    viewport: `${window.innerWidth}x${window.innerHeight}`,
+    visibility: document.visibilityState,
+    focused: document.hasFocus(),
+    activeElement: document.activeElement?.tagName || null,
+  };
+  void window.ricky.debugLog(label, { ...snapshot, ...payload });
+}
+
 export default function App() {
   const [connectionState, setConnectionState] = useState<RickyConnectionState>("idle");
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
   const [, setMood] = useState<RickyMood>("idle");
-  const [mode, setMode] = useState<RickyMode>("display");
+  const [mode, setMode] = useState<RickyMode>(() => getInitialMode());
   const [artifact, setArtifact] = useState<RickyArtifact | null>(null);
   const [artifactVisible, setArtifactVisible] = useState(false);
   const [artifactFullscreen, setArtifactFullscreen] = useState(false);
@@ -71,6 +91,7 @@ export default function App() {
   const [dictationText, setDictationText] = useState("");
   const [backendConnected, setBackendConnected] = useState(false);
   const clientRef = useRef<RickyRealtimeClient | null>(null);
+  const switchModeStartedAtRef = useRef<number | null>(null);
 
   const isConnected = connectionState === "connected";
   const isActive =
@@ -79,6 +100,7 @@ export default function App() {
     voiceState === "thinking" ||
     voiceState === "speaking" ||
     voiceState === "waiting_confirmation";
+  const isMini = isMiniWindow();
 
   const recentActivity = useMemo(
     () =>
@@ -93,6 +115,40 @@ export default function App() {
       setVoiceState("waiting_confirmation");
     }
   }, [pendingConfirmation]);
+
+  useEffect(() => {
+    debugRenderer("app:mode-state", { mode, artifactVisible, artifactKind: artifact?.kind || null });
+  }, [artifact?.kind, artifactVisible, mode]);
+
+  useEffect(() => {
+    const logWindowEvent = (eventName: string) => {
+      debugRenderer(`window:${eventName}`, {
+        mode,
+        artifactVisible,
+        scrollX: window.scrollX,
+        scrollY: window.scrollY,
+      });
+    };
+    const onFocus = () => logWindowEvent("focus");
+    const onBlur = () => logWindowEvent("blur");
+    const onResize = () => logWindowEvent("resize");
+    const onVisibilityChange = () => logWindowEvent(`visibility:${document.visibilityState}`);
+    const onPageShow = () => logWindowEvent("pageshow");
+
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("blur", onBlur);
+    window.addEventListener("resize", onResize);
+    window.addEventListener("pageshow", onPageShow);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    debugRenderer("app:debug-attached", { mode, artifactVisible });
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("blur", onBlur);
+      window.removeEventListener("resize", onResize);
+      window.removeEventListener("pageshow", onPageShow);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }, [artifactVisible, mode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -254,11 +310,38 @@ export default function App() {
   }
 
   async function switchMode(nextMode: RickyMode) {
-    const result = await window.ricky.executeTool({ name: "set_mode", arguments: { mode: nextMode } });
-    setMode(nextMode);
-    if ((result as Record<string, unknown>).artifact) {
-      setArtifact((result as Record<string, unknown>).artifact as RickyArtifact);
-      setArtifactVisible(true);
+    switchModeStartedAtRef.current = performance.now();
+    const traceId = `mode-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    debugRenderer("switchMode:start", {
+      traceId,
+      currentMode: mode,
+      nextMode,
+      artifactVisible,
+      artifactKind: artifact?.kind || null,
+    });
+    try {
+      const result = await window.ricky.executeTool({ name: "set_mode", arguments: { mode: nextMode, __modeTraceId: traceId } });
+      const resultObj = result as Record<string, unknown>;
+      debugRenderer("switchMode:result", {
+        traceId,
+        currentMode: mode,
+        nextMode,
+        resultMode: resultObj.mode || null,
+        hasArtifact: Boolean(resultObj.artifact),
+        ok: resultObj.ok,
+        elapsedMs: switchModeStartedAtRef.current ? Math.round(performance.now() - switchModeStartedAtRef.current) : null,
+      });
+      setMode(nextMode);
+      if (resultObj.mode === "display") setArtifactVisible(false);
+      debugRenderer("switchMode:set-state", { traceId, nextMode, closeArtifact: resultObj.mode === "display" });
+    } catch (error) {
+      debugRenderer("switchMode:error", {
+        traceId,
+        currentMode: mode,
+        nextMode,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
     }
   }
 
@@ -390,6 +473,18 @@ export default function App() {
     openDrawer(id as Exclude<DrawerState, null>);
   }
 
+  if (isMini) {
+    return (
+      <MiniComputerWindow
+        voiceState={voiceState}
+        onRestore={() => {
+          debugRenderer("mini-restore-button:click", { currentMode: mode, nextMode: "display" });
+          void switchMode("display");
+        }}
+      />
+    );
+  }
+
   return (
     <main className="pixel-app-shell pixel-board-shell">
       {killFlash ? (
@@ -422,7 +517,11 @@ export default function App() {
         backendConnected={backendConnected}
         busyPlanId={busyPlanId}
         busyStepId={busyStepId}
-        onToggleMode={() => void switchMode(mode === "computer" ? "display" : "computer")}
+        onToggleMode={() => {
+          const nextMode = mode === "computer" ? "display" : "computer";
+          debugRenderer("mode-button:click", { currentMode: mode, nextMode, artifactVisible, note: "traceId is created in switchMode:start" });
+          void switchMode(nextMode);
+        }}
         onOpenPlans={() => openDrawer("plans")}
         onSidebarChange={handleSidebarChange}
         onTextPromptChange={setTextPrompt}
@@ -464,6 +563,31 @@ export default function App() {
         onReject={handleRejectConfirmation}
         onCancel={handleCancelConfirmation}
       />
+    </main>
+  );
+}
+
+function MiniComputerWindow({
+  voiceState,
+  onRestore,
+}: {
+  voiceState: VoiceState;
+  onRestore: () => void;
+}) {
+  const stateLabel = "UKLJUČEN";
+  const isTalking = voiceState === "speaking" || voiceState === "listening" || voiceState === "thinking" || voiceState === "transcribing";
+  return (
+    <main className={`mini-computer-window ${isTalking ? "is-talking" : "is-idle"}`}>
+      <button className="mini-avatar-restore" onClick={onRestore} title="Vrati glavni prozor">
+        Vrati
+      </button>
+      <div className="mini-avatar-stage" aria-label={`Računarski režim ${stateLabel}`}>
+        <img src={rikiAvatar} alt="Ricky avatar" draggable={false} />
+      </div>
+      <div className="mini-avatar-status">
+        <span>Računarski režim</span>
+        <strong>{stateLabel}</strong>
+      </div>
     </main>
   );
 }
@@ -725,7 +849,6 @@ function ActivityDrawerPreview({ activityEvents }: { activityEvents: ActivityEve
     <aside className="pixel-preview-drawer">
       <header>
         <strong>Aktivnost</strong>
-        <IconClose />
       </header>
       <div className="pixel-preview-list">
         {activityEvents.length > 0 ? (
@@ -758,7 +881,6 @@ function PlansDrawerPreview({ plans }: { plans: Plan[] }) {
     <aside className="pixel-preview-drawer pixel-preview-plans">
       <header>
         <strong>Planovi</strong>
-        <IconClose />
       </header>
       <div className="pixel-plan-tabs">
         <button className="active">Aktivni</button>
@@ -854,23 +976,23 @@ function TopBar({
           )}
         </span>
       </div>
-      <div className="pixel-top-actions">
-        {onStopAll ? (
+      {onStopAll ? (
+        <div className="pixel-top-actions">
           <button className="pixel-top-stop-all" onClick={onStopAll} title="Zaustavi sve aktivnosti">
             <IconStop />
             Stop sve
           </button>
-        ) : null}
-        <button className={`pixel-mode-pill ${mode === "computer" ? "on" : ""}`} onClick={onToggleMode}>
-          Računarski režim: {mode === "computer" ? "UKLJUČEN" : "ISKLJUČEN"}
-        </button>
-        <button className="pixel-icon-button" title="Glas">
-          <IconWave />
-        </button>
-        <button className="pixel-icon-button" onClick={onOpenPlans} title="Planovi">
-          <IconCalendar />
-        </button>
-      </div>
+          <button className={`pixel-mode-pill ${mode === "computer" ? "on" : ""}`} onClick={onToggleMode}>
+            Računarski režim: {mode === "computer" ? "UKLJUČEN" : "ISKLJUČEN"}
+          </button>
+          <button className="pixel-icon-button" title="Glas">
+            <IconWave />
+          </button>
+          <button className="pixel-icon-button" onClick={onOpenPlans} title="Planovi">
+            <IconCalendar />
+          </button>
+        </div>
+      ) : null}
     </header>
   );
 }
@@ -1001,7 +1123,7 @@ function DictationScreen({
           </span>
         </div>
         <button onClick={onCancel}>
-          Otkaži diktiranje <IconClose />
+          Otkaži diktiranje
         </button>
       </header>
       <div className="pixel-editor-wrap">

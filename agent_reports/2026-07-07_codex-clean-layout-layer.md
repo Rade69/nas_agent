@@ -89,6 +89,31 @@ Prvi čisti GUI layout sloj za Ricky aplikaciju prema `assets/Ricky-agent.png`, 
   - mikrofon je blago povećan i odmaknut od tekstualnog inputa,
   - tekstualni input je proširen sa kompaktnog `270px` limita na širi kanal,
   - input/send kontrole su povećane da izgledaju kao stvarni tekstualni kanal, a ne samo mali placeholder.
+- Nakon pregleda `režim.png` i `windoes dugmad.png`:
+  - akcioni topbar dio (`Stop sve`, režim, glas, planovi) ostaje samo u prvoj `SPREMAN` sekciji,
+  - `DIKTIRANJE` topbar je očišćen na identitet/status (`Ricky`, `Diktiranje`),
+  - desna section-label zona dobila je rezervisan prostor da globalne window kontrole ne djeluju zalijepljeno uz drugu sekciju.
+- Nakon pregleda `mali naslov.png` i `višak dugme.png`:
+  - povećani su ključni topbar fontovi (`Ricky`, status) i section naslovi bez globalnog povećanja svih tekstova,
+  - responsive override za section naslove je usklađen da ne vrati naslov na premali font,
+  - `Doradi` dropdown meni je sakriven dok korisnik ne hover/focusira kontrolu, čime je uklonjen zaostali donji element.
+- Nakon prijave trzaja pri kliku na `Računarski režim`:
+  - `pixel-mode-pill` je dobio fiksnu širinu i `flex-basis`,
+  - tekst se centrira unutar zaključane širine, pa promjena `ISKLJUČEN`/`UKLJUČEN` ne preslaže topbar.
+- Nakon pregleda `simboj x.png`:
+  - uklonjeni su nefunkcionalni dekorativni `X` simboli iz statičkih preview headera za `AKTIVNOST` i `PLANOVI`,
+  - stvarno funkcionalno `X` dugme ostaje u runtime drawer komponenti.
+- Nakon dodatne napomene za `DIKTIRANJE` sekciju:
+  - uklonjena je dekorativna `X` ikona iz dugmeta `Otkaži diktiranje`,
+  - samo tekstualno dugme ostaje funkcionalno i poziva isti cancel handler.
+- Nakon dodatne prijave trzaja pri gašenju `Računarski režim` poslije minimize/restore:
+  - `switchMode()` više ne otvara informativni `Ricky Mode` artifact koji vraća `set_mode`,
+  - promjena režima sada ažurira samo stanje topbara,
+  - pri povratku u display režim zatvara se eventualno otvoren artifact panel da ne utiče na layout.
+- Nakon potvrde da trzaj i dalje postoji:
+  - dodat je privremeni allowlisted debug IPC kanal `debug:renderer-log`,
+  - renderer šalje `mode-button`, `switchMode`, `focus/blur/resize/visibility/pageshow` događaje u main terminal,
+  - main proces loguje BrowserWindow lifecycle (`minimize`, `restore`, `focus`, `resize`, itd.) sa bounds/mode snapshotom.
 - Sačuvani su postojeći realtime, confirmation, plans, artifact i backend event callback tokovi.
 
 ## Zašto je urađeno
@@ -122,6 +147,20 @@ Claude report `agent_reports/2026-07-07_gui-mockup-match-attempt.md` pokazuje da
 - `npm run build` — prolazi nakon potpunog uklanjanja footera i premještanja `Stop sve` u topbar.
 - `npm run typecheck` — prolazi nakon korekcije input/mic razmaka u `SPREMAN` sekciji.
 - `npm run build` — prolazi nakon korekcije input/mic razmaka u `SPREMAN` sekciji.
+- `npm run typecheck` — prolazi nakon uklanjanja duplog topbar action seta iz `DIKTIRANJE` sekcije.
+- `npm run build` — prolazi nakon uklanjanja duplog topbar action seta iz `DIKTIRANJE` sekcije.
+- `npm run typecheck` — prolazi nakon povećanja ključnih fontova i sakrivanja dropdown menija.
+- `npm run build` — prolazi nakon povećanja ključnih fontova i sakrivanja dropdown menija.
+- `npm run typecheck` — prolazi nakon zaključavanja širine `Računarski režim` dugmeta.
+- `npm run build` — prolazi nakon zaključavanja širine `Računarski režim` dugmeta.
+- `npm run typecheck` — prolazi nakon uklanjanja nefunkcionalnih `X` preview simbola.
+- `npm run build` — prolazi nakon uklanjanja nefunkcionalnih `X` preview simbola.
+- `npm run typecheck` — prolazi nakon uklanjanja `X` ikone iz `Otkaži diktiranje`.
+- `npm run build` — prolazi nakon uklanjanja `X` ikone iz `Otkaži diktiranje`.
+- `npm run typecheck` — prolazi nakon ignorisanja `set_mode` artifacta u `switchMode()`.
+- `npm run build` — prolazi nakon ignorisanja `set_mode` artifacta u `switchMode()`.
+- `npm run typecheck` — prolazi nakon dodavanja privremenog debug log kanala.
+- `npm run build` — prolazi nakon dodavanja privremenog debug log kanala.
 - Vite prijavljuje postojeći warning za chunkove veće od 500 kB; nije uveden ovim layout slojem.
 
 ## Rizici/ograničenja
@@ -143,3 +182,20 @@ Claude report `agent_reports/2026-07-07_gui-mockup-match-attempt.md` pokazuje da
 ## Potrebna korisnička potvrda
 
 Potrebno je da korisnik pregleda prvi layout pass u aplikaciji i potvrdi da se nastavlja na pixel-perfect korekcije umjesto vraćanja na prethodni UI.
+
+## Dodatak: uklanjanje trzaja pri `Računarski režim` toggle-u
+
+- Analiziran je terminal log iz korisničkog priloga sa `[renderer-debug]` i `[window-debug]` linijama.
+- Log je pokazao da klik na `Računarski režim` ne pravi samo React/CSS promjenu, nego Electron `BrowserWindow` radi stvarni resize/move:
+  - prije klika viewport je bio `1440x816`,
+  - `setWindowMode("computer")` je prebacio prozor na legacy mini kontroler oko `191x191`,
+  - zatim se prozor vraćao/maximizovao na desktop dimenzije, što je korisnik vidio kao trzaj cijele aplikacije.
+- U `electron/core/window.cjs` uklonjeno je legacy mini-window ponašanje iz `setWindowMode()`.
+- `Računarski režim` je sada capability/state toggle za alatke, bez promjene geometrije glavnog GUI prozora.
+- Namjerno nisu dirani Python/security fajlovi.
+
+## Verifikacija dodatka
+
+- `npm run typecheck` — prolazi nakon uklanjanja legacy mini-window resize ponašanja.
+- `npm run build` — prolazi nakon uklanjanja legacy mini-window resize ponašanja.
+- Vite i dalje prijavljuje postojeći warning za chunkove veće od 500 kB; nije uveden ovom izmjenom.
