@@ -73,6 +73,58 @@ python_backend/app/agent/tool_catalog/
 
 ---
 
+## R3 — `src/App.tsx` split (IZVODI pi, poslije R1)
+
+### Kontekst i mreža
+`App.tsx` je 1115 linija: stateful container `App()` (~437 ln) + ~13 prezentacijskih pod-komponenti/helpera nagurano u isti fajl (Codex pixel rebuild). **Safety net: `tsc` (typecheck) + `vite build`.** NEMA unit testova (UI), pa se oslanjamo na (a) `tsc` hvata svaku mehaničku grešku (fali import, tip ne štima) i (b) **verbatim premještanje JSX-a** — komponenta se PREMJEŠTA, JSX se NE mijenja. Claude radi diff pregled da potvrdi čist move.
+
+### Cilj (tačna završna struktura)
+```text
+src/components/pixel/
+  types.ts               # RickyMode, ScreenState, DrawerState (premješteni iz App.tsx)
+  PixelMockupBoard.tsx   # PixelMockupBoard + MockupSection
+  MiniComputerWindow.tsx # MiniComputerWindow
+  TopBar.tsx             # TopBar
+  IdleScreen.tsx         # IdleScreen
+  DictationScreen.tsx    # DictationScreen
+  Drawer.tsx             # Drawer
+  Previews.tsx           # ConfirmationPreview + ActivityDrawerPreview + PlansDrawerPreview + EmptyPreviewState + planStatusLabel
+```
+`App.tsx` ZADRŽAVA: `App()`, `getInitialMode()`, `isMiniWindow()`, `SYSTEM_NOISE_TITLES`, i importuje pixel komponente iz `./components/pixel/...`.
+
+### Zašto `types.ts` prvo
+`RickyMode`/`ScreenState`/`DrawerState` koriste I `App.tsx` I izdvojene komponente (props). Ako ostanu u `App.tsx` a komponente ih importuju → kružni import (`App → komponenta → App`). Zato idu u `pixel/types.ts` koji oba importuju — nema ciklusa. (`App.tsx` importuje komponente; komponente importuju SAMO tipove iz `types.ts`, nikad iz `App.tsx`.)
+
+### Koraci (tsc + build poslije SVAKOG, ne na kraju)
+1. Kreiraj `src/components/pixel/`. **`types.ts`:** premjesti tri `type` deklaracije (RickyMode/ScreenState/DrawerState) iz `App.tsx`; u `App.tsx` dodaj `import type { RickyMode, ScreenState, DrawerState } from "./components/pixel/types";`. `npm run typecheck`.
+2. Izdvoji **leaf** komponente jednu po jednu (ovim redom): `Previews.tsx` (5 simbola: ConfirmationPreview, ActivityDrawerPreview, PlansDrawerPreview, EmptyPreviewState, planStatusLabel) → `DictationScreen.tsx` → `TopBar.tsx` → `Drawer.tsx` → `MiniComputerWindow.tsx` → `IdleScreen.tsx`. Za svaku: premjesti funkciju **verbatim** u novi fajl; dodaj na vrh SAMO importe koje ta komponenta koristi (ikone iz `../../assets/...`, komponente iz `../` npr. `RickyOrb`/`Sidebar`/`ActivityTimeline`/`PlansPanel`, `categoryForActivity`/`voiceStateLabel`/`createActivityEvent` iz `../../lib/...`, tipove iz `./types`, tipove `ActivityEvent`/`Plan`/`VoiceState` iz odgovarajućih modula kao u App.tsx); u `App.tsx` dodaj `import { X } from "./components/pixel/X";`. **`npm run typecheck` poslije svake** — ako javi fali-import, dodaj ga (tsc te tačno vodi).
+3. Zadnja: `PixelMockupBoard.tsx` (+ `MockupSection`) — importuje svu djecu iz sibling fajlova (`./TopBar`, `./IdleScreen`, `./DictationScreen`, `./Drawer`, `./Previews`, `./MiniComputerWindow`) + `Sidebar`/`ActivityTimeline`/`PlansPanel` iz `../`. `npm run typecheck`.
+4. Finalno: `npm run typecheck` **i** `npm run build` — oba moraju proći čisto (osim pre-postojećeg 500kB chunk warninga).
+5. `grep -n "function PixelMockupBoard\|function TopBar\|function IdleScreen\|function DictationScreen\|function Drawer\|function MiniComputerWindow\|function ConfirmationPreview" src/App.tsx` → **prazno** (sve izdvojeno; ostaje samo `function App`, `getInitialMode`, `isMiniWindow`).
+
+### Pravila specifična za R3
+- **JSX se NE mijenja ni znak.** Premještaš funkciju, ne prepravljaš markup, className, tekst, props. Refaktor ≠ redizajn.
+- Ne diraj `App()` logiku (state, useEffect, handlere) — samo zamijeni inline definicije komponenti importima.
+- Ne diraj `src/styles/*`, `src/components/*` postojeće (Sidebar/RickyOrb/itd.), `electron/*`, Python. Samo `App.tsx` + novi `pixel/` fajlovi.
+- Ako `tsc` javi grešku koju ne možeš riješiti čistim dodavanjem importa (npr. traži logičku izmjenu) → STANI i prijavi. Ne "popravljaj" mijenjanjem koda.
+
+### Acceptance (pi provjeri prije nego javi)
+- `App.tsx` sadrži SAMO `App` + `getInitialMode` + `isMiniWindow` + `SYSTEM_NOISE_TITLES` (grep iz koraka 5 prazan); ~600–650 linija.
+- `src/components/pixel/` ima 8 fajlova iz cilja.
+- `npm run typecheck` čist, `npm run build` čist.
+- Nijedan `className`/tekst/JSX nije izmijenjen (dokaz: diff su čisti move-ovi).
+
+### Izvještaj pi
+`agent_reports/2026-07-08_pi-refactor-r3-app-split.md`: koraci, koja komponenta u koji fajl, `typecheck`+`build` izlaz, potvrda "JSX nepromijenjen (verbatim move)", tačna lista diranih fajlova. NE commitovati — čeka Claude pregled.
+
+### Claude R3 pregled (dopuna opšteg protokola)
+- `npm run typecheck` + `npm run build` sam → čisto.
+- **Diff pregled:** za 2–3 izdvojene komponente uporediti JSX sa `git show HEAD:src/App.tsx` — mora biti byte-identičan markup (samo lokacija se promijenila).
+- `gitnexus detect_changes` — pogođeni samo App/pixel simboli.
+- Preporučiti korisniku **vizuelni smoke** (pokrenuti app, provjeriti da idle/dictation/drawers/mini-window izgledaju isto) jer UI nema automatske testove.
+
+---
+
 ## Protokol Claude pregleda (poslije svakog R-koraka)
 1. Pročitam diff + nove fajlove.
 2. Pokrenem `pytest -q` sam → mora 199.
