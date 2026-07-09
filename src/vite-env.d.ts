@@ -125,7 +125,6 @@ declare global {
       quitApp: () => Promise<void>;
       minimizeApp: () => Promise<void>;
       toggleMaximizeApp: () => Promise<void>;
-      debugLog: (label: string, payload?: Record<string, unknown>) => Promise<{ ok: boolean }>;
       // FAZA 9: confirmations + plans
       listConfirmations: (filter?: {
         status?: ConfirmationStatus;

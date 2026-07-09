@@ -53,16 +53,6 @@ function isMiniWindow() {
   return new URLSearchParams(window.location.search).get("window") === "mini";
 }
 
-function debugRenderer(label: string, payload: Record<string, unknown> = {}) {
-  const snapshot = {
-    viewport: `${window.innerWidth}x${window.innerHeight}`,
-    visibility: document.visibilityState,
-    focused: document.hasFocus(),
-    activeElement: document.activeElement?.tagName || null,
-  };
-  void window.ricky.debugLog(label, { ...snapshot, ...payload });
-}
-
 export default function App() {
   const [connectionState, setConnectionState] = useState<RickyConnectionState>("idle");
   const [voiceState, setVoiceState] = useState<VoiceState>("idle");
@@ -91,7 +81,6 @@ export default function App() {
   const [dictationText, setDictationText] = useState("");
   const [backendConnected, setBackendConnected] = useState(false);
   const clientRef = useRef<RickyRealtimeClient | null>(null);
-  const switchModeStartedAtRef = useRef<number | null>(null);
 
   const isConnected = connectionState === "connected";
   const isActive =
@@ -115,40 +104,6 @@ export default function App() {
       setVoiceState("waiting_confirmation");
     }
   }, [pendingConfirmation]);
-
-  useEffect(() => {
-    debugRenderer("app:mode-state", { mode, artifactVisible, artifactKind: artifact?.kind || null });
-  }, [artifact?.kind, artifactVisible, mode]);
-
-  useEffect(() => {
-    const logWindowEvent = (eventName: string) => {
-      debugRenderer(`window:${eventName}`, {
-        mode,
-        artifactVisible,
-        scrollX: window.scrollX,
-        scrollY: window.scrollY,
-      });
-    };
-    const onFocus = () => logWindowEvent("focus");
-    const onBlur = () => logWindowEvent("blur");
-    const onResize = () => logWindowEvent("resize");
-    const onVisibilityChange = () => logWindowEvent(`visibility:${document.visibilityState}`);
-    const onPageShow = () => logWindowEvent("pageshow");
-
-    window.addEventListener("focus", onFocus);
-    window.addEventListener("blur", onBlur);
-    window.addEventListener("resize", onResize);
-    window.addEventListener("pageshow", onPageShow);
-    document.addEventListener("visibilitychange", onVisibilityChange);
-    debugRenderer("app:debug-attached", { mode, artifactVisible });
-    return () => {
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener("blur", onBlur);
-      window.removeEventListener("resize", onResize);
-      window.removeEventListener("pageshow", onPageShow);
-      document.removeEventListener("visibilitychange", onVisibilityChange);
-    };
-  }, [artifactVisible, mode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -310,39 +265,9 @@ export default function App() {
   }
 
   async function switchMode(nextMode: RickyMode) {
-    switchModeStartedAtRef.current = performance.now();
-    const traceId = `mode-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-    debugRenderer("switchMode:start", {
-      traceId,
-      currentMode: mode,
-      nextMode,
-      artifactVisible,
-      artifactKind: artifact?.kind || null,
-    });
-    try {
-      const result = await window.ricky.executeTool({ name: "set_mode", arguments: { mode: nextMode, __modeTraceId: traceId } });
-      const resultObj = result as Record<string, unknown>;
-      debugRenderer("switchMode:result", {
-        traceId,
-        currentMode: mode,
-        nextMode,
-        resultMode: resultObj.mode || null,
-        hasArtifact: Boolean(resultObj.artifact),
-        ok: resultObj.ok,
-        elapsedMs: switchModeStartedAtRef.current ? Math.round(performance.now() - switchModeStartedAtRef.current) : null,
-      });
-      setMode(nextMode);
-      if (resultObj.mode === "display") setArtifactVisible(false);
-      debugRenderer("switchMode:set-state", { traceId, nextMode, closeArtifact: resultObj.mode === "display" });
-    } catch (error) {
-      debugRenderer("switchMode:error", {
-        traceId,
-        currentMode: mode,
-        nextMode,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
+    const result = await window.ricky.executeTool({ name: "set_mode", arguments: { mode: nextMode } });
+    setMode(nextMode);
+    if ((result as Record<string, unknown>).mode === "display") setArtifactVisible(false);
   }
 
   async function refreshPlans() {
@@ -478,7 +403,6 @@ export default function App() {
       <MiniComputerWindow
         voiceState={voiceState}
         onRestore={() => {
-          debugRenderer("mini-restore-button:click", { currentMode: mode, nextMode: "display" });
           void switchMode("display");
         }}
       />
@@ -519,7 +443,6 @@ export default function App() {
         busyStepId={busyStepId}
         onToggleMode={() => {
           const nextMode = mode === "computer" ? "display" : "computer";
-          debugRenderer("mode-button:click", { currentMode: mode, nextMode, artifactVisible, note: "traceId is created in switchMode:start" });
           void switchMode(nextMode);
         }}
         onOpenPlans={() => openDrawer("plans")}

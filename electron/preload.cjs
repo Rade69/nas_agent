@@ -13,7 +13,6 @@ contextBridge.exposeInMainWorld("ricky", {
   quitApp: () => ipcRenderer.invoke("app:quit"),
   minimizeApp: () => ipcRenderer.invoke("app:minimize"),
   toggleMaximizeApp: () => ipcRenderer.invoke("app:toggle-maximize"),
-  debugLog: (label, payload = {}) => ipcRenderer.invoke("debug:renderer-log", { label, payload, at: Date.now() }),
   // FAZA 9: confirmations + plans (storage + state machine transitions only;
   // permission/risk layer that issues confirmations from tool execution is FAZA 10).
   listConfirmations: (filter = {}) => ipcRenderer.invoke("confirmations:list", filter),

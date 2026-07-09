@@ -865,15 +865,7 @@ async function handleToolsExecute(_event, toolCall) {
   try {
     if (name === "set_mode") {
       currentMode = args.mode === "computer" ? "computer" : "display";
-      const modeTraceId = typeof args.__modeTraceId === "string" ? args.__modeTraceId : `mode-main-${Date.now()}`;
-      console.log(`[mode-trace:${modeTraceId}] main:set_mode:start`, {
-        requestedMode: args.mode,
-        currentMode,
-      });
-      setWindowMode(currentMode, modeTraceId);
-      console.log(`[mode-trace:${modeTraceId}] main:set_mode:after-setWindowMode`, {
-        currentMode,
-      });
+      setWindowMode(currentMode);
       return {
         ok: true,
         mode: currentMode,
@@ -1787,7 +1779,6 @@ function fallbackMermaidDiagram(title) {
 
 registerIpcHandlers({
   "tools:list": handleToolsList,
-  "debug:renderer-log": handleDebugRendererLog,
   "app:quit": handleAppQuit,
   "app:minimize": handleAppMinimize,
   "app:toggle-maximize": handleAppToggleMaximize,
@@ -1817,37 +1808,6 @@ registerIpcHandlers({
   "companion:toggle-voice": handleCompanionToggleVoice,
   "companion:toggle-lock": handleCompanionToggleLock,
 });
-
-function handleDebugRendererLog(_event, message = {}) {
-  const label = String(message.label || "event").slice(0, 80);
-  const payload = message.payload && typeof message.payload === "object" ? message.payload : {};
-  const at = typeof message.at === "number" ? new Date(message.at).toISOString() : new Date().toISOString();
-  console.log(`[renderer-debug] ${at} ${label}`, payload);
-  return { ok: true };
-}
-
-function attachMainWindowDebugLogs() {
-  const win = getMainWindow && getMainWindow();
-  if (!win || win.isDestroyed() || win.__rickyDebugLogsAttached) return;
-  win.__rickyDebugLogsAttached = true;
-
-  const snapshot = (eventName) => {
-    const bounds = win.getBounds();
-    console.log(`[window-debug] ${eventName}`, {
-      bounds,
-      minimized: win.isMinimized(),
-      maximized: win.isMaximized(),
-      focused: win.isFocused(),
-      visible: win.isVisible(),
-      mode: currentMode,
-    });
-  };
-
-  ["show", "hide", "minimize", "restore", "maximize", "unmaximize", "focus", "blur", "resize", "move"].forEach((eventName) => {
-    win.on(eventName, () => snapshot(eventName));
-  });
-  snapshot("attached");
-}
 
 // FAZA S-4: global kill-switch hotkey. Ctrl+Alt+K only — F10/F11 were dropped
 // because Windows reserves them (menu bar / fullscreen) and swallows them
@@ -1927,7 +1887,6 @@ app.whenReady().then(async () => {
   }
 
   await createWindow({ beforeShow: prepareWindowData });
-  attachMainWindowDebugLogs();
 
   // FAZA S-4 (docs/SECURITY_GAP_ANALYSIS_AND_PLAN.md S33): global kill-switch.
   // Registers the first available hotkey from a fallback chain so it still
