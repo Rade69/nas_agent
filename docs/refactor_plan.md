@@ -208,8 +208,78 @@ Ako su web/image/thumbnail međusobno isprepleteni tako da razdvajanje traži mi
 - `gitnexus detect_changes` — pogođeni samo main.cjs + novi moduli.
 - Za R2c: ako funkcionalni smoke nije urađen, tražiti od korisnika ručni smoke (legacy image/thumbnail put) prije commita.
 
+---
+
+## R2d — IPC handler funkcije → `electron/ipc_handlers/` (IZVODI pi, SADA)
+
+### Kontekst i mreža
+`main.cjs` je sad **923 ln** (poslije R2a/R2b/R2c, commit `8a47ad5`). IPC *registrar* je već izdvojen u `core/ipc.cjs` (FAZA 3); `main.cjs` samo poziva `registerIpcHandlers({...})` (linija ~781) mapirajući kanale na `handleXxx` funkcije **definisane u main.cjs**. R2d izdvaja te definicije u `electron/ipc_handlers/` module po domenu. **`registerIpcHandlers({...})` poziv OSTAJE u main.cjs** (samo mapira na importovane handlere).
+
+**KLJUČNO (Claude potvrdio pregledom):**
+- Svi izdvojivi handleri vuku zavisnosti iz **već-modularizovanih servisa** — `./services/pythonClient.cjs`, `./core/window.cjs`, `./core/companionWindow.cjs`, `./core/realtimeToolSpecs.cjs`, `electron` (`app`). **Novi moduli importuju iste izvore istim `require`-om kao main.cjs** — NEMA potrebe za factory/deps prosljeđivanjem.
+- **Nijedan izdvojivi handler NE dira `currentMode`** (potvrđeno grep-om: `currentMode` diraju samo `handleToolsExecute` i `triggerKillSwitch`). Zato je R2d čisto razdvojen od R2e.
+- **`handleToolsExecute` (orig. ~456, ~280 ln) OSTAJE u main.cjs** — dira `currentMode`, legacy tools flag, mode switching. NE dirati u R2d.
+
+### Cilj (tačna završna struktura)
+```text
+electron/ipc_handlers/
+  app.cjs           # handleToolsList, handleAppQuit, handleAppMinimize, handleAppToggleMaximize
+  confirmations.cjs # handleConfirmationsList, handleConfirmationsPending, handleConfirmationCreate,
+                    #   handleConfirmationApprove, handleConfirmationReject, handleConfirmationCancel
+  plans.cjs         # handlePlansList, handlePlanCreate, handlePlanGet, handlePlanUpdate, handlePlanStepUpdate
+  events.cjs        # handleEventsList
+  companion.cjs     # handleCompanionShow, handleCompanionHide, handleCompanionToggle,
+                    #   handleCompanionVoiceStateUpdate, handleCompanionClick, handleCompanionOpenMain,
+                    #   handleCompanionToggleVoice, handleCompanionToggleLock
+  realtime.cjs      # handleRealtimeCreateToken
+```
+`main.cjs` ZADRŽAVA: `prepareWindowData`, `handleToolsExecute`, kill-switch, lifecycle, `registerIpcHandlers({...})` poziv (sad sa importovanim handlerima).
+
+### Predložene zavisnosti po modulu (pi dodaje TAČNO one koje tijelo koristi)
+| Modul | Vjerovatni importi (potvrdi po tijelu funkcije) |
+|---|---|
+| `app.cjs` | `{ app } = require("electron")`, `{ getMainWindow } = require("../core/window.cjs")`, `{ toolSpecs } = require("../core/realtimeToolSpecs.cjs")` |
+| `confirmations.cjs` | `{ listConfirmations, listPendingConfirmations, createConfirmation, approveConfirmation, rejectConfirmation, cancelConfirmation } = require("../services/pythonClient.cjs")` |
+| `plans.cjs` | `{ listPlans, createPlan, getPlan, updatePlan, updatePlanStep } = require("../services/pythonClient.cjs")` |
+| `events.cjs` | `{ listEvents } = require("../services/pythonClient.cjs")` |
+| `companion.cjs` | `{ showCompanion, hideCompanion, toggleCompanion, forwardVoiceStateToCompanion, setLockedPosition } = require("../core/companionWindow.cjs")` + `{ getMainWindow } = require("../core/window.cjs")` ako tijelo šalje na main window |
+| `realtime.cjs` | `{ createRealtimeSession, requestJson } = require("../services/pythonClient.cjs")` (+ `process.env` po potrebi) |
+
+### Koraci (build + load-smoke poslije SVAKOG modula)
+1. Kreiraj `electron/ipc_handlers/`. Za svaki modul (redom: `events.cjs` → `plans.cjs` → `confirmations.cjs` → `realtime.cjs` → `app.cjs` → `companion.cjs`, od najmanjeg): premjesti navedene funkcije **verbatim** u modul; dodaj na vrh SAMO importe koje tijela stvarno koriste (tabela gore je smjernica — potvrdi grep-om unutar premještenih tijela); `module.exports = { ...premještene funkcije };`.
+2. Poslije svakog modula: obriši te funkcije iz `main.cjs`, dodaj `const { ... } = require("./ipc_handlers/<modul>.cjs");`. `node --check electron/main.cjs` + `node -e "require('./electron/ipc_handlers/<modul>.cjs')"` (load-smoke).
+3. `registerIpcHandlers({...})` poziv se NE mijenja u strukturi — imena handlera ostaju ista (sad dolaze iz importa umjesto lokalnih definicija).
+4. Finalno: `npm run build` čist + `node --check electron/main.cjs` + load-smoke svih 6 modula.
+5. `grep -nE "^(async )?function handle(ToolsList|AppQuit|AppMinimize|AppToggleMaximize|Confirmation|Plan|EventsList|Companion|RealtimeCreateToken)" electron/main.cjs` → **prazno** (sve izdvojeno; ostaje samo `prepareWindowData` + `handleToolsExecute`).
+
+### Pravila specifična za R2d (uz opšta R2 pravila)
+1. **Verbatim move.** Tijela handlera bajt-identična. Ne mijenjati logiku, imena kanala, redoslijed, potpise.
+2. **NE dirati `handleToolsExecute`**, `prepareWindowData`, kill-switch (`triggerKillSwitch`/`registerKillSwitch`), lifecycle (`app.whenReady`/`before-quit`), `currentMode`. To je R2e/ostatak.
+3. Ako neki handler referencira slobodnu varijablu koja NIJE importabilna iz postojećeg modula (tj. main.cjs-lokalno stanje) → **STANI i javi Claude-u**, ne parametrizuj naslijepo. (Po pregledu ovo se NE očekuje, ali ako iskrsne — to je signal da handler pripada R2e, ne R2d.)
+4. **Bez circular require:** `ipc_handlers/*` NIKAD ne importuje `main.cjs`. Samo `electron` + postojeći `core/*`/`services/*` moduli.
+5. **Ne commitovati** — javi kad završiš, Claude verifikuje.
+
+### Acceptance (pi provjeri prije nego javi)
+- `main.cjs` ~740 ln; grep iz koraka 5 prazan.
+- `electron/ipc_handlers/` ima 6 modula iz cilja, svaki sa svojim handlerima + `module.exports`.
+- `npm run build` čist; `node --check main.cjs` čist; load-smoke svih 6 modula čist.
+- `registerIpcHandlers({...})` poziv strukturno nepromijenjen (isti kanali → ista imena handlera).
+- Verbatim diff dokaz (tijela handlera bajt-identična vs `git show HEAD:electron/main.cjs`).
+
+### Izvještaj pi
+`agent_reports/2026-07-09_pi-refactor-r2d-ipc-handlers.md`: koji handler u koji modul, koraci, `build`+`node --check`+load-smoke izlaz, verbatim diff dokaz, tačna lista diranih/kreiranih fajlova, potvrda "ponašanje nepromijenjeno, `handleToolsExecute`/kill-switch/`currentMode` NISU dirani". **NE commitovati** — čeka Claude pregled.
+
+### Claude R2d pregled
+- `npm run build` + `node --check main.cjs` + load-smoke svih 6 modula sam.
+- Diff: tijela handlera bajt-identična vs `git show HEAD:electron/main.cjs`.
+- Grep potvrda: `handleToolsExecute`/`currentMode`/kill-switch netaknuti u main.cjs.
+- `gitnexus detect_changes` — pogođeni samo main.cjs + novi ipc_handlers moduli.
+- **Runtime smoke (obavezno prije commita):** pokrenuti app i pozvati bar po jedan kanal iz 2-3 domena (npr. companion show/hide, plans list, confirmation create) — jer IPC handleri su živi runtime put bez unit testova.
+
+---
+
 ## Sekvenca poslije R1
-- **R2 `main.cjs`** — R2a ✅ (commit `9322064`). R2b+R2c SADA (pi, brief gore). R2d (IPC handleri) + R2e (kill-switch/`currentMode`) ODGOĐENI — manji dobitak, R2e dira dijeljeno stanje → zaseban pregled.
+- **R2 `main.cjs`** — R2a ✅ (`9322064`), R2b+R2c ✅ (`8a47ad5`, Claude verifikovao). **R2d SADA** (IPC handleri → `ipc_handlers/`, brief gore). **R2e** (kill-switch/`currentMode`) ODGOĐEN — dira dijeljeno stanje, zaseban pregled poslije R2d.
 - **R3 `App.tsx`** — ✅ ZAVRŠEN.
 - **R4 `realtime.ts`** — opciono, nisko.
 
