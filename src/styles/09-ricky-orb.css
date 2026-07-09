@@ -1,16 +1,20 @@
-/* ---- Ricky Orb (FAZA 19+ redesign — branding assets) ---- */
+/* ---- Ricky Orb (FAZA 19+ redesign — shared avatar asset) ---- */
 
 .ricky-orb {
-  /* Sized to dominate the idle-screen center like GUI-SET-1.png. The
-     ricky-orb-main.png asset carries its own jagged aura/glow, so the orb
-     reads as the hero element at this size. */
+  /* Uses the same Riki-avatar.png visual identity as the mini computer-mode
+     avatar; state classes below only adjust motion/glow. */
   position: relative;
   display: grid;
   place-items: center;
   isolation: isolate;
   width: 300px;
   height: 300px;
+  border-radius: 999px;
+  overflow: hidden;
   pointer-events: auto;
+  filter:
+    drop-shadow(0 0 18px rgba(31, 134, 255, 0.42))
+    drop-shadow(0 0 36px rgba(111, 80, 255, 0.22));
 }
 
 .ricky-orb-small {
@@ -36,19 +40,19 @@
 .ricky-orb-img {
   position: relative;
   z-index: 4;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
+  width: 112%;
+  height: 112%;
+  object-fit: cover;
+  object-position: center;
+  border-radius: 999px;
   user-select: none;
   -webkit-user-drag: none;
-  filter:
-    drop-shadow(0 0 16px rgba(62, 166, 255, 0.4))
-    drop-shadow(0 0 36px rgba(62, 166, 255, 0.16));
 }
 
 /* ---- Triple-ring voice system (RICKY_ORB_ANIMATION_PLAN.md §6) ---- */
 
 .ricky-orb__ring {
+  display: none;
   position: absolute;
   inset: 12%;
   border-radius: 50%;
@@ -252,4 +256,3 @@
     transition: none !important;
   }
 }
-
