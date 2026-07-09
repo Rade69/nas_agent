@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-from app.agent.permission_engine import check_permission
+from app.agent.permission_engine import check_active_window, check_permission
 from app.core.config import Settings
 from app.schemas.tool import ToolDefinition, ToolExecutionContext, ToolExecutionRequest
+from app.agent.permission_engine import AppError
 from app.services.confirmation_service import ConfirmationService
 from app.storage.db import initialize_database
 from app.storage.repositories.confirmation_repo import ConfirmationRepository
@@ -151,3 +152,169 @@ def test_critical_risk_requires_confirmation_even_if_not_flagged(tmp_path) -> No
     error = check_permission(tool, make_request(), make_confirmations(tmp_path))
     assert error is not None
     assert error.code == "CONFIRMATION_REQUIRED"
+
+# =============================================================================
+#  R2d test coverage: check_active_window (FAZA 13 enforcement)
+#  Context: agent_reports/2026-07-09_pi-permission-engine-test-coverage.md
+# =============================================================================
+
+
+def test_active_window_skips_when_flag_false() -> None:
+    """When requires_active_window_match=False, check is skipped entirely."""
+    tool = low_risk_tool(requires_active_window_match=False)
+    error = check_active_window(tool)
+    assert error is None
+
+
+def test_active_window_skips_when_no_lists() -> None:
+    """When allowed_apps and blocked_apps are both empty, nothing to enforce."""
+    tool = low_risk_tool(requires_active_window_match=True, allowed_apps=[], blocked_apps=[])
+    error = check_active_window(tool)
+    assert error is None
+
+
+def test_active_window_blocked_exact_match(monkeypatch) -> None:
+    """Blocked app case-insensitive match on the foreground process."""
+    monkeypatch.setattr(
+        "app.agent.permission_engine._get_active_window_process",
+        lambda: "powershell.exe",
+    )
+    tool = low_risk_tool(
+        requires_active_window_match=True,
+        blocked_apps=["powershell.exe"],
+        allowed_apps=[],
+    )
+    error = check_active_window(tool)
+    assert isinstance(error, AppError)
+    assert error.code == "ACTIVE_WINDOW_BLOCKED"
+
+
+def test_active_window_blocked_case_insensitive(monkeypatch) -> None:
+    """Block check is case-insensitive (uses .lower())."""
+    monkeypatch.setattr(
+        "app.agent.permission_engine._get_active_window_process",
+        lambda: "POWERSHELL.EXE",
+    )
+    tool = low_risk_tool(
+        requires_active_window_match=True,
+        blocked_apps=["powershell.exe"],
+        allowed_apps=[],
+    )
+    error = check_active_window(tool)
+    assert isinstance(error, AppError)
+    assert error.code == "ACTIVE_WINDOW_BLOCKED"
+
+
+def test_active_window_not_allowed(monkeypatch) -> None:
+    """Process not in allowed list is rejected."""
+    monkeypatch.setattr(
+        "app.agent.permission_engine._get_active_window_process",
+        lambda: "chrome.exe",
+    )
+    tool = low_risk_tool(
+        requires_active_window_match=True,
+        allowed_apps=["notepad.exe"],
+        blocked_apps=[],
+    )
+    error = check_active_window(tool)
+    assert isinstance(error, AppError)
+    assert error.code == "ACTIVE_WINDOW_NOT_ALLOWED"
+
+
+def test_active_window_allowed(monkeypatch) -> None:
+    """Process in allowed list passes."""
+    monkeypatch.setattr(
+        "app.agent.permission_engine._get_active_window_process",
+        lambda: "notepad.exe",
+    )
+    tool = low_risk_tool(
+        requires_active_window_match=True,
+        allowed_apps=["notepad.exe"],
+        blocked_apps=[],
+    )
+    error = check_active_window(tool)
+    assert error is None
+
+
+def test_active_window_unknown_fail_closed(monkeypatch) -> None:
+    """Cannot determine foreground process → fail-closed (security guarantee)."""
+    monkeypatch.setattr(
+        "app.agent.permission_engine._get_active_window_process",
+        lambda: None,
+    )
+    tool = low_risk_tool(
+        requires_active_window_match=True,
+        blocked_apps=["x.exe"],
+        allowed_apps=[],
+    )
+    error = check_active_window(tool)
+    assert isinstance(error, AppError)
+    assert error.code == "ACTIVE_WINDOW_UNKNOWN"
+
+
+# =============================================================================
+#  R2d test coverage: check_permission S-2 external_content_seen escalation
+# =============================================================================
+
+
+def test_external_content_escalates_medium_tool(tmp_path) -> None:
+    """Medium-risk non-reader tool escalated when external content was seen."""
+    tool = low_risk_tool(
+        risk="medium",
+        reads_external_content=False,
+        requires_confirmation=False,
+    )
+    error = check_permission(
+        tool,
+        make_request(external_content_seen=True),
+        make_confirmations(tmp_path),
+    )
+    assert isinstance(error, AppError)
+    assert error.code == "CONFIRMATION_REQUIRED"
+
+
+def test_external_content_does_not_escalate_readers(tmp_path) -> None:
+    """Pure readers (reads_external_content=True) are exempt from S-2 escalation."""
+    tool = low_risk_tool(
+        risk="low",
+        reads_external_content=True,
+        requires_confirmation=False,
+    )
+    error = check_permission(
+        tool,
+        make_request(external_content_seen=True),
+        make_confirmations(tmp_path),
+    )
+    assert error is None
+
+
+def test_external_content_escalates_computer_mode_tool(tmp_path) -> None:
+    """Low-risk computer-mode tool escalated because requires_computer_mode=True."""
+    tool = low_risk_tool(
+        risk="low",
+        reads_external_content=False,
+        requires_computer_mode=True,
+        requires_confirmation=False,
+    )
+    error = check_permission(
+        tool,
+        make_request(external_content_seen=True, computer_mode=True),
+        make_confirmations(tmp_path),
+    )
+    assert isinstance(error, AppError)
+    assert error.code == "CONFIRMATION_REQUIRED"
+
+
+def test_external_content_no_escalation_when_not_seen(tmp_path) -> None:
+    """Baseline: without external_content_seen the tool runs normally."""
+    tool = low_risk_tool(
+        risk="medium",
+        reads_external_content=False,
+        requires_confirmation=False,
+    )
+    error = check_permission(
+        tool,
+        make_request(external_content_seen=False),
+        make_confirmations(tmp_path),
+    )
+    assert error is None
