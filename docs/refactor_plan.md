@@ -11,7 +11,7 @@
 | Fajl | Linije | Status | Redoslijed |
 |---|---|---|---|
 | `electron/main.cjs` | 1922 | 🔒 Codex nekomitovan | R2 (poslije Codexa) |
-| `src/App.tsx` | 1115 | 🔒 Codex nekomitovan/aktivan | R3 (poslije Codexa) |
+| `src/App.tsx` | 1115→503 | ✅ **R3 ZAVRŠEN** (Claude verifikovao: 0 redova promijenjeno) | ✔ |
 | `python_backend/app/agent/tool_registry.py` | 637→78 | ✅ **R1 ZAVRŠEN** (Claude verifikovao) | ✔ |
 | `src/lib/realtime.ts` | 534 | 🟡 tik preko | R4 (opciono) |
 
