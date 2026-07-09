@@ -26,6 +26,8 @@ Komunikacija sa korisnikom i sadržaj dokumenata/izvještaja: srpski/bosanski, l
 ## Rad po fazama
 
 - Radi se isključivo faza po faza iz [docs/MIGRATION_PLAN.md](./docs/MIGRATION_PLAN.md) — ne preskakati faze, ne raditi veliki rewrite u jednom koraku.
+- **`docs/MIGRATION_PLAN.md` tracker je JEDINI izvor istine za status faza.** Prije nego što bilo kojem agentu (ili korisniku) kažeš da je faza urađena/neurađena, **provjeri tracker + kod** — ne oslanjaj se na auto-memoriju ni na svoje ranije poruke. Auto-memorija je samo hint i može biti zastarjela (projekat se kreće brže od snapshot-a); tvrdnja o statusu bez provjere trackera je greška.
+- **Multi-agent higijena** (ovaj tree dijele Claude Code + korisnikov "pi" agent na istom filesystemu): idealno svaki agent radi na svojoj grani i predaje čist commit; ako se dijeli isto stablo, svaki agent commituje svoj posao prije nego drugi krene, i uvijek `git log`/`git status` prije rada da se ne pokupi tuđe nekomitovano stanje. Prije editovanja recurring collision fajlova (`python_backend/app/core/config.py`, `app/main.py`, `electron/main.cjs`) — re-čitati ih svježe (`cat`, ne keširani Read) neposredno prije izmjene.
 - Prije izmjene postojeće funkcije/klase/metode: pročitati kontekst i pozivaoce (call sites).
 - Ako je GitNexus indeksiran za ovaj repo: `gitnexus_impact` prije izmjene simbola, `gitnexus_detect_changes` prije commita, stati i prijaviti korisniku ako je rizik HIGH/CRITICAL, koristiti `gitnexus_rename` umjesto find-and-replace za preimenovanje.
 - Ako GitNexus nije indeksiran (trenutno stanje — nije potvrđeno da je ovaj repo indeksiran): ručno pronaći module koji se mijenjaju, pronaći import/call reference, eksplicitno objasniti blast radius korisniku prije izmjene.
@@ -45,7 +47,7 @@ Komunikacija sa korisnikom i sadržaj dokumenata/izvještaja: srpski/bosanski, l
 
    Ne dodavati ovaj komentar u svaku funkciju ili trivijalnu izmjenu — samo tamo gdje bi budući čitalac koda realno pitao "zašto je ovo ovako".
 4. **GitNexus refresh** — ako je GitNexus podešen za repo, pokrenuti `gitnexus_detect_changes` / `npx gitnexus analyze` da indeks ostane svjež.
-5. **Ažurirati `docs/MIGRATION_PLAN.md` tracker tabelu** — označiti fazu kao urađenu kad acceptance criteria iz `docs/RILEYJARVIS_WINDOWS_HYBRID_IMPLEMENTATION_PLAN.md` budu ispunjeni.
+5. **Ažurirati `docs/MIGRATION_PLAN.md` tracker tabelu — u ISTOM commitu kao i sam posao** — označiti fazu kao urađenu kad acceptance criteria iz `docs/RILEYJARVIS_WINDOWS_HYBRID_IMPLEMENTATION_PLAN.md` budu ispunjeni. Tracker i kod ne smiju divergirati; ne ostavljati "ažuriraću tracker kasnije" jer tada memorija i tracker počnu da se razilaze (vidi pravilo "tracker je jedini izvor istine" iznad).
 
 ## Prije commita
 

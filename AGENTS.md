@@ -24,12 +24,14 @@ RileyJarvis Windows Hybrid ("Naš-agent") — Windows port RileyJarvis Electron 
 - Pregledati modul i njegove pozivaoce (call sites).
 - Ako je GitNexus dostupan za ovaj repo, pokrenuti impact analysis prije izmjene simbola.
 - Ako GitNexus nije dostupan, ručno prijaviti blast radius korisniku.
+- **Dijeljeni tree (Claude Code + pi na istom filesystemu):** `git log`/`git status` prije rada da ne pokupiš tuđe nekomitovano stanje; idealno svaki agent radi na svojoj grani i predaje čist commit. Recurring collision fajlove (`python_backend/app/core/config.py`, `app/main.py`, `electron/main.cjs`) re-čitati svježe neposredno prije izmjene.
+- **`docs/MIGRATION_PLAN.md` tracker je jedini izvor istine za status faza** — provjeri ga (+ kod) prije nego tvrdiš da je nešto urađeno/neurađeno. Ne oslanjati se na memoriju/pretpostavke.
 
 ## Before commit
 
 - Pokrenuti relevantne testove/lint/typecheck.
 - Pokrenuti `gitnexus_detect_changes` ako je GitNexus dostupan.
-- Napisati `agent_reports/` izvještaj i po potrebi ažurirati `docs/MIGRATION_PLAN.md` tracker (vidi [CLAUDE.md](./CLAUDE.md) za tačan format).
+- Napisati `agent_reports/` izvještaj i ažurirati `docs/MIGRATION_PLAN.md` tracker **u istom commitu kao i posao** (vidi [CLAUDE.md](./CLAUDE.md) za tačan format) — tracker i kod ne smiju divergirati.
 - Sažeti izmijenjene module i promjene ponašanja korisniku.
 
 ## Prefer small PRs
