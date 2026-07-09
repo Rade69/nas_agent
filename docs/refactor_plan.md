@@ -12,7 +12,7 @@
 |---|---|---|---|
 | `electron/main.cjs` | 1922 | 🔒 Codex nekomitovan | R2 (poslije Codexa) |
 | `src/App.tsx` | 1115 | 🔒 Codex nekomitovan/aktivan | R3 (poslije Codexa) |
-| `python_backend/app/agent/tool_registry.py` | 637 | ✅ slobodan, pun pytest | **R1 — SADA** |
+| `python_backend/app/agent/tool_registry.py` | 637→78 | ✅ **R1 ZAVRŠEN** (Claude verifikovao) | ✔ |
 | `src/lib/realtime.ts` | 534 | 🟡 tik preko | R4 (opciono) |
 
 CSS je već cijepan (`src/styles/00–14`) — model se poštuje. Ne dirati.
