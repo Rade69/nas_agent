@@ -334,7 +334,7 @@
 }
 
 .pixel-hero .ricky-orb__ring--outer {
-  inset: -10px;
+  inset: 5%;
   border-color: rgba(58, 215, 255, 0.16);
   box-shadow:
     0 0 70px rgba(22, 139, 255, 0.22),

@@ -43,7 +43,7 @@
   width: 112%;
   height: 112%;
   object-fit: cover;
-  object-position: center;
+  object-position: center 53%;
   border-radius: 999px;
   user-select: none;
   -webkit-user-drag: none;
@@ -52,14 +52,14 @@
 /* ---- Triple-ring voice system (RICKY_ORB_ANIMATION_PLAN.md §6) ---- */
 
 .ricky-orb__ring {
-  display: none;
   position: absolute;
   inset: 12%;
   border-radius: 50%;
   border: 1px solid rgba(91, 209, 255, 0.35);
-  z-index: 1;
+  z-index: 5;
   pointer-events: none;
   transition: border-color 400ms ease, box-shadow 400ms ease;
+  mix-blend-mode: screen;
 }
 
 .ricky-orb__ring--outer {
