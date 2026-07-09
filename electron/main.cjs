@@ -122,6 +122,7 @@ const {
 const { handleRealtimeCreateToken } = require("./ipc_handlers/realtime.cjs");
 const {
   handleToolsList,
+  handleCancelAllExecutions,
   handleAppQuit,
   handleAppMinimize,
   handleAppToggleMaximize,
@@ -597,6 +598,7 @@ registerIpcHandlers({
   "app:toggle-maximize": handleAppToggleMaximize,
   "realtime:create-token": handleRealtimeCreateToken,
   "tools:execute": handleToolsExecute,
+  "tools:cancel-all": handleCancelAllExecutions,
   // FAZA 9: confirmations + plans IPC channels (allowlist entries).
   "confirmations:list": handleConfirmationsList,
   "confirmations:pending": handleConfirmationsPending,

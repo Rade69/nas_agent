@@ -9,6 +9,8 @@ contextBridge.exposeInMainWorld("ricky", {
   // Tools
   executeTool: (toolCall) => ipcRenderer.invoke("tools:execute", toolCall),
   getToolSpecs: () => ipcRenderer.invoke("tools:list"),
+  // Stop button: ask the backend to cancel every in-flight tool.
+  cancelAllExecutions: () => ipcRenderer.invoke("tools:cancel-all"),
   // App
   quitApp: () => ipcRenderer.invoke("app:quit"),
   minimizeApp: () => ipcRenderer.invoke("app:minimize"),

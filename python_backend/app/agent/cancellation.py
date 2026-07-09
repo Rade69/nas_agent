@@ -61,6 +61,26 @@ class CancellationRegistry:
                 record.state = "cancel_requested"
             return record
 
+    def request_cancel_all(self) -> list[ExecutionRecord]:
+        """Flag every non-terminal in-flight execution for cancellation.
+
+        Backs the Stop button ("stop everything") — the user does not pick an
+        execution_id, so this raises the cancel flag on all records that are not
+        already in a terminal state and returns the ones that were flagged.
+        Already-finished executions are left untouched. Same runtime-handshake
+        semantics as request_cancel(): whether a tool actually stops depends on
+        its own cancellation checkpoints.
+        """
+        with self._lock:
+            flagged: list[ExecutionRecord] = []
+            for record in self._records.values():
+                if record.state in _TERMINAL_STATES:
+                    continue
+                record.cancel_requested = True
+                record.state = "cancel_requested"
+                flagged.append(record)
+            return flagged
+
     def is_cancel_requested(self, execution_id: str) -> bool:
         with self._lock:
             record = self._records.get(execution_id)

@@ -393,6 +393,13 @@ export default function App() {
   function handleStop() {
     clientRef.current?.disconnect();
     setVoiceState("interrupted");
+    // Backend half of "stop": the disconnect above only tears down the voice/mic
+    // session, so also flag every in-flight tool for cancellation (FAZA 10
+    // cancellation registry). Best-effort — the voice session is already stopped.
+    // Context: agent_reports/2026-07-09_stop-cancellation-wiring.md
+    void window.ricky.cancelAllExecutions().catch(() => {
+      /* best-effort; nothing more to do if the backend cancel call fails */
+    });
     addActivityEvent(createActivityEvent("status", "Zaustavljeno", "Korisnik je pritisnuo Stop"));
   }
 

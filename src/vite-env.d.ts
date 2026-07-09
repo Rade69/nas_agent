@@ -122,6 +122,7 @@ declare global {
       createRealtimeToken: () => Promise<{ value: string; expiresAt: number | null }>;
       executeTool: (toolCall: RickyToolCall) => Promise<RickyToolResult>;
       getToolSpecs: () => Promise<RickyToolSpec[]>;
+      cancelAllExecutions: () => Promise<{ ok: boolean; cancelled: string[]; count: number }>;
       quitApp: () => Promise<void>;
       minimizeApp: () => Promise<void>;
       toggleMaximizeApp: () => Promise<void>;

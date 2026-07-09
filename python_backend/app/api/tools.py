@@ -26,6 +26,25 @@ def execute_tool(
     return executor.execute(request_body)
 
 
+@router.post("/tools/executions/cancel-all")
+def cancel_all_tool_executions(request: Request) -> dict[str, object]:
+    """Request cancellation of every in-flight tool call (Stop button).
+
+    The Stop button is "stop everything": the user does not choose an
+    execution_id, so this flags all non-terminal executions at once. Voice
+    interruption tears down the Realtime connection separately in the renderer;
+    this is the backend half so an in-flight tool actually gets the cancel flag.
+    Returns the list of execution_ids that were flagged (may be empty if nothing
+    was running).
+    """
+    registry = getattr(request.app.state, "cancellation_registry", None)
+    if registry is None:
+        raise AppError("CANCELLATION_UNAVAILABLE", "Cancellation registry is not initialized.", status_code=500)
+
+    flagged = registry.request_cancel_all()
+    return {"ok": True, "cancelled": [record.execution_id for record in flagged], "count": len(flagged)}
+
+
 @router.post("/tools/executions/{execution_id}/cancel")
 def cancel_tool_execution(execution_id: str, request: Request) -> dict[str, str | bool | None]:
     """Request cancellation of an in-flight tool call (FAZA 10).

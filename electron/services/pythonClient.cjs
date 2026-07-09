@@ -69,6 +69,17 @@ async function executeTool(payload, options = {}) {
   });
 }
 
+// Stop button ("stop everything"): flag every in-flight tool for cancellation.
+// The renderer also tears down the Realtime voice connection separately; this
+// is the backend half so a running tool actually receives the cancel flag.
+async function cancelAllExecutions(options = {}) {
+  return await requestJson("/tools/executions/cancel-all", {
+    ...options,
+    method: "POST",
+    body: {},
+  });
+}
+
 async function createRealtimeSession(session, options = {}) {
   return await requestJson("/realtime/session", {
     ...options,
@@ -177,6 +188,7 @@ async function getSecuritySelfTest(options = {}) {
 module.exports = {
   DEFAULT_BACKEND_URL,
   approveConfirmation,
+  cancelAllExecutions,
   cancelConfirmation,
   createConfirmation,
   createPlan,

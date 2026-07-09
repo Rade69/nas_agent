@@ -52,3 +52,15 @@ def test_execute_unknown_tool_returns_contract_error() -> None:
     assert body["tool_name"] == "missing"
     assert body["error"]["code"] == "TOOL_NOT_FOUND"
     assert body["action_log_id"]
+
+
+def test_cancel_all_executions_returns_ok_with_no_in_flight_tools() -> None:
+    # `with` runs the lifespan so app.state.cancellation_registry is initialized.
+    with TestClient(app) as client:
+        response = client.post("/tools/executions/cancel-all")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True
+    assert body["count"] == 0
+    assert body["cancelled"] == []
