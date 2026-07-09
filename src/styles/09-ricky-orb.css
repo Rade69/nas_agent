@@ -45,6 +45,8 @@
   object-fit: cover;
   object-position: center 53%;
   border-radius: 999px;
+  transform-origin: center;
+  animation: ricky-avatar-breathe 3.2s ease-in-out infinite;
   user-select: none;
   -webkit-user-drag: none;
 }
@@ -97,7 +99,7 @@
 }
 
 .ricky-orb--idle .ricky-orb-img {
-  animation: ricky-soft-float 5s ease-in-out infinite;
+  animation: ricky-avatar-breathe 3.2s ease-in-out infinite;
 }
 
 /* listening = active ring, stronger cyan glow */
@@ -113,9 +115,7 @@
 }
 
 .ricky-orb--listening .ricky-orb-img {
-  filter:
-    drop-shadow(0 0 22px rgba(62, 166, 255, 0.65))
-    drop-shadow(0 0 48px rgba(126, 246, 255, 0.2));
+  animation: ricky-avatar-talk 0.82s ease-in-out infinite;
 }
 
 /* thinking = slow glow + gentle orbit, less audio-like */
@@ -128,6 +128,10 @@
 .ricky-orb--thinking .ricky-orb__ring--middle {
   border-color: rgba(62, 166, 255, 0.28);
   animation: ricky-thinking-pulse 2.4s ease-in-out infinite;
+}
+
+.ricky-orb--thinking .ricky-orb-img {
+  animation: ricky-avatar-breathe 2.8s ease-in-out infinite;
 }
 
 /* speaking = liveliest, multi-tempo voice pulse */
@@ -148,7 +152,7 @@
 }
 
 .ricky-orb--speaking .ricky-orb-img {
-  animation: ricky-speaking-image 0.9s ease-in-out infinite;
+  animation: ricky-avatar-talk 0.82s ease-in-out infinite;
 }
 
 /* warning = calm, must not steal focus from confirmation modal */
@@ -189,9 +193,19 @@
   50% { transform: scale(1.035); opacity: 0.85; }
 }
 
-@keyframes ricky-soft-float {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-2px) scale(1.01); }
+@keyframes ricky-avatar-breathe {
+  0%, 100% {
+    transform: scale(0.985);
+    filter:
+      drop-shadow(0 0 14px rgba(31, 134, 255, 0.36))
+      drop-shadow(0 0 28px rgba(111, 80, 255, 0.18));
+  }
+  50% {
+    transform: scale(1.015);
+    filter:
+      drop-shadow(0 0 22px rgba(31, 134, 255, 0.55))
+      drop-shadow(0 0 44px rgba(111, 80, 255, 0.28));
+  }
 }
 
 @keyframes ricky-listening-pulse {
@@ -220,19 +234,20 @@
   50% { transform: scale(1.12); opacity: 0.9; }
 }
 
-@keyframes ricky-speaking-image {
+@keyframes ricky-avatar-talk {
   0%, 100% {
-    transform: scale(1);
+    transform: scale(0.965);
     filter:
-      drop-shadow(0 0 18px rgba(62, 166, 255, 0.55))
-      drop-shadow(0 0 40px rgba(126, 246, 255, 0.2));
+      drop-shadow(0 0 16px rgba(0, 183, 255, 0.45))
+      drop-shadow(0 0 34px rgba(111, 80, 255, 0.24));
   }
-  50% {
-    transform: scale(1.025);
+  42% {
+    transform: scale(1.045);
     filter:
-      drop-shadow(0 0 26px rgba(62, 166, 255, 0.8))
-      drop-shadow(0 0 58px rgba(126, 246, 255, 0.28));
+      drop-shadow(0 0 28px rgba(0, 213, 255, 0.72))
+      drop-shadow(0 0 58px rgba(111, 80, 255, 0.42));
   }
+  68% { transform: scale(1.01); }
 }
 
 @keyframes ricky-warning-pulse {
