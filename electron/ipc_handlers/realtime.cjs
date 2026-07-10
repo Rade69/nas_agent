@@ -46,7 +46,7 @@ async function handleRealtimeCreateToken() {
     output_modalities: ["audio"],
     reasoning: { effort: "low" },
     tool_choice: "auto",
-    tools: toolSpecs.map(({ risk: _omit, ...rest }) => rest),
+    tools: toolSpecs.map(({ risk: _omitRisk, reads_external_content: _omitRxc, ...rest }) => rest),
     audio: {
       input: {
         turn_detection: {

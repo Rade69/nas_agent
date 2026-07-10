@@ -32,6 +32,13 @@ function createCompanionWindow() {
     height: ORB_WIN_H,
     x: workArea.x + workArea.width - ORB_WIN_W - margin,
     y: workArea.y + workArea.height - ORB_WIN_H - margin - 40,
+    // Electron defaults new windows to visible. createCompanionWindow() is
+    // called unconditionally at app startup (main.cjs) regardless of Computer
+    // Mode, so without this the orb popped up immediately on every launch —
+    // showCompanion()/hideCompanion() (tied to set_mode) are what should
+    // control visibility, not window creation itself.
+    // Context: agent_reports/2026-07-10_orb-startup-visibility-fix.md
+    show: false,
     frame: false,
     transparent: true,
     resizable: false,

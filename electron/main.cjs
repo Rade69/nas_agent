@@ -287,6 +287,12 @@ async function handleToolsExecute(_event, toolCall) {
         context: {
           computer_mode: currentMode === "computer",
           ...(toolContext.confirmation_id ? { confirmation_id: String(toolContext.confirmation_id) } : {}),
+          // S-2 prompt-injection escalation for the voice path (agent_reports/
+          // 2026-07-10_s2-voice-path-fix.md): the renderer tracks whether a
+          // reads_external_content tool has succeeded this voice session and
+          // forwards the flag here so permission_engine's escalation can see it.
+          // Previously always omitted, so the voice path could never escalate.
+          ...(toolContext.external_content_seen === true ? { external_content_seen: true } : {}),
         },
       });
       return adaptPythonToolResponse(response, name);

@@ -47,6 +47,7 @@ const toolSpecs = [
   {
     type: "function",
     name: "web_search",
+    reads_external_content: true,
     description: "Search the web with Exa. Use for current facts, links, research, and source gathering. Results are shown as a clean Markdown research brief in the artifact panel.",
     parameters: {
       type: "object",
@@ -307,6 +308,7 @@ const toolSpecs = [
     type: "function",
     name: "screen_snapshot",
     risk: "low",
+    reads_external_content: true,
     description: "Capture the current screen and return the local screenshot path. Requires computer mode.",
     parameters: {
       type: "object",
@@ -318,6 +320,7 @@ const toolSpecs = [
     type: "function",
     name: "ui_inspect",
     risk: "low",
+    reads_external_content: true,
     description: "Inspect the frontmost Windows app name and window title. Requires computer mode.",
     parameters: {
       type: "object",

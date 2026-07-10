@@ -31,6 +31,14 @@ export class RickyRealtimeClient {
   private outputMeterFrame = 0;
   private smoothedMouthShape: MouthShape = silentMouthShape();
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
+  // FAZA S-2 voice-path fix (agent_reports/2026-07-10_s2-voice-path-fix.md):
+  // tracks whether a reads_external_content tool has succeeded this voice
+  // session, so acting-tool calls can be forwarded with external_content_seen
+  // for the backend's prompt-injection escalation (permission_engine.py).
+  // Scoped per voice session (reset on connect/disconnect), which is MORE
+  // conservative than the /agent/message runtime's per-message reset — once
+  // tainted, stays escalated for the rest of this voice session.
+  private externalContentSeen = false;
 
   constructor(callbacks: RealtimeCallbacks) {
     this.callbacks = callbacks;
@@ -49,6 +57,7 @@ export class RickyRealtimeClient {
 
   async connect(): Promise<void> {
     if (this.pc) return;
+    this.externalContentSeen = false;
     this.callbacks.onConnectionState("connecting");
     this.callbacks.onMood("thinking");
     this.callbacks.onVoiceState("thinking");
@@ -56,8 +65,6 @@ export class RickyRealtimeClient {
     this.callbacks.onActivity(createActivityEvent("status", "Realtime sesija zatražena"));
 
     try {
-      this.toolSpecs = await window.ricky.getToolSpecs();
-      const token = await window.ricky.createRealtimeToken();
       const pc = new RTCPeerConnection();
       const audio = document.createElement("audio");
       audio.autoplay = true;
@@ -67,13 +74,26 @@ export class RickyRealtimeClient {
         this.startOutputMeter(event.streams[0]);
       };
 
-      this.micStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
+      // These three were previously awaited one after another even though none
+      // depends on another's result — createRealtimeToken() alone is a network
+      // round trip (Electron -> Python backend -> OpenAI), so serializing it
+      // behind getToolSpecs() and in front of getUserMedia() added avoidable
+      // latency to every connect(). Running them concurrently cuts the wait to
+      // roughly the slowest one instead of the sum of all three.
+      // Context: agent_reports/2026-07-10_connect-latency-fix.md
+      const [toolSpecs, token, micStream] = await Promise.all([
+        window.ricky.getToolSpecs(),
+        window.ricky.createRealtimeToken(),
+        navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        }),
+      ]);
+      this.toolSpecs = toolSpecs;
+      this.micStream = micStream;
       pc.addTrack(this.micStream.getAudioTracks()[0], this.micStream);
 
       const dc = pc.createDataChannel("oai-events");
@@ -135,6 +155,7 @@ export class RickyRealtimeClient {
     this.pc = null;
     this.micStream = null;
     this.currentAssistantText = "";
+    this.externalContentSeen = false;
     this.callbacks.onConnectionState("idle");
     this.callbacks.onMood("idle");
     this.callbacks.onVoiceState("idle");
@@ -269,7 +290,19 @@ export class RickyRealtimeClient {
         if (typeof loadingResult.targetId === "string") parsedArgs.targetId = loadingResult.targetId;
         if (loadingResult.artifact) this.callbacks.onArtifact(loadingResult.artifact);
       }
-      const result = await window.ricky.executeTool({ name, arguments: parsedArgs } satisfies RickyToolCall);
+      const result = await window.ricky.executeTool({
+        name,
+        arguments: parsedArgs,
+        // FAZA S-2 voice-path fix (agent_reports/2026-07-10_s2-voice-path-fix.md):
+        // forward whether external content was already read this voice session,
+        // so the backend can escalate acting tools (previously always omitted —
+        // the voice path could never trigger this defense).
+        context: { external_content_seen: this.externalContentSeen },
+      } satisfies RickyToolCall);
+      const executedSpec = this.toolSpecs.find((tool) => tool.name === name);
+      if (executedSpec?.reads_external_content && result.ok) {
+        this.externalContentSeen = true;
+      }
       // FAZA 13/14 confirmation bridge: when the backend blocks a tool call
       // because it needs an approved confirmation, auto-propose one and tell
       // the model to wait instead of retrying blindly.

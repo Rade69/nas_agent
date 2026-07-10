@@ -27,11 +27,17 @@ export type RickyToolSpec = {
   description: string;
   parameters: Record<string, unknown>;
   risk?: "low" | "medium" | "high" | "critical";
+  reads_external_content?: boolean;
 };
 
 export type RickyToolCall = {
   name: string;
   arguments: Record<string, unknown>;
+  context?: {
+    confirmation_id?: string;
+    external_content_seen?: boolean;
+    computer_mode?: boolean;
+  };
 };
 
 export type RickyToolResult = {
