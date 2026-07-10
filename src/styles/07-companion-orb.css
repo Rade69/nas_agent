@@ -15,34 +15,21 @@
   user-select: none;
 }
 
-.companion-root * {
-  -webkit-app-region: no-drag; /* buttons/menu stay clickable */
-}
-
 .companion-orb-button {
   width: 96px;
   height: 96px;
   border: 0;
   background: transparent;
   padding: 0;
-  cursor: pointer;
+  cursor: grab;
   display: grid;
   place-items: center;
   position: relative;
+  -webkit-app-region: drag; /* the orb itself is the drag handle */
 }
 
-.companion-orb-img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  opacity: 0.72;
-  transition: opacity 200ms ease;
-  user-select: none;
-  -webkit-user-drag: none;
-}
-
-.companion-orb-button:hover .companion-orb-img {
-  opacity: 0.92;
+.companion-orb-button:active {
+  cursor: grabbing;
 }
 
 .companion-state-pill {
@@ -59,6 +46,36 @@
   border-radius: 999px;
   white-space: nowrap;
   pointer-events: none;
+}
+
+/* Always-visible Stop button (the orb is the only surface in Computer Mode) */
+.companion-stop-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 91, 114, 0.55);
+  background: rgba(255, 91, 114, 0.16);
+  color: #ff9aa8;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  -webkit-app-region: no-drag; /* clickable on top of the draggable orb */
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+}
+
+.companion-stop-button:hover {
+  background: rgba(255, 91, 114, 0.9);
+  border-color: rgba(255, 91, 114, 0.9);
+  color: #fff;
+}
+
+.companion-stop-glyph {
+  font-size: 9px;
+  line-height: 1;
 }
 
 .companion-face {
@@ -187,56 +204,13 @@
   background: rgba(205, 238, 255, 0.5);
 }
 
-/* Context menu */
-.companion-menu {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: #0d1117;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
-  padding: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 160px;
-  z-index: 10;
-}
-
-.companion-menu-item {
-  background: transparent;
-  border: 0;
-  color: rgba(255, 255, 255, 0.85);
-  text-align: left;
-  padding: 7px 12px;
-  border-radius: 7px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.companion-menu-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-}
-
-.companion-menu-danger:hover {
-  background: rgba(255, 91, 114, 0.18);
-  color: #ff8197;
-}
-
-.companion-menu-separator {
-  border: 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
-  margin: 4px 0;
-}
+/* Context menu is now a native Electron Menu.popup (see companionWindow.cjs) —
+   the old HTML menu was clipped by the small orb window. */
 
 /* Accessibility — companion mini window respects reduced-motion (plan §9) */
 @media (prefers-reduced-motion: reduce) {
   .companion-root,
   .companion-root *,
-  .companion-orb-img,
   .companion-glow {
     animation: none !important;
     transition: none !important;

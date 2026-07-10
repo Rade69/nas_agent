@@ -14,6 +14,10 @@ let tray = null;
 let lockedPosition = false;
 
 const ORB_SIZE = 96;
+// Window must fit: orb (ORB_SIZE) + state pill + the Stop button below it.
+// Wider than the orb so the Stop pill isn't clipped horizontally either.
+const ORB_WIN_W = ORB_SIZE + 48; // 144
+const ORB_WIN_H = ORB_SIZE + 64; // 160
 
 function createCompanionWindow() {
   if (companionWindow && !companionWindow.isDestroyed()) return companionWindow;
@@ -24,10 +28,10 @@ function createCompanionWindow() {
   const margin = 24;
 
   const win = new BrowserWindow({
-    width: ORB_SIZE,
-    height: ORB_SIZE + 18, // extra room for the state pill
-    x: workArea.x + workArea.width - ORB_SIZE - margin,
-    y: workArea.y + workArea.height - ORB_SIZE - margin - 40,
+    width: ORB_WIN_W,
+    height: ORB_WIN_H,
+    x: workArea.x + workArea.width - ORB_WIN_W - margin,
+    y: workArea.y + workArea.height - ORB_WIN_H - margin - 40,
     frame: false,
     transparent: true,
     resizable: false,
@@ -161,12 +165,16 @@ function ensureTray() {
 // Lazy-bound callbacks to avoid coupling companion module to main.cjs internals.
 let focusMainWindowCallback = null;
 let quitAppCallback = null;
+let toggleVoiceCallback = null;
 
 function setMainWindowFocusCallback(cb) {
   focusMainWindowCallback = cb;
 }
 function setQuitAppCallback(cb) {
   quitAppCallback = cb;
+}
+function setToggleVoiceCallback(cb) {
+  toggleVoiceCallback = cb;
 }
 
 function focusMainWindow() {
@@ -177,6 +185,27 @@ function quitApp() {
   if (quitAppCallback) quitAppCallback();
 }
 
+// Native context menu for the orb. Replaces the HTML menu, which overflowed the
+// small orb window and got clipped — a native Menu.popup is not bounded by the
+// window size. Reuses the same actions as the tray + companion IPC handlers.
+function showOrbContextMenu() {
+  const win = companionWindow && !companionWindow.isDestroyed() ? companionWindow : null;
+  const menu = Menu.buildFromTemplate([
+    { label: "Otvori Ricky", click: () => focusMainWindow() },
+    { label: "Uključi/isključi glas", click: () => toggleVoiceCallback && toggleVoiceCallback() },
+    { type: "separator" },
+    {
+      label: "Zaključaj poziciju",
+      type: "checkbox",
+      checked: lockedPosition,
+      click: () => setLockedPosition(!lockedPosition),
+    },
+    { type: "separator" },
+    { label: "Zatvori Ricky", click: () => quitApp() },
+  ]);
+  menu.popup(win ? { window: win } : {});
+}
+
 module.exports = {
   createCompanionWindow,
   showCompanion,
@@ -185,7 +214,9 @@ module.exports = {
   getCompanionWindow,
   forwardVoiceStateToCompanion,
   setLockedPosition,
+  showOrbContextMenu,
   ensureTray,
   setMainWindowFocusCallback,
   setQuitAppCallback,
+  setToggleVoiceCallback,
 };

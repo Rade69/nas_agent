@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { VoiceState } from "../lib/voiceState";
 import { voiceStateLabel } from "../lib/voiceState";
-import orbMini from "../../assets/brending/orb/ricky-orb-mini.png";
+import { RickyOrb } from "./RickyOrb";
 
 type CompanionOrbProps = {
   initialState?: VoiceState;
@@ -9,8 +9,6 @@ type CompanionOrbProps = {
 
 export function CompanionOrb({ initialState = "idle" }: CompanionOrbProps) {
   const [voiceState, setVoiceState] = useState<VoiceState>(initialState);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement | null>(null);
 
   // FAZA 12: VoiceState arrives via IPC from the main process.
   useEffect(() => {
@@ -22,60 +20,37 @@ export function CompanionOrb({ initialState = "idle" }: CompanionOrbProps) {
     };
   }, []);
 
-  // Close context menu on outside click.
-  useEffect(() => {
-    if (!menuOpen) return;
-    const handler = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [menuOpen]);
-
   return (
     <div className="companion-root" aria-label={`Ricky companion — ${voiceStateLabel(voiceState)}`}>
-      <button
+      {/* The orb is the drag handle (-webkit-app-region: drag in CSS). A drag
+          region can't receive left-clicks, so actions live on the Stop button
+          (no-drag) and the right-click native menu (Menu.popup, not clipped by
+          the small window like the old HTML menu was). */}
+      <div
         className="companion-orb-button"
-        onClick={() => {
-          window.ricky.companionClick?.();
-        }}
         onContextMenu={(event) => {
           event.preventDefault();
-          setMenuOpen((value) => !value);
+          window.ricky.companionMenu?.();
         }}
-        onDoubleClick={() => {
-          window.ricky.companionOpenMain?.();
-        }}
-        title={`${voiceStateLabel(voiceState)} — klik za akciju, dupli klik za glavni prozor, desni klik za meni`}
+        title={`${voiceStateLabel(voiceState)} — povuci za pomjeranje, desni klik za meni`}
       >
-        <img
-          src={orbMini}
-          alt="Ricky companion"
-          className="companion-orb-img"
-          draggable={false}
-        />
+        <RickyOrb voiceState={voiceState} size="floating" />
         <span className="companion-state-pill">{voiceStateLabel(voiceState)}</span>
-      </button>
+      </div>
 
-      {menuOpen ? (
-        <div className="companion-menu" ref={menuRef} role="menu">
-          <button className="companion-menu-item" onClick={() => { setMenuOpen(false); window.ricky.companionOpenMain?.(); }}>
-            Open Ricky
-          </button>
-          <button className="companion-menu-item" onClick={() => { setMenuOpen(false); window.ricky.companionToggleVoice?.(); }}>
-            Toggle voice
-          </button>
-          <button className="companion-menu-item" onClick={() => { setMenuOpen(false); window.ricky.companionToggleLock?.(true); }}>
-            Lock position
-          </button>
-          <hr className="companion-menu-separator" />
-          <button className="companion-menu-item companion-menu-danger" onClick={() => { setMenuOpen(false); window.ricky.quitApp?.(); }}>
-            Quit
-          </button>
-        </div>
-      ) : null}
+      {/* Always-visible Stop — the orb carries the "stop everything" control. */}
+      <button
+        type="button"
+        className="companion-stop-button"
+        onClick={() => window.ricky.companionStop?.()}
+        title="Zaustavi sve — glas i sve radnje (isto kao Ctrl+Alt+K)"
+        aria-label="Zaustavi sve"
+      >
+        <span className="companion-stop-glyph" aria-hidden="true">
+          ■
+        </span>
+        Stop
+      </button>
     </div>
   );
 }

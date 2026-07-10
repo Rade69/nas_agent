@@ -80,3 +80,126 @@ Dodate su NOVE funkcije/kanali (nizak rizik — bez izmjene potpisa postojećih)
 ## Potrebna korisnička potvrda
 
 - Ručni runtime smoke Stop dugmeta prije commita (UI put bez automatskih testova).
+
+---
+
+## Dopuna (isti dan) — Stop dugme na companion orbu
+
+**Povod:** u Računarskom modu glavni prozor je sklonjen, orb je jedina vidljiva
+površina, a orb nije imao vidljivo Stop dugme — samo nevidljivi Ctrl+Alt+K hotkey.
+Korisnik ne vidi šta se dešava kad okine hotkey.
+
+**Uočeni dodatni gap:** `runKillSwitch()` (Escape / Ctrl+Alt+K / IPC kill-switch)
+je prekidao glas ali **NIJE** zvao cancel-all — isti gap kao stari Stop dugme, samo
+na kill-switch putu. Popravljeno usput.
+
+**Izmjene:**
+1. `src/components/CompanionOrb.tsx`: vidljivo, uvijek-prisutno **Stop** dugme (crveno,
+   `■ Stop`) → `window.ricky.companionStop?.()`.
+2. `electron/preload.cjs`: `companionStop: () => ipcRenderer.invoke("companion:stop")`.
+3. `electron/main.cjs`: kanal `"companion:stop": triggerKillSwitch` — **reuse** postojeće
+   kill-switch orkestracije (forsira display mode + šalje `app:kill-switch` glavnom
+   prozoru). Orb Stop = isto što i Ctrl+Alt+K, ali vidljivo. Tvrdi stop (izlazi iz
+   Računarskog moda), za razliku od glavnog Stop dugmeta (meki — ostaje u modu).
+4. `src/App.tsx` `runKillSwitch()`: dodat `cancelAllExecutions()` — sada SVE kill-switch
+   rute (Escape, hotkey, orb) otkazuju i backend toolove, ne samo glas.
+5. `src/vite-env.d.ts`: tip `companionStop`. `src/styles/07-companion-orb.css`: stil dugmeta.
+
+**Dizajn:** orb Stop → `companion:stop` (IPC) → `triggerKillSwitch` (main) →
+`app:kill-switch` → `runKillSwitch` (glavni prozor: voice teardown + cancel-all).
+Jedna implementacija stop-a (`runKillSwitch`), tri ulaza (Escape/hotkey/orb).
+
+**Verifikacija:** node --check (main+preload), typecheck, build — čisto. Bez backend
+izmjene (reuse `triggerKillSwitch` + `cancel-all`), pa pytest nepromijenjen (214).
+
+**Runtime smoke (korisnik):** ući u Računarski mod → potvrditi da je Stop vidljiv na
+orbu → kliknuti → glas i radnje stanu, izlazak iz Računarskog moda.
+
+---
+
+## Dopuna 2 (isti dan) — raspodjela Stop-a, drag, native meni, mic-toggle fix, ring unifikacija
+
+**Povod:** korisnik je ispravio pogrešnu pretpostavku — postoje DVA različita orba
+(veliki `MiniComputerWindow` u računarskom modu vs. mali plutajući `CompanionOrb`),
+i tražio je da Stop bude SAMO na malom, uz auto-pojavljivanje u računarskom modu.
+Dalje testiranje malog orba otkrilo je tri odvojena, stvarna bug-a.
+
+### Odluka o rasporedu (korisnikov izbor)
+- **Veliki orb:** samo "Vrati" — Stop uklonjen.
+- **Mali orb (companion):** nosi Stop, **auto-show** kad `set_mode` pređe u
+  `computer` (main.cjs, jedinstvena tačka — pokriva i UI i agent-inicirani prelaz),
+  **auto-hide** pri povratku u `display`.
+
+### Bug 1 — mali orb se nije mogao pomjerati
+Cijeli `.companion-root *` je bio markiran `-webkit-app-region: no-drag`, pa orb
+nije imao gdje da se uhvati za drag. Popravljeno: orb (`.companion-orb-button`)
+je sad sam drag handle (`-webkit-app-region: drag`), a Stop dugme je eksplicitno
+`no-drag` da ostane klikabilno preko draggable roditelja.
+
+### Bug 2 — desni-klik meni se odsijecao
+Stari HTML meni (min-width 160px) nije stao u 96px širok orb prozor. Zamijenjen
+**native Electron `Menu.popup`** (`showOrbContextMenu` u `companionWindow.cjs`),
+koji nije ograničen veličinom prozora. Sadrži iste radnje kao stari meni (Otvori
+Ricky / Uključi-isključi glas / Zaključaj poziciju kao checkbox / Zatvori Ricky).
+**Nuspojava:** drag-region ne prima lijevi klik, pa su stari lijevi-klik/dupli-klik
+gestovi (brzi fokus / otvori glavni) uklonjeni s orba — "otvori glavni prozor" sad
+ide isključivo kroz meni ("Otvori Ricky").
+
+### Bug 3 — Stop dugme odsječeno
+Companion prozor (96×114, `ORB_SIZE=96`) nije imao mjesta za orb + pill + novo
+Stop dugme. Povećan na **144×160** (`ORB_WIN_W`/`ORB_WIN_H` u `companionWindow.cjs`).
+
+### Bug 4 — "Uključi/isključi glas" iz orb menija nikad nije radio
+**Pravi uzrok** onoga što je korisnik opisao kao "mikrofon se ne uključi svaki
+put": `companion:toggle-voice` IPC kanal je od FAZA 12 slao event glavnom prozoru,
+ali `App.tsx` ga NIKAD nije slušao (`onCompanionToggleVoice` je postojao u
+`preload.cjs`/`vite-env.d.ts`, ali se nigdje nije pozivao u `src/`) — potvrđeno
+grep-om i GitNexus-om (0 poziva u src/). Klik iz orb menija je bio 0%-uspješan,
+ne "povremeno". Popravljeno: `useEffect` u `App.tsx` sad subscribe-uje
+`onCompanionToggleVoice` i poziva istu `isConnected ? disconnect() : connect()`
+logiku kao pravo mikrofon dugme. Realno mrežno kašnjenje (getUserMedia + token +
+WebRTC SDP razmjena sa OpenAI-jem) ostaje — to je očekivano, ne bug.
+
+### Vizuelna unifikacija — prstenovi malog orba
+Korisnik je primijetio da mali orb izgleda drugačije od velikog (statična slika
+vs. animirani triple-ring). Otkriveno: `RickyOrb` komponenta već ima gotovu
+`size="floating"` varijantu (84px, hover scale) dizajniranu baš za ovaj slučaj,
+ali nikad povezanu s `CompanionOrb.tsx` (koji je koristio statični `orbMini.png`).
+Zamijenjeno `<img>` sa `<RickyOrb voiceState={voiceState} size="floating" />` —
+mali orb sad ima iste animirane prstenove i reaguje na stvarni voice state (a ne
+samo na statičnu sliku). Očišćen mrtav `.companion-orb-img` CSS (2 pravila +
+referenca u reduced-motion bloku, redundantna sa `.companion-root *`).
+
+### GitNexus impact
+`RickyOrb` — dodat nov pozivalac (`CompanionOrb`), sama komponenta nedirana;
+postojeći pozivalac (`IdleScreen`) neizmijenjen. Nizak rizik, aditivna izmjena.
+
+### Fajlovi dirani (dopuna 2)
+- `electron/core/companionWindow.cjs` — `showOrbContextMenu`, `setToggleVoiceCallback`,
+  prozor 144×160, export izmjene.
+- `electron/main.cjs` — `companion:menu` kanal, toggle-voice callback wiring,
+  `set_mode` auto-show/hide.
+- `electron/preload.cjs` — `companionMenu`.
+- `src/App.tsx` — `onCompanionToggleVoice` subscribe, `MiniComputerWindow` bez
+  `onStop` prop-a.
+- `src/components/CompanionOrb.tsx` — prepisan: `RickyOrb` umjesto `<img>`, ukinut
+  HTML meni/lijevi-klik/dupli-klik, drag na orbu, Stop dugme.
+- `src/components/pixel/MiniComputerWindow.tsx` — Stop uklonjen (vraćen na
+  Vrati-only).
+- `src/styles/07-companion-orb.css` — drag CSS, mrtav `.companion-orb-img` uklonjen.
+- `src/vite-env.d.ts` — `companionMenu` tip.
+- `docs/ORB_PRESENCE_SPEC.md` — novi, matrica načina rada orba (nacrt spec).
+
+### Verifikacija (dopuna 2)
+`node --check` (main.cjs, companionWindow.cjs, preload.cjs) čist; `npm run
+typecheck` čist; `npm run build` čist. **Korisnik potvrdio runtime smoke: sve
+radi kako treba** (drag, native meni bez odsijecanja, Stop vidljiv cijeli,
+mic-toggle iz menija radi, prstenovi ujednačeni).
+
+### Potreban follow-up
+- `docs/ORB_PRESENCE_SPEC.md` ima 4 otvorene odluke za korisnika (mali orb na
+  restore prozora, brzi-diktat hotkey, push-to-talk vs toggle, focus mod okidač)
+  — sljedeći koraci van scope-a ove sesije.
+- Meni napisan samo na srpskom (Otvori Ricky / Uključi-isključi glas / Zaključaj
+  poziciju / Zatvori Ricky) — stari HTML meni je bio na engleskom; svjesna
+  odluka za konzistentnost sa ostatkom UI-ja, nije bug.

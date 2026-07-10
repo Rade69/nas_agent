@@ -24,9 +24,11 @@ const {
   toggleCompanion,
   forwardVoiceStateToCompanion,
   setLockedPosition,
+  showOrbContextMenu,
   ensureTray,
   setMainWindowFocusCallback,
   setQuitAppCallback,
+  setToggleVoiceCallback,
 } = require("./core/companionWindow.cjs");
 const { startPythonBackend, stopPythonBackend } = require("./services/pythonProcess.cjs");
 const { createRealtimeSession } = require("./services/pythonClient.cjs");
@@ -324,6 +326,14 @@ async function handleToolsExecute(_event, toolCall) {
     if (name === "set_mode") {
       currentMode = args.mode === "computer" ? "computer" : "display";
       setWindowMode(currentMode);
+      // Orb presence (docs/ORB_PRESENCE_SPEC.md): the floating companion orb carries
+      // the Stop control, so it must be on screen whenever the agent can act on the
+      // computer. Auto-show it entering Computer Mode; hide it going back to display.
+      if (currentMode === "computer") {
+        showCompanion();
+      } else {
+        hideCompanion();
+      }
       return {
         ok: true,
         mode: currentMode,
@@ -622,6 +632,12 @@ registerIpcHandlers({
   "companion:open-main": handleCompanionOpenMain,
   "companion:toggle-voice": handleCompanionToggleVoice,
   "companion:toggle-lock": handleCompanionToggleLock,
+  "companion:menu": () => showOrbContextMenu(),
+  // Stop button on the companion orb — the orb is the only visible surface in
+  // Computer Mode, so it needs a visible "stop everything". Reuses the same
+  // kill-switch path as Ctrl+Alt+K: forces display mode + forwards app:kill-switch
+  // to the main window (whose runKillSwitch tears down voice + cancels backend tools).
+  "companion:stop": triggerKillSwitch,
 });
 
 // FAZA S-4: global kill-switch hotkey. Ctrl+Alt+K only — F10/F11 were dropped
@@ -673,6 +689,14 @@ app.whenReady().then(async () => {
     }
   });
   setQuitAppCallback(() => app.quit());
+  // Orb context menu "Toggle voice": forward to the main renderer's Realtime
+  // client (same path as the companion:toggle-voice IPC handler).
+  setToggleVoiceCallback(() => {
+    const main = getMainWindow && getMainWindow();
+    if (main && !main.isDestroyed()) {
+      main.webContents.send("companion:toggle-voice");
+    }
+  });
 
   try {
     await startPythonBackend({ isPackaged: app.isPackaged });

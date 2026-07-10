@@ -173,6 +173,8 @@ declare global {
       companionOpenMain: () => Promise<{ ok: boolean }>;
       companionToggleVoice: () => Promise<{ ok: boolean }>;
       companionToggleLock: (locked: boolean) => Promise<{ ok: boolean }>;
+      companionStop: () => Promise<void>;
+      companionMenu: () => Promise<void>;
       onCompanionVoiceState: (handler: (state: VoiceState) => void) => () => void;
       onCompanionToggleVoice: (handler: () => void) => () => void;
       // FAZA S-4: global kill-switch event (main → renderer). Returns unsubscribe.

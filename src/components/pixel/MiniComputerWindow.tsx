@@ -11,6 +11,8 @@ export function MiniComputerWindow({
 }) {
   const stateLabel = "UKLJUČEN";
   const isTalking = voiceState === "speaking" || voiceState === "listening" || voiceState === "thinking" || voiceState === "transcribing";
+  // Stop lives on the floating companion orb (auto-shown in Computer Mode), not
+  // here — see docs/ORB_PRESENCE_SPEC.md. This window only offers "Vrati".
   return (
     <main className={`mini-computer-window ${isTalking ? "is-talking" : "is-idle"}`}>
       <button className="mini-avatar-restore" onClick={onRestore} title="Vrati glavni prozor">

@@ -44,6 +44,8 @@ contextBridge.exposeInMainWorld("ricky", {
   companionOpenMain: () => ipcRenderer.invoke("companion:open-main"),
   companionToggleVoice: () => ipcRenderer.invoke("companion:toggle-voice"),
   companionToggleLock: (locked) => ipcRenderer.invoke("companion:toggle-lock", locked),
+  companionStop: () => ipcRenderer.invoke("companion:stop"),
+  companionMenu: () => ipcRenderer.invoke("companion:menu"),
   onCompanionVoiceState: (handler) => {
     const listener = (_event, state) => handler(state);
     ipcRenderer.on("companion:voice-state", listener);

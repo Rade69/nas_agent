@@ -230,6 +230,13 @@ export default function App() {
     clientRef.current?.disconnect();
     setVoiceState("idle");
     setMode("display");
+    // Backend half: also cancel any in-flight tool. Covers every kill-switch
+    // trigger (Escape, Ctrl+Alt+K, and the companion orb Stop button, which all
+    // funnel through here) — previously only the main Stop button did this.
+    // Context: agent_reports/2026-07-09_stop-cancellation-wiring.md
+    void window.ricky.cancelAllExecutions().catch(() => {
+      /* best-effort; voice/mic is already torn down above */
+    });
     addActivityEvent(createActivityEvent("status", "Kill-switch", "Sve zaustavljeno"));
     setKillFlash(true);
     window.setTimeout(() => setKillFlash(false), 2200);
@@ -259,6 +266,22 @@ export default function App() {
     setBackendConnected(false);
     await clientRef.current?.connect();
   }
+
+  // Companion orb "Uključi/isključi glas" menu item forwards companion:toggle-voice
+  // from the main process; this was previously never subscribed to in the
+  // renderer, so the menu item was a silent no-op. Mirrors the main mic button's
+  // isConnected ? disconnect : connect toggle.
+  useEffect(() => {
+    const unsubscribe = window.ricky.onCompanionToggleVoice?.(() => {
+      if (isConnected) {
+        disconnect();
+      } else {
+        void connect();
+      }
+    });
+    return () => unsubscribe?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected]);
 
   function disconnect() {
     clientRef.current?.disconnect();
