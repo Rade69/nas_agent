@@ -13,7 +13,7 @@
 | `electron/main.cjs` | 1922→923 | ✅ **R2a/R2b/R2c ZAVRŠENI** (toolSpecs `9322064`; legacyDb.cjs; legacyMedia.cjs — Claude verifikovao). R2d/R2e odgođeni | R2 |
 | `src/App.tsx` | 1115→503 | ✅ **R3 ZAVRŠEN** (Claude verifikovao: 0 redova promijenjeno) | ✔ |
 | `python_backend/app/agent/tool_registry.py` | 637→78 | ✅ **R1 ZAVRŠEN** (Claude verifikovao) | ✔ |
-| `src/lib/realtime.ts` | 534 | 🟡 tik preko | R4 (opciono) |
+| `src/lib/realtime.ts` | 535 | 🟢 **R4 brief SPREMAN** (vidi sekciju ispod) | R4 |
 
 CSS je već cijepan (`src/styles/00–14`) — model se poštuje. Ne dirati.
 
@@ -279,9 +279,148 @@ electron/ipc_handlers/
 ---
 
 ## Sekvenca poslije R1
-- **R2 `main.cjs`** — R2a ✅ (`9322064`), R2b+R2c ✅ (`8a47ad5`, Claude verifikovao). **R2d SADA** (IPC handleri → `ipc_handlers/`, brief gore). **R2e** (kill-switch/`currentMode`) ODGOĐEN — dira dijeljeno stanje, zaseban pregled poslije R2d.
+- **R2 `main.cjs`** — R2a ✅ (`9322064`), R2b+R2c ✅ (`8a47ad5`), R2d ✅ (`196bd4a`). Svi Claude-verifikovani i commitovani. **R2e** (kill-switch/`currentMode`) ODGOĐEN — dira dijeljeno stanje, zaseban pregled kad Claude bude dostupan (NE delegirati pi-ju samostalno).
 - **R3 `App.tsx`** — ✅ ZAVRŠEN.
-- **R4 `realtime.ts`** — opciono, nisko.
+- **R4 `realtime.ts`** — brief SADA spreman (sekcija ispod). Nizak-srednji rizik, jak TypeScript safety net.
+
+---
+
+## R4 — `src/lib/realtime.ts` split (IZVODI pi, SADA)
+
+### Kontekst i mreža
+`src/lib/realtime.ts` je 535 linija: jedna klasa `RickyRealtimeClient` (WebRTC/Realtime
+konekcija, ~370 ln) + gomila samostalnih pure-function helpera nagurana u isti fajl
+(tipovi, viseme/mouth-shape matematika, event-parsing helperi). **9 drugih fajlova**
+importuje javni API preko `"./lib/realtime"` / `"../lib/realtime"` / `"../../lib/realtime"`
+— taj put i ta imena **moraju ostati identični** (ovo NIJE barrel-restrukturiranje,
+samo interna reorganizacija sadržaja).
+
+**Potvrđen tačan javni API (grep-om, prije pisanja ovog briefa) koji mora ostati
+importabilan iz `"./lib/realtime"` nakon splita:**
+```
+createActivityEvent, newEntry, RickyRealtimeClient,
+type ActivityEvent, type MouthShape, type RickyConnectionState,
+type RickyMood, type TranscriptEntry, type VoiceState
+```
+(`RealtimeCallbacks` je type export ali ga trenutno niko ne importuje eksplicitno —
+zadržati export radi API stabilnosti, ne brisati.)
+
+**Safety net:** `npm run typecheck` (tsc) je vrlo strog — svaki promašen/pogrešan
+import odmah puca. To je primarna garancija ovdje, uz `npm run build`.
+
+### Cilj (tačna završna struktura)
+```text
+src/lib/realtimeTypes.ts         # tipovi (dio javni, dio interni-samo-za-import)
+src/lib/realtimeMouthShape.ts    # viseme/mouth-shape matematika (pure fn)
+src/lib/realtimeEventHelpers.ts  # event parsing/sanitizacija (pure fn)
+src/lib/realtime.ts              # OSTAJE na istoj putanji — RickyRealtimeClient
+                                  # klasa + newEntry + realtimeUrl/MIC_IDLE_TIMEOUT_MS
+                                  # konstante + re-export svih javnih tipova
+```
+**Ne praviti `src/lib/realtime/` folder** (isto ime kao postojeći `realtime.ts` fajl —
+kolizija/zabuna za module resolution). Nova imena su sestrinski fajlovi u `src/lib/`,
+različiti od `realtime.ts`.
+
+### Tačan raspored simbola (iz trenutnog fajla, potvrđeno čitanjem)
+
+**1. `realtimeTypes.ts`** — premjesti verbatim:
+- `RickyConnectionState` (orig. l.7), `RickyMood` (l.8), `MouthShape` (l.10-15),
+  `TranscriptEntry` (l.17-22), `RealtimeCallbacks` (l.24-35) — sve već `export type`,
+  ostaju `export type`.
+- `ServerEvent` (l.37-52), `ResponseOutputItem` (l.54-60) — trenutno BEZ `export`
+  (privatni tipovi). Dodaj `export` SAMO da bi `realtime.ts` i novi helper-fajlovi
+  mogli da ih importuju — ekvivalentno R1/R3 pravilu "export je jedina dozvoljena
+  izmjena za move". NE dodavati ih u listu javnog API-ja koji se re-exportuje iz
+  `realtime.ts` (ostaju internal-only, samo cross-file importabilni).
+- Potrebni importi na vrhu: `RickyArtifact`, `RickyToolCall`, `RickyToolSpec` iz
+  `"../vite-env"` (za `RealtimeCallbacks`/`ResponseOutputItem`), `ActivityEvent`,
+  `VoiceState` iz `"./voiceState"` (za `RealtimeCallbacks`).
+
+**2. `realtimeMouthShape.ts`** — premjesti verbatim (orig. l.441-477, sve trenutno
+BEZ `export`):
+- `silentMouthShape`, `smoothMouthShape`, `getSpeechBands`, `averageRange`, `lerp`,
+  `clamp01`. Dodaj `export` svima (klasa u `realtime.ts` treba `silentMouthShape`,
+  `smoothMouthShape`, `getSpeechBands`, `clamp01` — export i preostala dva radi
+  konzistentnosti/testabilnosti).
+- Import: `type { MouthShape }` iz `"./realtimeTypes"`.
+
+**3. `realtimeEventHelpers.ts`** — premjesti verbatim (orig. l.488-534 OSIM `newEntry`
+koji ostaje u `realtime.ts` — vidi niže; sve trenutno BEZ `export`):
+- `safeParseEvent`, `parseToolArguments`, `sanitizeToolResult`, `collectItemText`,
+  `collectOutputText`. Dodaj `export` svima.
+- Importi: `type { ServerEvent, ResponseOutputItem }` iz `"./realtimeTypes"`,
+  `type { RickyToolResult }` iz `"../vite-env"`.
+
+**4. `realtime.ts` (ostaje, prespojen):**
+- Zadrži: `realtimeUrl` konstantu, `MIC_IDLE_TIMEOUT_MS` konstantu, cijelu
+  `RickyRealtimeClient` klasu (tijela metoda NETAKNUTA), `newEntry` funkciju
+  (ostaje ovdje — mali je i koristi se i interno i eksterno, premještanje ne
+  donosi vrijednost).
+- Na vrhu: `export { createActivityEvent }; export type { ActivityEvent, VoiceState };`
+  (već postoji, iz `"./voiceState"` — NE dirati), plus `export type { ... }` za
+  `RickyConnectionState, RickyMood, MouthShape, TranscriptEntry, RealtimeCallbacks`
+  sad iz `"./realtimeTypes"` umjesto lokalne definicije.
+- Dodaj `import { silentMouthShape, smoothMouthShape, getSpeechBands, clamp01 }
+  from "./realtimeMouthShape";` i `import { safeParseEvent, parseToolArguments,
+  sanitizeToolResult, collectItemText, collectOutputText } from
+  "./realtimeEventHelpers";` i `import type { ServerEvent, ResponseOutputItem }
+  from "./realtimeTypes";` (klasa i dalje koristi ove tipove u potpisima metoda).
+- Obriši premještene definicije tipova/funkcija iz ovog fajla.
+
+### Koraci (typecheck poslije SVAKOG, ne na kraju)
+1. Kreiraj `realtimeTypes.ts` (tipovi + potrebni importi). `npm run typecheck`
+   — očekivano JOŠ CRVENO dok se `realtime.ts` ne prespoji (koraci 2-4 prvo dodaju
+   nove module, korak 5 tek prespaja — isto pravilo kao R1 "dodaj pa prespoji").
+2. Kreiraj `realtimeMouthShape.ts`.
+3. Kreiraj `realtimeEventHelpers.ts`.
+4. Prespoji `realtime.ts`: dodaj importe iz sva tri nova fajla, obriši premještene
+   definicije, zamijeni lokalne tipove sa `export type { ... } from "./realtimeTypes"`.
+   `npm run typecheck` — mora biti čisto.
+5. `npm run build` — mora proći čisto (osim pre-postojećeg 500kB chunk warninga).
+6. `grep -rn "from \"\.\./lib/realtime\"\|from \"\./lib/realtime\"\|from \"\.\./\.\./lib/realtime\"" src/` —
+   potvrdi da svih 9 postojećih import-mjesta (App.tsx, ActivityTimeline.tsx,
+   BottomVoiceBar.tsx, IdleScreen.tsx, MiniComputerWindow.tsx, PixelMockupBoard.tsx,
+   Previews.tsx, RickyFace.tsx, VoiceTopBar.tsx) i dalje rade BEZ IZMJENE svojih
+   import linija — typecheck iz koraka 4/5 je dovoljan dokaz, ovaj grep je samo
+   completeness-check da nijedan fajl nije slučajno dirnut.
+
+### Pravila specifična za R4
+- **Tijela metoda klase `RickyRealtimeClient` se NE DIRAJU** — samo import linije
+  na vrhu fajla. Logika/redoslijed/pozivi ostaju bajt-identični.
+- **`newEntry` NE premještati** — ostaje u `realtime.ts`.
+- Javni re-export set iz `"./lib/realtime"` (vidi listu gore) mora ostati IDENTIČAN
+  — ni jedno ime manje, ni jedno više, isti tip (type vs value export).
+- Ako `tsc` traži izmjenu koju ne možeš riješiti čistim dodavanjem importa/export-a
+  → STANI i prijavi. Ne "popravljaj" mijenjanjem tipova/logike.
+
+### Acceptance (pi provjeri prije nego javi)
+- `realtimeTypes.ts`, `realtimeMouthShape.ts`, `realtimeEventHelpers.ts` postoje sa
+  tačnim simbolima iz liste gore.
+- `realtime.ts` sadrži SAMO: konstante, `RickyRealtimeClient` klasu, `newEntry`,
+  re-exporte/importe. Nema više lokalnih definicija tipova ni pure-function helpera.
+- `npm run typecheck` čist, `npm run build` čist.
+- Grep iz koraka 6 potvrđuje 9 postojećih import-mjesta netaknuto.
+- Nijedna metoda klase nije izmijenjena (dokaz: diff je čist move + import-only
+  promjena u `realtime.ts`).
+
+### Izvještaj pi
+`agent_reports/2026-07-09_pi-refactor-r4-realtime-split.md` (ili tekući datum):
+koraci, `typecheck`+`build` izlaz, tačna lista simbola po fajlu, potvrda "javni
+API iz ./lib/realtime nepromijenjen (9 import-mjesta netaknuto)", potvrda "tijela
+metoda RickyRealtimeClient bajt-identična", tačna lista diranih/kreiranih fajlova.
+**NE commitovati** — čeka Claude pregled (isto pravilo kao R1-R3, R2b-R2d).
+
+### Claude R4 pregled (kad se vrati)
+- `npm run typecheck` + `npm run build` sam → čisto.
+- Diff pregled: tijela klase metoda bajt-identična vs `git show HEAD:src/lib/realtime.ts`.
+- Spot-check 2-3 premještene funkcije (npr. `sanitizeToolResult`, `getSpeechBands`)
+  verbatim vs original.
+- `gitnexus detect_changes` — pogođeni samo realtime.ts + 3 nova fajla, affected
+  processes provjeriti da li uključuju sve pravo (Realtime client je centralan,
+  pa HIGH ovdje MOŽE biti realan, ne nužno graph-artefakt — provjeriti pažljivo).
+- Runtime smoke NIJE potreban prije commita (za razliku od main.cjs/companion orb) —
+  ovo je čisti TypeScript refactor sa vrlo jakim static safety net-om (typecheck).
+  Build čist + typecheck čist je dovoljno za zeleno svjetlo.
 
 ## Found issues (popuniti usput, popravljati ODVOJENO)
 - (prazno)

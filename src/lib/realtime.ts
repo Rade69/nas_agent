@@ -1,63 +1,14 @@
-import type { RickyArtifact, RickyToolCall, RickyToolResult, RickyToolSpec } from "../vite-env";
+import type { RickyToolCall, RickyToolResult, RickyToolSpec } from "../vite-env";
 import { routeRealtimeEvent } from "./realtimeEventRouter";
-import { createActivityEvent, type ActivityEvent, type VoiceState } from "./voiceState";
+import { createActivityEvent } from "./voiceState";
+import type { ActivityEvent, VoiceState } from "./voiceState";
+import { silentMouthShape, smoothMouthShape, getSpeechBands, clamp01 } from "./realtimeMouthShape";
+import { safeParseEvent, parseToolArguments, sanitizeToolResult, collectItemText, collectOutputText } from "./realtimeEventHelpers";
+import type { MouthShape, RealtimeCallbacks, ResponseOutputItem, TranscriptEntry } from "./realtimeTypes";
 
 export { createActivityEvent };
 export type { ActivityEvent, VoiceState };
-export type RickyConnectionState = "idle" | "connecting" | "connected" | "error";
-export type RickyMood = "idle" | "listening" | "thinking" | "speaking" | "working" | "error";
-
-export type MouthShape = {
-  open: number;
-  width: number;
-  round: number;
-  teeth: number;
-};
-
-export type TranscriptEntry = {
-  id: string;
-  role: "user" | "ricky" | "system" | "tool";
-  text: string;
-  at: string;
-};
-
-export type RealtimeCallbacks = {
-  onConnectionState: (state: RickyConnectionState) => void;
-  onMood: (mood: RickyMood) => void;
-  onMouthShape: (shape: MouthShape) => void;
-  onTranscript: (entry: TranscriptEntry) => void;
-  onArtifact: (artifact: RickyArtifact) => void;
-  onMode: (mode: "display" | "computer") => void;
-  onStatus: (message: string) => void;
-  onVoiceState: (state: VoiceState) => void;
-  onActivity: (event: ActivityEvent) => void;
-  onThumbnailReady: () => void;
-};
-
-type ServerEvent = {
-  type?: string;
-  delta?: string;
-  transcript?: string;
-  response?: {
-    output?: ResponseOutputItem[];
-  };
-  item?: {
-    type?: string;
-    role?: string;
-    content?: Array<{ transcript?: string; text?: string }>;
-  };
-  error?: {
-    message?: string;
-  };
-};
-
-type ResponseOutputItem = {
-  type?: string;
-  name?: string;
-  call_id?: string;
-  arguments?: string;
-  content?: Array<{ transcript?: string; text?: string }>;
-};
+export type { RickyConnectionState, RickyMood, MouthShape, TranscriptEntry, RealtimeCallbacks } from "./realtimeTypes";
 
 const realtimeUrl = "https://api.openai.com/v1/realtime/calls";
 
@@ -438,44 +389,6 @@ export class RickyRealtimeClient {
   }
 }
 
-function silentMouthShape(): MouthShape {
-  return { open: 0, width: 0.18, round: 0, teeth: 0 };
-}
-
-function smoothMouthShape(current: MouthShape, target: MouthShape, amount: number): MouthShape {
-  return {
-    open: lerp(current.open, target.open, amount),
-    width: lerp(current.width, target.width, amount),
-    round: lerp(current.round, target.round, amount),
-    teeth: lerp(current.teeth, target.teeth, amount),
-  };
-}
-
-function getSpeechBands(frequencies: Uint8Array): { low: number; mid: number; high: number } {
-  const low = averageRange(frequencies, 2, 14) / 255;
-  const mid = averageRange(frequencies, 14, 48) / 255;
-  const high = averageRange(frequencies, 48, 110) / 255;
-  return { low: clamp01(low * 2.2), mid: clamp01(mid * 2.1), high: clamp01(high * 2.8) };
-}
-
-function averageRange(values: Uint8Array, start: number, end: number): number {
-  const cappedEnd = Math.min(end, values.length);
-  if (start >= cappedEnd) return 0;
-  let total = 0;
-  for (let index = start; index < cappedEnd; index += 1) {
-    total += values[index];
-  }
-  return total / (cappedEnd - start);
-}
-
-function lerp(from: number, to: number, amount: number): number {
-  return from + (to - from) * amount;
-}
-
-function clamp01(value: number): number {
-  return Math.min(1, Math.max(0, value));
-}
-
 export function newEntry(role: TranscriptEntry["role"], text: string): TranscriptEntry {
   return {
     id: crypto.randomUUID(),
@@ -483,52 +396,4 @@ export function newEntry(role: TranscriptEntry["role"], text: string): Transcrip
     text,
     at: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
   };
-}
-
-function safeParseEvent(raw: string): ServerEvent {
-  try {
-    return JSON.parse(raw) as ServerEvent;
-  } catch {
-    return {};
-  }
-}
-
-function parseToolArguments(raw: string): Record<string, unknown> {
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
-  } catch {
-    return {};
-  }
-}
-
-function sanitizeToolResult(result: RickyToolResult): RickyToolResult {
-  if (!result.artifact) return result;
-
-  const { artifact, ...rest } = result;
-  return {
-    ...rest,
-    artifact: {
-      title: artifact.title,
-      kind: artifact.kind,
-      content:
-        artifact.kind === "thumbnailBoard"
-          ? "Thumbnail board rendered in the UI. Use the compact board field for exact numbers, selected state, and loading state."
-          : artifact.kind === "image" || artifact.kind === "imageLoading"
-            ? "Image rendered in the UI."
-            : artifact.content.length > 1200
-              ? `${artifact.content.slice(0, 1200)}...`
-              : artifact.content,
-      language: artifact.language,
-      fullscreen: artifact.fullscreen,
-    },
-  };
-}
-
-function collectItemText(item: ServerEvent["item"]): string {
-  return item?.content?.map((part) => part.transcript || part.text || "").filter(Boolean).join("\n") || "";
-}
-
-function collectOutputText(item: ResponseOutputItem): string {
-  return item.content?.map((part) => part.transcript || part.text || "").filter(Boolean).join("\n") || "";
 }
