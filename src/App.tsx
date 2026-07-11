@@ -60,16 +60,56 @@ const SYSTEM_NOISE_TITLES = ["Backend ready", "Renderer ready", "Voice-first she
 // Deliberately multi-word and distinctive — a single common word (e.g. "gotovo")
 // would false-positive on ordinary dictated sentences that happen to contain it.
 // Checked on the (already Cyrillic->Latin normalized) transcript, mirroring the
-// "dikt" entry-trigger check but in reverse.
-const DICTATION_EXIT_PHRASES = [
-  "vrati se u normalan",
-  "vrati u normalan",
-  "izađi iz diktat",
-  "izadji iz diktat",
-  "prekini diktat",
-  "završi diktiranje",
-  "zavrsi diktiranje",
-];
+// entry-trigger check but in reverse.
+// Now keyed by interface_language (agent_reports/2026-07-11_interface-language-stt-hint.md)
+// so the voice exit works in every supported language. en/de/es/fr phrases are
+// best-effort — NOT native-speaker verified (agent_reports/2026-07-11_dictation-language-cascade.md).
+const DICTATION_EXIT_PHRASES: Record<string, string[]> = {
+  "sr-Latn": [
+    "vrati se u normalan",
+    "vrati u normalan",
+    "izađi iz diktat",
+    "izadji iz diktat",
+    "prekini diktat",
+    "završi diktiranje",
+    "zavrsi diktiranje",
+  ],
+  en: [
+    "go back to normal",
+    "exit dictation",
+    "stop dictating",
+    "end dictation",
+  ],
+  de: [
+    "zurück zum normalen modus",
+    "diktat beenden",
+    "diktat verlassen",
+  ],
+  es: [
+    "volver al modo normal",
+    "salir del dictado",
+    "terminar el dictado",
+  ],
+  fr: [
+    "retour au mode normal",
+    "quitter la dictée",
+    "arrêter la dictée",
+  ],
+};
+const DEFAULT_DICTATION_EXIT_PHRASES = DICTATION_EXIT_PHRASES["sr-Latn"];
+
+// Voice trigger words for entering Dictation Mode (agent_reports/2026-07-10_dictation-and-dashboard-fixes.md).
+// Keyed by interface_language — a substring match on the user's spoken utterance
+// (after Cyrillic->Latin normalization). en/de/es/fr triggers are best-effort —
+// NOT native-speaker verified (agent_reports/2026-07-11_dictation-language-cascade.md).
+const DICTATION_TRIGGER_WORDS: Record<string, string> = {
+  "sr-Latn": "dikt",
+  en: "dictat",
+  de: "diktier",
+  es: "dict",
+  fr: "dict",
+};
+const DEFAULT_DICTATION_TRIGGER_WORD = "dikt";
 
 function getInitialMode(): RickyMode {
   const params = new URLSearchParams(window.location.search);
@@ -110,6 +150,21 @@ export default function App() {
   useEffect(() => {
     screenRef.current = screen;
   }, [screen]);
+  // interface_language for dictation trigger/exit phrases (Deo A,
+  // agent_reports/2026-07-11_dictation-language-cascade.md). Same mirroring
+  // pattern as screenRef — the mount-only useEffect below that captures
+  // onTranscript would otherwise read a stale "sr-Latn" forever.
+  const [interfaceLanguage, setInterfaceLanguage] = useState("sr-Latn");
+  const interfaceLanguageRef = useRef(interfaceLanguage);
+  useEffect(() => {
+    interfaceLanguageRef.current = interfaceLanguage;
+  }, [interfaceLanguage]);
+  // Fetch interface_language once at mount so dictation trigger/exit phrases
+  // match the user's chosen language. Fail-open: if the fetch fails, stays
+  // on default "sr-Latn" — same principle as user_name in realtime.cjs.
+  useEffect(() => {
+    window.ricky.getSettings().then((s) => setInterfaceLanguage(s.interface_language)).catch(() => {});
+  }, []);
   const [activeDrawer, setActiveDrawer] = useState<DrawerState>(null);
   const [killFlash, setKillFlash] = useState(false);
   const [dictationText, setDictationText] = useState("");
@@ -253,7 +308,7 @@ export default function App() {
           // without depending on the model calling any tool at all. Not
           // appended as content below — a not-yet-in-dictation utterance is
           // read as a command, never dictated text.
-          if (text.toLowerCase().includes("dikt")) {
+          if (text.toLowerCase().includes(DICTATION_TRIGGER_WORDS[interfaceLanguageRef.current] ?? DEFAULT_DICTATION_TRIGGER_WORD)) {
             setScreen("dictation");
             clientRef.current?.setDictationMode(true);
           }
@@ -265,7 +320,7 @@ export default function App() {
         // dictated content instead of acting on it. Checked before appending,
         // same reasoning as the entry trigger: a command, not content.
         const lowerText = text.toLowerCase();
-        if (DICTATION_EXIT_PHRASES.some((phrase) => lowerText.includes(phrase))) {
+        if ((DICTATION_EXIT_PHRASES[interfaceLanguageRef.current] ?? DEFAULT_DICTATION_EXIT_PHRASES).some((phrase) => lowerText.includes(phrase))) {
           clientRef.current?.setDictationMode(false);
           setScreen("home");
           return;
@@ -630,7 +685,7 @@ export default function App() {
         onStop={handleStop}
         onOpenActivity={() => openDrawer("activity")}
         onQuickCommand={(text) => {
-          if (text.toLowerCase().includes("dikt")) {
+          if (text.toLowerCase().includes(DICTATION_TRIGGER_WORDS[interfaceLanguageRef.current] ?? DEFAULT_DICTATION_TRIGGER_WORD)) {
             setScreen("dictation");
             clientRef.current?.setDictationMode(true);
           }

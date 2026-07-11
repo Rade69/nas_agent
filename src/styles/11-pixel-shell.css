@@ -914,7 +914,8 @@
   font-weight: 650;
 }
 
-.pixel-settings-field input {
+.pixel-settings-field input,
+.pixel-settings-field select {
   border: 1px solid rgba(80, 135, 190, 0.24);
   border-radius: 8px;
   outline: 0;
@@ -925,9 +926,15 @@
   font-size: 14px;
 }
 
-.pixel-settings-field input:focus {
+.pixel-settings-field input:focus,
+.pixel-settings-field select:focus {
   border-color: rgba(58, 215, 255, 0.42);
   box-shadow: 0 0 0 3px rgba(22, 139, 255, 0.1);
+}
+
+.pixel-settings-field select option {
+  color: #f6f9ff;
+  background: #0a1420;
 }
 
 .pixel-settings-hint {

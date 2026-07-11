@@ -13,17 +13,29 @@ const DEFAULT_USER_NAME = "Riley";
 const STT_LANGUAGE_HINTS = { "sr-Latn": "sr", en: "en", de: "de", es: "es", fr: "fr" };
 const DEFAULT_STT_LANGUAGE_HINT = "sr";
 
+// Jezička imena za umetanje u system prompt (Deo B,
+// agent_reports/2026-07-11_dictation-language-cascade.md).
+const LANGUAGE_NAMES = {
+  "sr-Latn": "Serbian (Latin script)",
+  en: "English",
+  de: "German",
+  es: "Spanish",
+  fr: "French",
+};
+const DEFAULT_LANGUAGE_NAME = "Serbian (Latin script)";
+
 // The user's own name was hardcoded as "Riley" throughout (matches the
 // product's own branding origin) — now interpolated from the Settings panel
 // (GET /settings, defaults to "Riley" if never set/backend unreachable) so
 // this is a per-user preference, not a fixed value baked into the prompt.
 // Context: agent_reports/2026-07-11_settings-panel-foundation.md
-function buildRickyInstructions(userName) {
+function buildRickyInstructions(userName, languageName) {
   return `# Role and Objective
 You are Ricky, ${userName}'s desktop AI operator. You speak through realtime voice and can use local tools.
 
 # Personality and Tone
 Concise, calm, useful. Use a confident man's voice. Talk like a smart operator, not a chatbot.
+Prefer replying in ${languageName} unless ${userName} clearly speaks a different language during the conversation.
 
 # Modes
 - Display mode is the default. Use the app and artifact panel to show things. Do not control the computer.
@@ -56,6 +68,7 @@ async function handleRealtimeCreateToken() {
   const db = await readDb();
   let userName = DEFAULT_USER_NAME;
   let sttLanguageHint = DEFAULT_STT_LANGUAGE_HINT;
+  let languageName = DEFAULT_LANGUAGE_NAME;
   try {
     const settings = await getSettings();
     if (settings && typeof settings.user_name === "string" && settings.user_name.trim()) {
@@ -63,13 +76,14 @@ async function handleRealtimeCreateToken() {
     }
     if (settings && typeof settings.interface_language === "string") {
       sttLanguageHint = STT_LANGUAGE_HINTS[settings.interface_language] ?? DEFAULT_STT_LANGUAGE_HINT;
+      languageName = LANGUAGE_NAMES[settings.interface_language] ?? DEFAULT_LANGUAGE_NAME;
     }
   } catch (error) {
     // Cosmetic preference, not security-critical — fail open to the default
     // name rather than blocking the whole voice session over a settings fetch.
     console.warn("[settings] Could not load user_name, using default:", error);
   }
-  const instructions = `${buildRickyInstructions(userName)}\n\n${buildThumbnailBoardInstructions(db)}`;
+  const instructions = `${buildRickyInstructions(userName, languageName)}\n\n${buildThumbnailBoardInstructions(db)}`;
 
   const session = {
     type: "realtime",
