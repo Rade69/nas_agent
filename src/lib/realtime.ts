@@ -182,6 +182,44 @@ export class RickyRealtimeClient {
     this.sendEvent({ type: "response.create" });
   }
 
+  // Dictation Mode (docs/RICKY_GUI_LOCALIZATION_PLAN.md "Cloud STT" backlog,
+  // Phase 1): reuses the already-open Realtime session's built-in speech
+  // transcription instead of a separate transcribe-only call or a second mic
+  // capture — cheaper and simpler since dictation is only ever entered from an
+  // active voice session (App.tsx onQuickCommand). The one piece that needs
+  // explicit handling: turn_detection.create_response defaults to true, so
+  // without this Ricky would try to speak a reply after every sentence the
+  // user dictates. This toggles that off/on via session.update over the
+  // existing data channel. `transcription` is re-sent alongside turn_detection
+  // (not just once at session-mint time in realtime.cjs) because a session.update
+  // that only specifies part of `audio.input` may replace the whole object
+  // rather than deep-merge it — omitting transcription here risked silently
+  // dropping it the moment dictation mode toggled, killing the exact
+  // conversation.item.input_audio_transcription.completed events this whole
+  // feature depends on. No-op if not connected (same guard pattern as sendText).
+  // Context: agent_reports/2026-07-10_dictation-transcription-enable-fix.md
+  setDictationMode(active: boolean): void {
+    this.sendEvent({
+      type: "session.update",
+      session: {
+        audio: {
+          input: {
+            turn_detection: {
+              type: "semantic_vad",
+              eagerness: "medium",
+              create_response: !active,
+              interrupt_response: true,
+            },
+            transcription: {
+              model: "whisper-1",
+              language: "sr",
+            },
+          },
+        },
+      },
+    });
+  }
+
   private async handleServerEvent(raw: string): Promise<void> {
     const event = safeParseEvent(raw);
     if (!event.type) return;

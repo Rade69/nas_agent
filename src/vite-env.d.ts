@@ -100,6 +100,13 @@ export type PlanStep = {
   details: Record<string, unknown>;
 };
 
+// User-facing preferences (Settings panel). Mirrors app/schemas/settings.py
+// UserSettings — new fields are added on both sides together as the Settings
+// panel grows. Context: agent_reports/2026-07-11_settings-panel-foundation.md
+export type UserSettings = {
+  user_name: string;
+};
+
 export type Plan = {
   id: string;
   title: string;
@@ -129,6 +136,8 @@ declare global {
       executeTool: (toolCall: RickyToolCall) => Promise<RickyToolResult>;
       getToolSpecs: () => Promise<RickyToolSpec[]>;
       cancelAllExecutions: () => Promise<{ ok: boolean; cancelled: string[]; count: number }>;
+      getSettings: () => Promise<UserSettings>;
+      updateSettings: (payload: Partial<UserSettings>) => Promise<UserSettings>;
       quitApp: () => Promise<void>;
       minimizeApp: () => Promise<void>;
       toggleMaximizeApp: () => Promise<void>;

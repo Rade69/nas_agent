@@ -49,11 +49,27 @@ import {
   type TranscriptEntry,
   type VoiceState,
 } from "./lib/realtime";
+import { cyrillicToLatin } from "./lib/cyrillicToLatin";
 import type { BackendEvent, Confirmation, Plan, PlanStepStatus, RickyArtifact } from "./vite-env";
 
 import type { RickyMode, ScreenState, DrawerState } from "./components/pixel/types";
 
 const SYSTEM_NOISE_TITLES = ["Backend ready", "Renderer ready", "Voice-first shell", "Backend spreman", "Renderer spreman"];
+
+// Voice exit phrases for Dictation Mode (agent_reports/2026-07-11_dictation-guardrails-and-exit.md).
+// Deliberately multi-word and distinctive — a single common word (e.g. "gotovo")
+// would false-positive on ordinary dictated sentences that happen to contain it.
+// Checked on the (already Cyrillic->Latin normalized) transcript, mirroring the
+// "dikt" entry-trigger check but in reverse.
+const DICTATION_EXIT_PHRASES = [
+  "vrati se u normalan",
+  "vrati u normalan",
+  "izađi iz diktat",
+  "izadji iz diktat",
+  "prekini diktat",
+  "završi diktiranje",
+  "zavrsi diktiranje",
+];
 
 function getInitialMode(): RickyMode {
   const params = new URLSearchParams(window.location.search);
@@ -87,6 +103,13 @@ export default function App() {
   const [busyPlanId, setBusyPlanId] = useState<string | null>(null);
   const [busyStepId, setBusyStepId] = useState<string | null>(null);
   const [screen, setScreen] = useState<ScreenState>("home");
+  // Mirrors `screen` for the onTranscript callback below, which is captured
+  // once in a mount-only useEffect (empty deps) and would otherwise read a
+  // stale "home" value forever instead of the current screen.
+  const screenRef = useRef<ScreenState>(screen);
+  useEffect(() => {
+    screenRef.current = screen;
+  }, [screen]);
   const [activeDrawer, setActiveDrawer] = useState<DrawerState>(null);
   const [killFlash, setKillFlash] = useState(false);
   const [dictationText, setDictationText] = useState("");
@@ -202,7 +225,52 @@ export default function App() {
       onMood: setMood,
       onStatus: setStatus,
       onMouthShape: setMouthShape,
-      onTranscript: (entry) => setTranscript((list) => [entry, ...list].slice(0, 200)),
+      onTranscript: (entry) => {
+        // Debug logging (agent_reports/2026-07-10_dictation-debug-logging.md)
+        // proved the Realtime API's transcription sometimes returns Serbian
+        // speech in Cyrillic mid-session (this project standardizes on
+        // sr-Latn) — that silently broke the "dikt" substring check below
+        // (Cyrillic "диктат" never matches Latin "dikt") and caused mixed-
+        // script dictated text. Normalize once here for both uses. Only
+        // applied to user speech (STT output) — Ricky's own generated text
+        // doesn't go through transcription and isn't affected by this.
+        // Context: agent_reports/2026-07-11_dictation-cyrillic-fix.md
+        const text = entry.role === "user" ? cyrillicToLatin(entry.text) : entry.text;
+        setTranscript((list) => [text === entry.text ? entry : { ...entry, text }, ...list].slice(0, 200));
+        if (entry.role !== "user") return;
+        if (screenRef.current !== "dictation") {
+          // Live voice-triggered entry (agent_reports/2026-07-10_dictation-and-dashboard-fixes.md):
+          // previously only the onQuickCommand click path could trigger this —
+          // saying "uđi u diktat mod" did nothing here, so the model, lacking
+          // any dictation concept, guessed the closest tool it had (set_mode)
+          // instead. This intercepts the phrase locally and deterministically,
+          // without depending on the model calling any tool at all. Not
+          // appended as content below — a not-yet-in-dictation utterance is
+          // read as a command, never dictated text.
+          if (text.toLowerCase().includes("dikt")) {
+            setScreen("dictation");
+            clientRef.current?.setDictationMode(true);
+          }
+          return;
+        }
+        // Voice exit (agent_reports/2026-07-11_dictation-guardrails-and-exit.md):
+        // previously there was no way to leave dictation by voice at all — a
+        // phrase like "vrati se u normalan mod" just got written down as
+        // dictated content instead of acting on it. Checked before appending,
+        // same reasoning as the entry trigger: a command, not content.
+        const lowerText = text.toLowerCase();
+        if (DICTATION_EXIT_PHRASES.some((phrase) => lowerText.includes(phrase))) {
+          clientRef.current?.setDictationMode(false);
+          setScreen("home");
+          return;
+        }
+        // Dictation Mode Phase 1 (agent_reports/2026-07-10_dictation-phase1-cloud-stt.md):
+        // route the live session's own speech transcription into the dictation
+        // textarea while that screen is active, instead of a separate STT call.
+        // Once actually in dictation mode, every user utterance is content —
+        // including one that happens to contain "dikt" as a substring.
+        setDictationText((prev) => (prev ? `${prev} ${text}` : text));
+      },
       onArtifact: (next) => {
         setArtifact(next);
         setArtifactVisible(true);
@@ -482,6 +550,7 @@ export default function App() {
         backendConnected={backendConnected}
         busyPlanId={busyPlanId}
         busyStepId={busyStepId}
+        pendingConfirmation={pendingConfirmation}
         onToggleMode={() => {
           const nextMode = mode === "computer" ? "display" : "computer";
           void switchMode(nextMode);
@@ -494,14 +563,44 @@ export default function App() {
         onStop={handleStop}
         onOpenActivity={() => openDrawer("activity")}
         onQuickCommand={(text) => {
-          if (text.toLowerCase().includes("dikt")) setScreen("dictation");
+          if (text.toLowerCase().includes("dikt")) {
+            setScreen("dictation");
+            clientRef.current?.setDictationMode(true);
+          }
           sendText(text);
         }}
+        onEnterDictation={() => {
+          setScreen("dictation");
+          clientRef.current?.setDictationMode(true);
+        }}
         onDictationChange={setDictationText}
-        onDictationCancel={() => setScreen("home")}
+        onDictationCancel={() => {
+          clientRef.current?.setDictationMode(false);
+          setScreen("home");
+        }}
         onDictationSend={() => {
+          clientRef.current?.setDictationMode(false);
           if (dictationText.trim()) sendText(dictationText.trim());
           setScreen("home");
+        }}
+        onDictationContinue={() => {
+          // "Nastavi diktiranje" had no onClick at all before — clicking did
+          // literally nothing. Capture is already continuous while on this
+          // screen (Phase 1), so the one real gap is: if voice dropped (mic
+          // idle timeout, manual Stop) there's no active session left to
+          // capture anything. Reconnect if needed, re-affirm dictation mode
+          // either way, and always log an activity entry so the click has
+          // visible feedback even when already connected (nothing to "resume").
+          // Context: agent_reports/2026-07-11_dictation-continue-button-fix.md
+          if (isConnected) {
+            clientRef.current?.setDictationMode(true);
+            addActivityEvent(createActivityEvent("status", "Diktiranje nastavljeno", "Slušam dalje."));
+          } else {
+            addActivityEvent(createActivityEvent("status", "Ponovo povezujem glas", "Diktiranje nastavlja čim se poveže."));
+            void connect().then(() => {
+              clientRef.current?.setDictationMode(true);
+            });
+          }
         }}
         onStopAll={runKillSwitch}
         onCloseDrawer={() => setActiveDrawer(null)}

@@ -8,9 +8,10 @@ import { TopBar } from "./TopBar";
 import { IdleScreen } from "./IdleScreen";
 import { Drawer } from "./Drawer";
 import { DictationScreen } from "./DictationScreen";
+import { SettingsPanel } from "./SettingsPanel";
 import { ConfirmationPreview, ActivityDrawerPreview, PlansDrawerPreview } from "./Previews";
 import type { ActivityEvent, TranscriptEntry, VoiceState } from "../../lib/realtime";
-import type { Plan } from "../../vite-env";
+import type { Confirmation, Plan } from "../../vite-env";
 import type { DrawerState, RickyMode, ScreenState } from "./types";
 
 export function PixelMockupBoard({
@@ -29,6 +30,7 @@ export function PixelMockupBoard({
   backendConnected,
   busyPlanId,
   busyStepId,
+  pendingConfirmation,
   onToggleMode,
   onOpenPlans,
   onSidebarChange,
@@ -38,9 +40,11 @@ export function PixelMockupBoard({
   onStop,
   onOpenActivity,
   onQuickCommand,
+  onEnterDictation,
   onDictationChange,
   onDictationCancel,
   onDictationSend,
+  onDictationContinue,
   onStopAll,
   onCloseDrawer,
   onUpdatePlanStatus,
@@ -62,6 +66,7 @@ export function PixelMockupBoard({
   backendConnected: boolean;
   busyPlanId: string | null;
   busyStepId: string | null;
+  pendingConfirmation: Confirmation | null;
   onToggleMode: () => void;
   onOpenPlans: () => void;
   onSidebarChange: (id: string) => void;
@@ -71,9 +76,11 @@ export function PixelMockupBoard({
   onStop: () => void;
   onOpenActivity: () => void;
   onQuickCommand: (text: string) => void;
+  onEnterDictation: () => void;
   onDictationChange: (value: string) => void;
   onDictationCancel: () => void;
   onDictationSend: () => void;
+  onDictationContinue: () => void;
   onStopAll: () => void;
   onCloseDrawer: () => void;
   onUpdatePlanStatus: (planId: string, status: string) => Promise<void>;
@@ -82,87 +89,95 @@ export function PixelMockupBoard({
 }) {
   return (
     <div className="pixel-mockup-board">
-      <MockupSection
-        className="pixel-section-idle"
-        number="1"
-        title="SPREMAN"
-        description="Mirno stanje. Fokus na mikrofon i zadnju aktivnost. Sve ostalo dostupno po potrebi."
-      >
-        <section className="pixel-window pixel-window-idle" aria-label="Spreman">
-          <TopBar
-            mode={mode}
-            screen={screen}
-            voiceState={voiceState}
-            onToggleMode={onToggleMode}
-            onOpenPlans={onOpenPlans}
-            onStopAll={onStopAll}
-          />
-          <Sidebar activeTab={activeDrawer ?? screen} onTabChange={onSidebarChange} backendConnected={backendConnected} />
-          <section className="pixel-main">
-            <IdleScreen
+      {/* Idle and Dictation are mutually exclusive main-area modes — you can't
+          be both at once (unlike Confirmation/Activity/Plans below, which are
+          independent glanceable info panels that legitimately coexist).
+          Context: agent_reports/2026-07-10_dictation-and-dashboard-fixes.md */}
+      {screen === "dictation" ? (
+        <MockupSection
+          className="pixel-section-main"
+          number="2"
+          title="DIKTIRANJE"
+          description="Editor je u fokusu. Samo najvažnije akcije. Ostali paneli skriveni."
+        >
+          <section className="pixel-window pixel-window-dictation" aria-label="Diktiranje">
+            <TopBar mode={mode} screen="dictation" voiceState={voiceState} onToggleMode={onToggleMode} onOpenPlans={onOpenPlans} />
+            <section className="pixel-main pixel-main-full">
+              <DictationScreen
+                text={dictationText}
+                onChange={onDictationChange}
+                onCancel={onDictationCancel}
+                onSend={onDictationSend}
+                onContinue={onDictationContinue}
+              />
+            </section>
+          </section>
+        </MockupSection>
+      ) : (
+        <MockupSection
+          className="pixel-section-main"
+          number="1"
+          title="SPREMAN"
+          description="Mirno stanje. Fokus na mikrofon i zadnju aktivnost. Sve ostalo dostupno po potrebi."
+        >
+          <section className="pixel-window pixel-window-idle" aria-label="Spreman">
+            <TopBar
+              mode={mode}
+              screen={screen}
               voiceState={voiceState}
-              isActive={isActive}
-              isConnected={isConnected}
-              textPrompt={textPrompt}
-              recentActivity={recentActivity}
-              onTextPromptChange={onTextPromptChange}
-              onSendTextPrompt={onSendTextPrompt}
-              onVoiceToggle={onVoiceToggle}
-              onStop={onStop}
-              onOpenActivity={onOpenActivity}
-              onQuickCommand={onQuickCommand}
+              onToggleMode={onToggleMode}
+              onOpenPlans={onOpenPlans}
+              onStopAll={onStopAll}
+              onEnterDictation={onEnterDictation}
             />
-            {activeDrawer ? (
-              <Drawer drawer={activeDrawer} onClose={onCloseDrawer}>
-                {activeDrawer === "activity" ? (
-                  <ActivityTimeline transcript={transcript} activityEvents={activityEvents} />
-                ) : null}
-                {activeDrawer === "plans" ? (
-                  <PlansPanel
-                    visible={true}
-                    plans={plans}
-                    busyPlanId={busyPlanId}
-                    busyStepId={busyStepId}
-                    onUpdatePlanStatus={onUpdatePlanStatus}
-                    onUpdateStepStatus={onUpdateStepStatus}
-                    onCreatePlan={onCreatePlan}
-                  />
-                ) : null}
-                {activeDrawer === "memory" ? <p className="drawer-placeholder-text">Nema sačuvane memorije.</p> : null}
-                {activeDrawer === "screens" ? <p className="drawer-placeholder-text">Nema snimaka ekrana.</p> : null}
-                {activeDrawer === "settings" ? <p className="drawer-placeholder-text">Postavke nisu dostupne u ovom prikazu.</p> : null}
-              </Drawer>
-            ) : null}
+            <Sidebar activeTab={activeDrawer ?? screen} onTabChange={onSidebarChange} backendConnected={backendConnected} />
+            <section className="pixel-main">
+              <IdleScreen
+                voiceState={voiceState}
+                isActive={isActive}
+                isConnected={isConnected}
+                textPrompt={textPrompt}
+                recentActivity={recentActivity}
+                onTextPromptChange={onTextPromptChange}
+                onSendTextPrompt={onSendTextPrompt}
+                onVoiceToggle={onVoiceToggle}
+                onStop={onStop}
+                onOpenActivity={onOpenActivity}
+                onQuickCommand={onQuickCommand}
+              />
+              {activeDrawer ? (
+                <Drawer drawer={activeDrawer} onClose={onCloseDrawer}>
+                  {activeDrawer === "activity" ? (
+                    <ActivityTimeline transcript={transcript} activityEvents={activityEvents} />
+                  ) : null}
+                  {activeDrawer === "plans" ? (
+                    <PlansPanel
+                      visible={true}
+                      plans={plans}
+                      busyPlanId={busyPlanId}
+                      busyStepId={busyStepId}
+                      onUpdatePlanStatus={onUpdatePlanStatus}
+                      onUpdateStepStatus={onUpdateStepStatus}
+                      onCreatePlan={onCreatePlan}
+                    />
+                  ) : null}
+                  {activeDrawer === "memory" ? <p className="drawer-placeholder-text">Nema sačuvane memorije.</p> : null}
+                  {activeDrawer === "screens" ? <p className="drawer-placeholder-text">Nema snimaka ekrana.</p> : null}
+                  {activeDrawer === "settings" ? <SettingsPanel /> : null}
+                </Drawer>
+              ) : null}
+            </section>
           </section>
-        </section>
-      </MockupSection>
-
-      <MockupSection
-        className="pixel-section-dictation"
-        number="2"
-        title="DIKTIRANJE"
-        description="Editor je u fokusu. Samo najvažnije akcije. Ostali paneli skriveni."
-      >
-        <section className="pixel-window pixel-window-dictation" aria-label="Diktiranje">
-          <TopBar mode={mode} screen="dictation" voiceState={voiceState} onToggleMode={onToggleMode} onOpenPlans={onOpenPlans} />
-          <section className="pixel-main pixel-main-full">
-            <DictationScreen
-              text={dictationText}
-              onChange={onDictationChange}
-              onCancel={onDictationCancel}
-              onSend={onDictationSend}
-            />
-          </section>
-        </section>
-      </MockupSection>
+        </MockupSection>
+      )}
 
       <MockupSection
         className="pixel-section-confirmation"
         number="3"
         title="POTVRDA"
-        description="Dominantna potvrda. Ne može se previdjeti. Detalji jasni, rizik istaknut."
+        description="Prikazuje stvarnu potvrdu na čekanju, ako postoji. Za odluku otvara se zaseban dijalog."
       >
-        <ConfirmationPreview />
+        <ConfirmationPreview confirmation={pendingConfirmation} />
       </MockupSection>
 
       <MockupSection

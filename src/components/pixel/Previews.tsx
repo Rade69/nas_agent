@@ -1,15 +1,30 @@
 /** Pixel mockup drawer previews — confirmation / activity / plans empty states.
  *  Verbatim move from App.tsx (R3 refactor). JSX unchanged. */
 import IconWarning from "../../../assets/brending/icons/safety/icon-warning.svg?react";
-import IconChevronDown from "../../../assets/brending/icons/ui/icon-chevron-down.svg?react";
-import IconSend from "../../../assets/brending/icons/voice/icon-send.svg?react";
 import IconSuccess from "../../../assets/brending/icons/status/icon-status-success.svg?react";
 import IconBackend from "../../../assets/brending/icons/system/icon-backend.svg?react";
 import { categoryForActivity } from "../../lib/activityIcons";
 import type { ActivityEvent } from "../../lib/realtime";
-import type { Plan } from "../../vite-env";
+import type { Confirmation, Plan } from "../../vite-env";
 
-export function ConfirmationPreview() {
+// Was previously hardcoded example content (fake "Pošalji email" card) shown
+// unconditionally regardless of real state — that caused a real confirmation
+// (via the separate ConfirmationDialog modal) to visually look like it was
+// being asked twice. Now reflects the actual pendingConfirmation state; the
+// real approve/reject/cancel actions stay exclusively on ConfirmationDialog
+// (this panel is read-only glanceable awareness, not a second action surface).
+// Context: agent_reports/2026-07-10_dictation-and-dashboard-fixes.md
+export function ConfirmationPreview({ confirmation }: { confirmation: Confirmation | null }) {
+  if (!confirmation) {
+    return (
+      <div className="pixel-confirmation-preview">
+        <EmptyPreviewState
+          title="Nema aktivne potvrde"
+          detail="Ricky će ovdje prikazati akcije koje čekaju tvoju potvrdu."
+        />
+      </div>
+    );
+  }
   return (
     <div className="pixel-confirmation-preview">
       <div className="pixel-blurred-shell" aria-hidden="true">
@@ -23,38 +38,20 @@ export function ConfirmationPreview() {
         </div>
         <div className="pixel-confirm-content">
           <h3>Ricky želi izvršiti ovu akciju</h3>
-          <p>Pažljivo provjeri detalje prije potvrde.</p>
+          <p>{confirmation.summary || "Pažljivo provjeri detalje prije potvrde."}</p>
           <dl className="pixel-confirm-table">
             <div>
               <dt>Akcija</dt>
-              <dd>Pošalji email</dd>
-            </div>
-            <div>
-              <dt>Prima</dt>
-              <dd>sef@firma.com</dd>
-            </div>
-            <div>
-              <dt>Predmet</dt>
-              <dd>Izvještaj o prodaji za prošli mjesec</dd>
+              <dd>{confirmation.action_name}</dd>
             </div>
             <div>
               <dt>Rizik</dt>
               <dd>
-                <span className="pixel-risk-badge">SREDNJI</span>
-                <span className="pixel-risk-time">ističe za 02:00</span>
+                <span className="pixel-risk-badge">{confirmation.risk_level.toUpperCase()}</span>
               </dd>
             </div>
           </dl>
-          <button className="pixel-confirm-link">
-            Prikaži cijeli sadržaj emaila <IconChevronDown />
-          </button>
-          <footer>
-            <button>Izmijeni</button>
-            <button>Otkaži</button>
-            <button className="pixel-confirm-primary">
-              <IconSend /> Pošalji email
-            </button>
-          </footer>
+          <p className="pixel-confirm-link">Odgovori u dijalogu potvrde.</p>
         </div>
       </article>
     </div>

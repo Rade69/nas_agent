@@ -106,6 +106,7 @@ const {
   mimeForPath,
 } = require("./tools_legacy/legacyMedia.cjs");
 const { handleEventsList } = require("./ipc_handlers/events.cjs");
+const { handleSettingsGet, handleSettingsUpdate } = require("./ipc_handlers/settings.cjs");
 const {
   handlePlansList,
   handlePlanCreate,
@@ -615,6 +616,8 @@ registerIpcHandlers({
   "realtime:create-token": handleRealtimeCreateToken,
   "tools:execute": handleToolsExecute,
   "tools:cancel-all": handleCancelAllExecutions,
+  "settings:get": handleSettingsGet,
+  "settings:update": handleSettingsUpdate,
   // FAZA 9: confirmations + plans IPC channels (allowlist entries).
   "confirmations:list": handleConfirmationsList,
   "confirmations:pending": handleConfirmationsPending,

@@ -185,6 +185,21 @@ async function getSecuritySelfTest(options = {}) {
   return await requestJson("/security/self-test", options);
 }
 
+// User-facing preferences (display name in the prompt, future settings panel
+// additions — see docs/RICKY_GUI_LOCALIZATION_PLAN.md STT-choice backlog note).
+// Context: agent_reports/2026-07-11_settings-panel-foundation.md
+async function getSettings(options = {}) {
+  return await requestJson("/settings", options);
+}
+
+async function updateSettings(payload, options = {}) {
+  return await requestJson("/settings", {
+    ...options,
+    method: "PATCH",
+    body: payload,
+  });
+}
+
 module.exports = {
   DEFAULT_BACKEND_URL,
   approveConfirmation,
@@ -206,6 +221,8 @@ module.exports = {
   rejectConfirmation,
   requestJson,
   setLocalToken,
+  getSettings,
   updatePlan,
   updatePlanStep,
+  updateSettings,
 };

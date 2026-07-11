@@ -11,6 +11,10 @@ contextBridge.exposeInMainWorld("ricky", {
   getToolSpecs: () => ipcRenderer.invoke("tools:list"),
   // Stop button: ask the backend to cancel every in-flight tool.
   cancelAllExecutions: () => ipcRenderer.invoke("tools:cancel-all"),
+  // User-facing preferences (Settings panel). Context:
+  // agent_reports/2026-07-11_settings-panel-foundation.md
+  getSettings: () => ipcRenderer.invoke("settings:get"),
+  updateSettings: (payload) => ipcRenderer.invoke("settings:update", payload),
   // App
   quitApp: () => ipcRenderer.invoke("app:quit"),
   minimizeApp: () => ipcRenderer.invoke("app:minimize"),

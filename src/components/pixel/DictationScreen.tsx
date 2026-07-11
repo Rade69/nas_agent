@@ -8,11 +8,13 @@ export function DictationScreen({
   onChange,
   onCancel,
   onSend,
+  onContinue,
 }: {
   text: string;
   onChange: (value: string) => void;
   onCancel: () => void;
   onSend: () => void;
+  onContinue: () => void;
 }) {
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
 
@@ -39,7 +41,7 @@ export function DictationScreen({
         <span className="pixel-word-count">{wordCount} riječi</span>
       </div>
       <footer className="pixel-dictation-actions">
-        <button className="pixel-secondary">
+        <button className="pixel-secondary" onClick={onContinue} title="Ponovo poveži glas ako je prekinut i nastavi diktiranje">
           <IconMic /> Nastavi diktiranje
         </button>
         <div className="pixel-dropdown">

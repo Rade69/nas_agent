@@ -13,6 +13,7 @@ from app.api.health import router as health_router
 from app.api.plans import router as plans_router
 from app.api.realtime import router as realtime_router
 from app.api.security import router as security_router
+from app.api.settings import router as settings_router
 from app.api.tools import router as tools_router
 from app.core.auth import require_local_token
 from app.core.config import get_settings
@@ -27,6 +28,7 @@ from app.services.notes_service import NotesService
 from app.services.openai_image_client import OpenAIImageClient
 from app.services.plan_service import PlanService
 from app.services.records_service import RecordsService
+from app.services.settings_service import SettingsService
 from app.storage.db import initialize_database
 from app.storage.repositories.agent_repo import AgentConversationRepository
 from app.storage.repositories.artifact_repo import ArtifactRepository
@@ -35,6 +37,7 @@ from app.storage.repositories.event_repo import EventRepository
 from app.storage.repositories.notes_repo import NotesRepository
 from app.storage.repositories.plan_repo import PlanRepository
 from app.storage.repositories.records_repo import RecordsRepository
+from app.storage.repositories.settings_repo import SettingsRepository
 from app.storage.repositories.tool_run_repo import ToolRunRepository
 
 
@@ -59,6 +62,11 @@ def create_app() -> FastAPI:
     # docs/ARCHITECTURE_VOICE_FIRST_REVISED.md "Voice confirmations".
     app.state.confirmation_service = ConfirmationService(ConfirmationRepository(settings.database_path))
     app.state.plan_service = PlanService(PlanRepository(settings.database_path))
+    # User-facing preferences (display name in the prompt, future settings
+    # panel additions) — distinct from app.state.settings above, which is
+    # process/env configuration, not a user preference.
+    # Context: agent_reports/2026-07-11_settings-panel-foundation.md
+    app.state.user_settings_service = SettingsService(SettingsRepository(settings.database_path))
     # FAZA 10: permission/risk layer. Cancellation registry is process-lifetime
     # in-memory state (see app/agent/cancellation.py); the durable audit trail
     # stays in tool_runs via ActionLogService.
@@ -120,6 +128,7 @@ def create_app() -> FastAPI:
     app.include_router(events_router)
     app.include_router(agent_router)
     app.include_router(security_router)
+    app.include_router(settings_router)
     return app
 
 

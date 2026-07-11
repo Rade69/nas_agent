@@ -682,9 +682,16 @@
 
 .pixel-secondary {
   padding: 0 16px;
-  border: 1px solid rgba(80, 135, 190, 0.17);
-  color: #c7d3e6;
-  background: rgba(13, 27, 45, 0.84);
+  border: 1px solid rgba(120, 175, 230, 0.4);
+  color: #dce8fb;
+  background: rgba(41, 70, 105, 0.78);
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.pixel-secondary:hover {
+  border-color: rgba(120, 175, 230, 0.7);
+  background: rgba(52, 88, 130, 0.9);
 }
 
 .pixel-primary {
@@ -873,6 +880,91 @@
   color: #8fa0b5;
   margin: 0;
   padding: 18px;
+}
+
+/* Settings panel (agent_reports/2026-07-11_settings-panel-foundation.md).
+   Structured as .pixel-settings-section blocks so future preferences (STT
+   engine choice, etc.) can be added as new sections without new CSS. */
+.pixel-settings-panel {
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.pixel-settings-section h3 {
+  margin: 0 0 12px;
+  color: #eaf6ff;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.pixel-settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 340px;
+}
+
+.pixel-settings-field > span:first-child {
+  color: #c7d3e6;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.pixel-settings-field input {
+  border: 1px solid rgba(80, 135, 190, 0.24);
+  border-radius: 8px;
+  outline: 0;
+  color: #f6f9ff;
+  background: rgba(8, 17, 31, 0.76);
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.pixel-settings-field input:focus {
+  border-color: rgba(58, 215, 255, 0.42);
+  box-shadow: 0 0 0 3px rgba(22, 139, 255, 0.1);
+}
+
+.pixel-settings-hint {
+  color: #8fa0b5;
+  font-size: 11px;
+}
+
+.pixel-settings-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.pixel-settings-actions .pixel-primary {
+  min-height: 36px;
+  padding: 0 18px;
+  font-size: 12px;
+}
+
+.pixel-settings-actions .pixel-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.pixel-settings-feedback {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.pixel-settings-feedback-ok {
+  color: #4ad991;
+}
+
+.pixel-settings-feedback-error {
+  color: #ff8197;
 }
 
 /* FAZA S-4: kill-switch on-screen confirmation banner. Fixed, top-center, high

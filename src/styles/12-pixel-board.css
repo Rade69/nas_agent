@@ -76,7 +76,7 @@
   grid-template-columns: 1.04fr 1.04fr 0.96fr 0.96fr;
   grid-template-rows: minmax(0, 59fr) minmax(0, 41fr);
   grid-template-areas:
-    "idle idle dictation dictation"
+    "main main main main"
     "confirmation confirmation activity plans";
   gap: 9px 12px;
   width: calc(100vw - 24px);
@@ -93,12 +93,14 @@
   grid-template-rows: auto minmax(0, 1fr);
 }
 
-.pixel-section-idle {
-  grid-area: idle;
-}
-
-.pixel-section-dictation {
-  grid-area: dictation;
+/* Idle and Dictation are mutually exclusive (only one renders at a time —
+   see PixelMockupBoard.tsx), so they share one grid-area spanning the full
+   top row instead of splitting it into two half-width side-by-side cells.
+   Confirmation/Activity/Plans stay as independent peripheral panels below —
+   those legitimately coexist, unlike Idle-vs-Dictation.
+   Context: agent_reports/2026-07-10_dictation-and-dashboard-fixes.md */
+.pixel-section-main {
+  grid-area: main;
 }
 
 .pixel-section-confirmation {
@@ -118,7 +120,7 @@
   padding: 0 4px 3px;
 }
 
-.pixel-section-dictation .pixel-section-label {
+.pixel-section-main:has(.pixel-window-dictation) .pixel-section-label {
   padding-right: 150px;
 }
 
@@ -225,6 +227,27 @@
 }
 
 .pixel-top-stop-all svg {
+  width: 12px;
+  height: 12px;
+}
+
+.pixel-top-dictation {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 27px;
+  padding: 0 10px;
+  border: 1px solid rgba(96, 179, 255, 0.42);
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(180deg, rgba(47, 155, 255, 0.92), rgba(24, 92, 166, 0.92));
+  box-shadow: 0 8px 22px rgba(47, 155, 255, 0.16);
+  font-size: 10px;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+.pixel-top-dictation svg {
   width: 12px;
   height: 12px;
 }

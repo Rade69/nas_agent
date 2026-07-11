@@ -14,6 +14,7 @@ export function TopBar({
   onToggleMode,
   onOpenPlans,
   onStopAll,
+  onEnterDictation,
 }: {
   mode: RickyMode;
   screen: ScreenState;
@@ -21,6 +22,7 @@ export function TopBar({
   onToggleMode: () => void;
   onOpenPlans: () => void;
   onStopAll?: () => void;
+  onEnterDictation?: () => void;
 }) {
   return (
     <header className="pixel-top-bar">
@@ -52,6 +54,12 @@ export function TopBar({
           <button className={`pixel-mode-pill ${mode === "computer" ? "on" : ""}`} onClick={onToggleMode}>
             Računarski režim: {mode === "computer" ? "UKLJUČEN" : "ISKLJUČEN"}
           </button>
+          {onEnterDictation && screen !== "dictation" ? (
+            <button className="pixel-top-dictation" onClick={onEnterDictation} title="Uđi u diktiranje">
+              <IconWave />
+              Diktiranje
+            </button>
+          ) : null}
           <button className="pixel-icon-button" title="Glas">
             <IconWave />
           </button>
