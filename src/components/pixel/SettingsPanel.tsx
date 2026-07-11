@@ -1,17 +1,29 @@
 /** Settings panel — replaces the "Postavke nisu dostupne" placeholder.
- *  Structured as sections (currently one: "Lično") so future preferences
- *  (e.g. cloud/lokalni STT izbor za diktat, docs/RICKY_GUI_LOCALIZATION_PLAN.md)
- *  can be added as new sections without restructuring this file.
- *  Context: agent_reports/2026-07-11_settings-panel-foundation.md */
+ *  Structured as sections (currently two: "Lično" and "Jezik") so future
+ *  preferences can be added as new sections without restructuring this file.
+ *  Context: agent_reports/2026-07-11_settings-panel-foundation.md
+ *  Context: agent_reports/2026-07-11_interface-language-stt-hint.md */
 import { useEffect, useState } from "react";
 import type { UserSettings } from "../../vite-env";
 
 type SaveStatus = "loading" | "idle" | "saving" | "saved" | "error";
 
+// STT jezički hint mapiranje — istovjetno electron/ipc_handlers/realtime.cjs.
+// Sr-Latn ostaje "sr" (NE "bs"), zadržava postojeće ponašanje.
+const LANGUAGE_OPTIONS: { value: string; label: string }[] = [
+  { value: "sr-Latn", label: "Srpski (latinica)" },
+  { value: "en", label: "English" },
+  { value: "de", label: "Deutsch" },
+  { value: "es", label: "Español" },
+  { value: "fr", label: "Français" },
+];
+
 export function SettingsPanel() {
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [nameInput, setNameInput] = useState("");
-  const [status, setStatus] = useState<SaveStatus>("loading");
+  const [nameStatus, setNameStatus] = useState<SaveStatus>("loading");
+  const [languageInput, setLanguageInput] = useState("sr-Latn");
+  const [languageStatus, setLanguageStatus] = useState<SaveStatus>("loading");
 
   useEffect(() => {
     let cancelled = false;
@@ -21,35 +33,54 @@ export function SettingsPanel() {
         if (cancelled) return;
         setSettings(result);
         setNameInput(result.user_name);
-        setStatus("idle");
+        setLanguageInput(result.interface_language ?? "sr-Latn");
+        setNameStatus("idle");
+        setLanguageStatus("idle");
       })
       .catch(() => {
-        if (!cancelled) setStatus("error");
+        if (!cancelled) {
+          setNameStatus("error");
+          setLanguageStatus("error");
+        }
       });
     return () => {
       cancelled = true;
     };
   }, []);
 
-  async function handleSave() {
+  async function handleSaveName() {
     const trimmed = nameInput.trim();
-    setStatus("saving");
+    setNameStatus("saving");
     try {
       const updated = await window.ricky.updateSettings({ user_name: trimmed || "Riley" });
       setSettings(updated);
       setNameInput(updated.user_name);
-      setStatus("saved");
-      window.setTimeout(() => setStatus((current) => (current === "saved" ? "idle" : current)), 2000);
+      setNameStatus("saved");
+      window.setTimeout(() => setNameStatus((current) => (current === "saved" ? "idle" : current)), 2000);
     } catch {
-      setStatus("error");
+      setNameStatus("error");
     }
   }
 
-  if (status === "loading") {
+  async function handleSaveLanguage() {
+    setLanguageStatus("saving");
+    try {
+      const updated = await window.ricky.updateSettings({ interface_language: languageInput });
+      setSettings(updated);
+      setLanguageInput(updated.interface_language ?? "sr-Latn");
+      setLanguageStatus("saved");
+      window.setTimeout(() => setLanguageStatus((current) => (current === "saved" ? "idle" : current)), 2000);
+    } catch {
+      setLanguageStatus("error");
+    }
+  }
+
+  if (nameStatus === "loading" || languageStatus === "loading") {
     return <p className="drawer-placeholder-text">Učitavam postavke...</p>;
   }
 
-  const dirty = settings !== null && nameInput.trim() !== settings.user_name && nameInput.trim() !== "";
+  const nameDirty = settings !== null && nameInput.trim() !== settings.user_name && nameInput.trim() !== "";
+  const languageDirty = settings !== null && languageInput !== (settings.interface_language ?? "sr-Latn");
 
   return (
     <div className="pixel-settings-panel">
@@ -66,11 +97,40 @@ export function SettingsPanel() {
           <span className="pixel-settings-hint">Riki će te ovako oslovljavati u razgovoru.</span>
         </label>
         <div className="pixel-settings-actions">
-          <button className="pixel-primary" onClick={() => void handleSave()} disabled={!dirty || status === "saving"}>
-            {status === "saving" ? "Čuvam..." : "Sačuvaj"}
+          <button className="pixel-primary" onClick={() => void handleSaveName()} disabled={!nameDirty || nameStatus === "saving"}>
+            {nameStatus === "saving" ? "Čuvam..." : "Sačuvaj"}
           </button>
-          {status === "saved" ? <span className="pixel-settings-feedback pixel-settings-feedback-ok">Sačuvano.</span> : null}
-          {status === "error" ? (
+          {nameStatus === "saved" ? <span className="pixel-settings-feedback pixel-settings-feedback-ok">Sačuvano.</span> : null}
+          {nameStatus === "error" ? (
+            <span className="pixel-settings-feedback pixel-settings-feedback-error">Greška — pokušaj ponovo.</span>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="pixel-settings-section">
+        <h3>Jezik</h3>
+        <label className="pixel-settings-field">
+          <span>Jezik diktiranja</span>
+          <select
+            value={languageInput}
+            onChange={(event) => setLanguageInput(event.target.value)}
+          >
+            {LANGUAGE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <span className="pixel-settings-hint">
+            Jezik za prepoznavanje govora u Diktatu. Promjena se primjenjuje pri sljedećem povezivanju glasa.
+          </span>
+        </label>
+        <div className="pixel-settings-actions">
+          <button className="pixel-primary" onClick={() => void handleSaveLanguage()} disabled={!languageDirty || languageStatus === "saving"}>
+            {languageStatus === "saving" ? "Čuvam..." : "Sačuvaj"}
+          </button>
+          {languageStatus === "saved" ? <span className="pixel-settings-feedback pixel-settings-feedback-ok">Sačuvano.</span> : null}
+          {languageStatus === "error" ? (
             <span className="pixel-settings-feedback pixel-settings-feedback-error">Greška — pokušaj ponovo.</span>
           ) : null}
         </div>

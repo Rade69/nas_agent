@@ -12,7 +12,9 @@ from pydantic import BaseModel
 # database migration is needed since the underlying table is key/value.
 class UserSettings(BaseModel):
     user_name: str = "Riley"
+    interface_language: str = "sr-Latn"
 
 
 class UserSettingsUpdateRequest(BaseModel):
     user_name: str | None = None
+    interface_language: str | None = None

@@ -39,6 +39,7 @@ export class RickyRealtimeClient {
   // conservative than the /agent/message runtime's per-message reset — once
   // tainted, stays escalated for the rest of this voice session.
   private externalContentSeen = false;
+  private sttLanguageHint = "sr";
 
   constructor(callbacks: RealtimeCallbacks) {
     this.callbacks = callbacks;
@@ -93,6 +94,7 @@ export class RickyRealtimeClient {
         }),
       ]);
       this.toolSpecs = toolSpecs;
+      this.sttLanguageHint = token.sttLanguageHint ?? "sr";
       this.micStream = micStream;
       pc.addTrack(this.micStream.getAudioTracks()[0], this.micStream);
 
@@ -212,7 +214,7 @@ export class RickyRealtimeClient {
             },
             transcription: {
               model: "whisper-1",
-              language: "sr",
+              language: this.sttLanguageHint,
             },
           },
         },

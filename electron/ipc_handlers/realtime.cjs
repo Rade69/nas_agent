@@ -7,6 +7,12 @@ const { toolSpecs } = require("../core/realtimeToolSpecs.cjs");
 
 const DEFAULT_USER_NAME = "Riley";
 
+// STT jezički hint za Dictation Mode (OpenAI Realtime whisper-1 language
+// param). Mapiranje po docs/RICKY_GUI_LOCALIZATION_PLAN.md — sr-Latn ostaje
+// "sr" (NE "bs"), zadržava postojeće, već testirano ponašanje.
+const STT_LANGUAGE_HINTS = { "sr-Latn": "sr", en: "en", de: "de", es: "es", fr: "fr" };
+const DEFAULT_STT_LANGUAGE_HINT = "sr";
+
 // The user's own name was hardcoded as "Riley" throughout (matches the
 // product's own branding origin) — now interpolated from the Settings panel
 // (GET /settings, defaults to "Riley" if never set/backend unreachable) so
@@ -49,10 +55,14 @@ Let the user interrupt. If audio is unclear, ask one short clarifying question i
 async function handleRealtimeCreateToken() {
   const db = await readDb();
   let userName = DEFAULT_USER_NAME;
+  let sttLanguageHint = DEFAULT_STT_LANGUAGE_HINT;
   try {
     const settings = await getSettings();
     if (settings && typeof settings.user_name === "string" && settings.user_name.trim()) {
       userName = settings.user_name.trim();
+    }
+    if (settings && typeof settings.interface_language === "string") {
+      sttLanguageHint = STT_LANGUAGE_HINTS[settings.interface_language] ?? DEFAULT_STT_LANGUAGE_HINT;
     }
   } catch (error) {
     // Cosmetic preference, not security-critical — fail open to the default
@@ -90,7 +100,7 @@ async function handleRealtimeCreateToken() {
         // Context: agent_reports/2026-07-11_dictation-guardrails-and-exit.md
         transcription: {
           model: "whisper-1",
-          language: "sr",
+          language: sttLanguageHint,
         },
       },
       output: {
@@ -108,7 +118,7 @@ async function handleRealtimeCreateToken() {
   // (instructions/tools depend on Electron-side DB state not yet migrated) and forwards
   // it for the backend to mint the ephemeral Realtime credential.
   const { value, expiresAt } = await createRealtimeSession(session);
-  return { value, expiresAt: expiresAt ?? null };
+  return { value, expiresAt: expiresAt ?? null, sttLanguageHint };
 }
 
 module.exports = { handleRealtimeCreateToken };

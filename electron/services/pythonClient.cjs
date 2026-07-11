@@ -200,6 +200,17 @@ async function updateSettings(payload, options = {}) {
   });
 }
 
+// Dictation Mode "Doradi" menu (formalize/shorten/proofread/translate) — plain
+// text-in/text-out, not routed through the agent/tool loop.
+// Context: agent_reports/2026-07-11_dictation-rewrite-menu.md
+async function rewriteText(payload, options = {}) {
+  return await requestJson("/text/rewrite", {
+    ...options,
+    method: "POST",
+    body: payload,
+  });
+}
+
 module.exports = {
   DEFAULT_BACKEND_URL,
   approveConfirmation,
@@ -222,6 +233,7 @@ module.exports = {
   requestJson,
   setLocalToken,
   getSettings,
+  rewriteText,
   updatePlan,
   updatePlanStep,
   updateSettings,

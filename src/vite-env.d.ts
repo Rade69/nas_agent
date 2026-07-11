@@ -105,7 +105,12 @@ export type PlanStep = {
 // panel grows. Context: agent_reports/2026-07-11_settings-panel-foundation.md
 export type UserSettings = {
   user_name: string;
+  interface_language: string;
 };
+
+// Dictation Mode "Doradi" menu — mirrors python_backend/app/schemas/text.py
+// TextRewriteOperation. Context: agent_reports/2026-07-11_dictation-rewrite-menu.md
+export type TextRewriteOperation = "formalize" | "shorten" | "proofread" | "translate_en";
 
 export type Plan = {
   id: string;
@@ -132,12 +137,13 @@ export type BackendEvent = {
 declare global {
   interface Window {
     ricky: {
-      createRealtimeToken: () => Promise<{ value: string; expiresAt: number | null }>;
+      createRealtimeToken: () => Promise<{ value: string; expiresAt: number | null; sttLanguageHint: string }>;
       executeTool: (toolCall: RickyToolCall) => Promise<RickyToolResult>;
       getToolSpecs: () => Promise<RickyToolSpec[]>;
       cancelAllExecutions: () => Promise<{ ok: boolean; cancelled: string[]; count: number }>;
       getSettings: () => Promise<UserSettings>;
       updateSettings: (payload: Partial<UserSettings>) => Promise<UserSettings>;
+      rewriteText: (payload: { text: string; operation: TextRewriteOperation }) => Promise<{ text: string }>;
       quitApp: () => Promise<void>;
       minimizeApp: () => Promise<void>;
       toggleMaximizeApp: () => Promise<void>;

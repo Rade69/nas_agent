@@ -50,7 +50,7 @@ import {
   type VoiceState,
 } from "./lib/realtime";
 import { cyrillicToLatin } from "./lib/cyrillicToLatin";
-import type { BackendEvent, Confirmation, Plan, PlanStepStatus, RickyArtifact } from "./vite-env";
+import type { BackendEvent, Confirmation, Plan, PlanStepStatus, RickyArtifact, TextRewriteOperation } from "./vite-env";
 
 import type { RickyMode, ScreenState, DrawerState } from "./components/pixel/types";
 
@@ -113,6 +113,12 @@ export default function App() {
   const [activeDrawer, setActiveDrawer] = useState<DrawerState>(null);
   const [killFlash, setKillFlash] = useState(false);
   const [dictationText, setDictationText] = useState("");
+  const [dictationBusy, setDictationBusy] = useState(false);
+  const [canUndoDictation, setCanUndoDictation] = useState(false);
+  // Single-level undo: holds the text as it was immediately before the last
+  // destructive Dictation action (a "Doradi" rewrite or "Obriši sve").
+  // Context: agent_reports/2026-07-11_dictation-rewrite-menu.md
+  const dictationUndoRef = useRef<string | null>(null);
   const [backendConnected, setBackendConnected] = useState(false);
   const clientRef = useRef<RickyRealtimeClient | null>(null);
 
@@ -366,6 +372,67 @@ export default function App() {
     setTextPrompt("");
   }
 
+  // Dictation Mode "Doradi" + "..." menus. All four rewrite operations replace
+  // dictationText wholesale, so a single-level undo (dictationUndoRef) covers
+  // both rewrite and "Obriši sve" — the only two destructive actions here.
+  // Context: agent_reports/2026-07-11_dictation-rewrite-menu.md
+  const DICTATION_REWRITE_LABELS: Record<TextRewriteOperation, string> = {
+    formalize: "Formalizovano",
+    shorten: "Skraćeno",
+    proofread: "Pravopis provjeren",
+    translate_en: "Prevedeno na engleski",
+  };
+
+  function handleDictationRewrite(operation: TextRewriteOperation) {
+    const trimmed = dictationText.trim();
+    if (!trimmed || dictationBusy) return;
+    dictationUndoRef.current = dictationText;
+    setCanUndoDictation(true);
+    setDictationBusy(true);
+    window.ricky
+      .rewriteText({ text: dictationText, operation })
+      .then((result) => {
+        setDictationText(result.text);
+        addActivityEvent(createActivityEvent("status", DICTATION_REWRITE_LABELS[operation]));
+      })
+      .catch(() => {
+        addActivityEvent(createActivityEvent("error", "Greška pri obradi teksta", "Tekst nije promijenjen."));
+      })
+      .finally(() => setDictationBusy(false));
+  }
+
+  function handleDictationCopy() {
+    if (!dictationText.trim()) return;
+    void navigator.clipboard.writeText(dictationText);
+    addActivityEvent(createActivityEvent("status", "Tekst kopiran"));
+  }
+
+  function handleDictationClear() {
+    if (!dictationText.trim()) return;
+    if (!window.confirm("Obrisati cijeli diktirani tekst?")) return;
+    dictationUndoRef.current = dictationText;
+    setCanUndoDictation(true);
+    setDictationText("");
+  }
+
+  function handleDictationUndo() {
+    if (dictationUndoRef.current === null) return;
+    setDictationText(dictationUndoRef.current);
+    dictationUndoRef.current = null;
+    setCanUndoDictation(false);
+  }
+
+  function handleDictationDownload() {
+    if (!dictationText.trim()) return;
+    const blob = new Blob([dictationText], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `diktat-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-")}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function switchMode(nextMode: RickyMode) {
     const result = await window.ricky.executeTool({ name: "set_mode", arguments: { mode: nextMode } });
     setMode(nextMode);
@@ -583,6 +650,13 @@ export default function App() {
           if (dictationText.trim()) sendText(dictationText.trim());
           setScreen("home");
         }}
+        onDictationRewrite={handleDictationRewrite}
+        onDictationCopy={handleDictationCopy}
+        onDictationClear={handleDictationClear}
+        onDictationUndo={handleDictationUndo}
+        onDictationDownload={handleDictationDownload}
+        dictationBusy={dictationBusy}
+        canUndoDictation={canUndoDictation}
         onDictationContinue={() => {
           // "Nastavi diktiranje" had no onClick at all before — clicking did
           // literally nothing. Capture is already continuous while on this

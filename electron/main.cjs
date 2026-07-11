@@ -107,6 +107,7 @@ const {
 } = require("./tools_legacy/legacyMedia.cjs");
 const { handleEventsList } = require("./ipc_handlers/events.cjs");
 const { handleSettingsGet, handleSettingsUpdate } = require("./ipc_handlers/settings.cjs");
+const { handleTextRewrite } = require("./ipc_handlers/text.cjs");
 const {
   handlePlansList,
   handlePlanCreate,
@@ -618,6 +619,7 @@ registerIpcHandlers({
   "tools:cancel-all": handleCancelAllExecutions,
   "settings:get": handleSettingsGet,
   "settings:update": handleSettingsUpdate,
+  "text:rewrite": handleTextRewrite,
   // FAZA 9: confirmations + plans IPC channels (allowlist entries).
   "confirmations:list": handleConfirmationsList,
   "confirmations:pending": handleConfirmationsPending,

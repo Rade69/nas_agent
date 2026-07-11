@@ -436,8 +436,13 @@
   min-width: 12px;
 }
 
+/* Dictation action buttons sit at the bottom of .pixel-main, which clips
+   overflow (11-pixel-shell.css .pixel-main). A menu opening downward from
+   there is invisible/unclickable — open it upward instead.
+   Context: agent_reports/2026-07-11_dictation-rewrite-menu.md */
 .pixel-window-dictation .pixel-dropdown-menu {
-  top: calc(100% + 3px);
+  top: auto;
+  bottom: calc(100% + 3px);
 }
 
 .pixel-confirmation-preview {

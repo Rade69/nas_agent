@@ -14,6 +14,7 @@ from app.api.plans import router as plans_router
 from app.api.realtime import router as realtime_router
 from app.api.security import router as security_router
 from app.api.settings import router as settings_router
+from app.api.text import router as text_router
 from app.api.tools import router as tools_router
 from app.core.auth import require_local_token
 from app.core.config import get_settings
@@ -118,6 +119,12 @@ def create_app() -> FastAPI:
         tool_executor=agent_tool_executor,
         conversations=app.state.conversation_state_service,
     )
+    # Dictation Mode "Doradi" menu (formalize/shorten/proofread/translate) —
+    # a plain text-in/text-out model call, deliberately NOT routed through
+    # agent_runtime above (that path persists conversation state and runs a
+    # tool-calling loop, wrong semantics for "rewrite this whole note").
+    # Context: agent_reports/2026-07-11_dictation-rewrite-menu.md
+    app.state.text_model_client = OpenAIModelClient(settings.openai_api_key)
 
     register_error_handlers(app)
     app.include_router(health_router)
@@ -129,6 +136,7 @@ def create_app() -> FastAPI:
     app.include_router(agent_router)
     app.include_router(security_router)
     app.include_router(settings_router)
+    app.include_router(text_router)
     return app
 
 

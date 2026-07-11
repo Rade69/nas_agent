@@ -15,6 +15,9 @@ contextBridge.exposeInMainWorld("ricky", {
   // agent_reports/2026-07-11_settings-panel-foundation.md
   getSettings: () => ipcRenderer.invoke("settings:get"),
   updateSettings: (payload) => ipcRenderer.invoke("settings:update", payload),
+  // Dictation Mode "Doradi" menu. Context:
+  // agent_reports/2026-07-11_dictation-rewrite-menu.md
+  rewriteText: (payload) => ipcRenderer.invoke("text:rewrite", payload),
   // App
   quitApp: () => ipcRenderer.invoke("app:quit"),
   minimizeApp: () => ipcRenderer.invoke("app:minimize"),

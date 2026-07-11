@@ -11,7 +11,7 @@ import { DictationScreen } from "./DictationScreen";
 import { SettingsPanel } from "./SettingsPanel";
 import { ConfirmationPreview, ActivityDrawerPreview, PlansDrawerPreview } from "./Previews";
 import type { ActivityEvent, TranscriptEntry, VoiceState } from "../../lib/realtime";
-import type { Confirmation, Plan } from "../../vite-env";
+import type { Confirmation, Plan, TextRewriteOperation } from "../../vite-env";
 import type { DrawerState, RickyMode, ScreenState } from "./types";
 
 export function PixelMockupBoard({
@@ -45,6 +45,13 @@ export function PixelMockupBoard({
   onDictationCancel,
   onDictationSend,
   onDictationContinue,
+  onDictationRewrite,
+  onDictationCopy,
+  onDictationClear,
+  onDictationUndo,
+  onDictationDownload,
+  dictationBusy,
+  canUndoDictation,
   onStopAll,
   onCloseDrawer,
   onUpdatePlanStatus,
@@ -81,6 +88,13 @@ export function PixelMockupBoard({
   onDictationCancel: () => void;
   onDictationSend: () => void;
   onDictationContinue: () => void;
+  onDictationRewrite: (operation: TextRewriteOperation) => void;
+  onDictationCopy: () => void;
+  onDictationClear: () => void;
+  onDictationUndo: () => void;
+  onDictationDownload: () => void;
+  dictationBusy: boolean;
+  canUndoDictation: boolean;
   onStopAll: () => void;
   onCloseDrawer: () => void;
   onUpdatePlanStatus: (planId: string, status: string) => Promise<void>;
@@ -109,6 +123,13 @@ export function PixelMockupBoard({
                 onCancel={onDictationCancel}
                 onSend={onDictationSend}
                 onContinue={onDictationContinue}
+                onRewrite={onDictationRewrite}
+                onCopy={onDictationCopy}
+                onClear={onDictationClear}
+                onUndo={onDictationUndo}
+                onDownload={onDictationDownload}
+                busy={dictationBusy}
+                canUndo={canUndoDictation}
               />
             </section>
           </section>

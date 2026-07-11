@@ -1,7 +1,11 @@
-/** Pixel dictation editor screen — verbatim move from App.tsx (R3). JSX unchanged. */
+/** Pixel dictation editor screen — verbatim move from App.tsx (R3), later
+ *  extended with the "Doradi" rewrite menu and "..." overflow menu.
+ *  Context: agent_reports/2026-07-11_dictation-rewrite-menu.md */
 import IconMic from "../../../assets/brending/icons/voice/icon-microphone.svg?react";
 import IconChevronDown from "../../../assets/brending/icons/ui/icon-chevron-down.svg?react";
 import IconSend from "../../../assets/brending/icons/voice/icon-send.svg?react";
+import IconMore from "../../../assets/brending/icons/ui/icon-more.svg?react";
+import type { TextRewriteOperation } from "../../vite-env";
 
 export function DictationScreen({
   text,
@@ -9,14 +13,29 @@ export function DictationScreen({
   onCancel,
   onSend,
   onContinue,
+  onRewrite,
+  onCopy,
+  onClear,
+  onUndo,
+  onDownload,
+  busy,
+  canUndo,
 }: {
   text: string;
   onChange: (value: string) => void;
   onCancel: () => void;
   onSend: () => void;
   onContinue: () => void;
+  onRewrite: (operation: TextRewriteOperation) => void;
+  onCopy: () => void;
+  onClear: () => void;
+  onUndo: () => void;
+  onDownload: () => void;
+  busy: boolean;
+  canUndo: boolean;
 }) {
   const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
+  const hasText = text.trim().length > 0;
 
   return (
     <section className="pixel-dictation">
@@ -25,7 +44,7 @@ export function DictationScreen({
           <span className="pixel-dictation-badge">DIKTIRANJE</span>
           <span className="pixel-autosave">
             <span />
-            auto-čuvanje uključeno
+            {busy ? "obrađujem..." : "auto-čuvanje uključeno"}
           </span>
         </div>
         <button onClick={onCancel}>
@@ -45,17 +64,27 @@ export function DictationScreen({
           <IconMic /> Nastavi diktiranje
         </button>
         <div className="pixel-dropdown">
-          <button className="pixel-secondary">
+          <button className="pixel-secondary" disabled={busy || !hasText}>
             Doradi <IconChevronDown />
           </button>
           <div className="pixel-dropdown-menu">
-            <button>Formalizuj</button>
-            <button>Skrati</button>
-            <button>Provjeri pravopis</button>
-            <button>Prevedi na engleski</button>
+            <button onClick={() => onRewrite("formalize")}>Formalizuj</button>
+            <button onClick={() => onRewrite("shorten")}>Skrati</button>
+            <button onClick={() => onRewrite("proofread")}>Provjeri pravopis</button>
+            <button onClick={() => onRewrite("translate_en")}>Prevedi na engleski</button>
           </div>
         </div>
-        <button className="pixel-secondary">...</button>
+        <div className="pixel-dropdown">
+          <button className="pixel-secondary" title="Više opcija">
+            <IconMore /> Više
+          </button>
+          <div className="pixel-dropdown-menu">
+            <button onClick={onCopy} disabled={!hasText}>Kopiraj tekst</button>
+            <button onClick={onClear} disabled={!hasText}>Obriši sve</button>
+            <button onClick={onUndo} disabled={!canUndo}>Undo</button>
+            <button onClick={onDownload} disabled={!hasText}>Preuzmi kao .txt</button>
+          </div>
+        </div>
         <span className="pixel-action-spacer" />
         <button className="pixel-primary" onClick={onSend}>
           <IconSend /> Pošalji agentu
