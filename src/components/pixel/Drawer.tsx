@@ -1,5 +1,8 @@
-/** Pixel runtime drawer — verbatim move from App.tsx (R3). JSX unchanged. */
+/** Pixel runtime drawer — verbatim move from App.tsx (R3), later localized
+ *  (Localization PR-1, docs/RICKY_GUI_LOCALIZATION_PLAN.md). Titles reuse the
+ *  "tabs.*" keys from Sidebar.tsx — same words, one source of truth. */
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import IconClose from "../../../assets/brending/icons/window/icon-close.svg?react";
 import type { DrawerState } from "./types";
 
@@ -12,20 +15,21 @@ export function Drawer({
   onClose: () => void;
   children: ReactNode;
 }) {
-  const titles: Record<Exclude<DrawerState, null>, string> = {
-    activity: "Aktivnost",
-    plans: "Planovi",
-    memory: "Memorija",
-    screens: "Snimci ekrana",
-    settings: "Postavke",
+  const { t } = useTranslation();
+  const titleKeys: Record<Exclude<DrawerState, null>, string> = {
+    activity: "tabs.activity",
+    plans: "tabs.plans",
+    memory: "tabs.memory",
+    screens: "tabs.screens",
+    settings: "tabs.settings",
   };
 
   return (
     <div className="pixel-drawer-backdrop" onClick={onClose}>
       <aside className={`pixel-drawer pixel-drawer-${drawer}`} onClick={(event) => event.stopPropagation()}>
         <header>
-          <strong>{titles[drawer]}</strong>
-          <button onClick={onClose} aria-label="Zatvori">
+          <strong>{t(titleKeys[drawer])}</strong>
+          <button onClick={onClose} aria-label={t("drawer.close")}>
             <IconClose />
           </button>
         </header>

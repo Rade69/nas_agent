@@ -50,6 +50,7 @@ import {
   type VoiceState,
 } from "./lib/realtime";
 import { cyrillicToLatin } from "./lib/cyrillicToLatin";
+import i18n from "./i18n";
 import type { BackendEvent, Confirmation, Plan, PlanStepStatus, RickyArtifact, TextRewriteOperation } from "./vite-env";
 
 import type { RickyMode, ScreenState, DrawerState } from "./components/pixel/types";
@@ -161,9 +162,18 @@ export default function App() {
   }, [interfaceLanguage]);
   // Fetch interface_language once at mount so dictation trigger/exit phrases
   // match the user's chosen language. Fail-open: if the fetch fails, stays
-  // on default "sr-Latn" — same principle as user_name in realtime.cjs.
+  // on default "sr-Latn" — same principle as user_name in realtime.cjs. Also
+  // applies the same value to i18next so the GUI text (Sidebar/TopBar/voice
+  // state labels) matches on load, not just the dictation cascade.
+  // Context: agent_reports/2026-07-11_i18n-foundation.md
   useEffect(() => {
-    window.ricky.getSettings().then((s) => setInterfaceLanguage(s.interface_language)).catch(() => {});
+    window.ricky
+      .getSettings()
+      .then((s) => {
+        setInterfaceLanguage(s.interface_language);
+        void i18n.changeLanguage(s.interface_language);
+      })
+      .catch(() => {});
   }, []);
   const [activeDrawer, setActiveDrawer] = useState<DrawerState>(null);
   const [killFlash, setKillFlash] = useState(false);
@@ -645,17 +655,6 @@ export default function App() {
       {killFlash ? (
         <div className="kill-switch-flash" role="status">⛔ Zaustavljeno — glas i mikrofon isključeni</div>
       ) : null}
-      <div className="pixel-global-window-controls" aria-label="Kontrole prozora">
-        <button className="pixel-icon-button" onClick={() => void window.ricky.minimizeApp()} title="Minimizuj">
-          <IconMinimize />
-        </button>
-        <button className="pixel-icon-button" onClick={() => void window.ricky.toggleMaximizeApp()} title="Maksimizuj">
-          <IconMaximize />
-        </button>
-        <button className="pixel-icon-button pixel-close" onClick={() => void window.ricky.quitApp()} title="Zatvori">
-          <IconClose />
-        </button>
-      </div>
       <PixelMockupBoard
         mode={mode}
         screen={screen}
@@ -755,6 +754,24 @@ export default function App() {
         onReject={handleRejectConfirmation}
         onCancel={handleCancelConfirmation}
       />
+
+      {/* Rendered LAST deliberately — Electron's -webkit-app-region drag/
+          no-drag resolution for overlapping regions appears to follow DOM
+          order (later wins), not z-index/stacking context. This element's
+          no-drag must win over .pixel-section-label's drag (12-pixel-board.css)
+          where "main" spans the full top row and reaches this corner.
+          Context: agent_reports/2026-07-11_i18n-foundation.md */}
+      <div className="pixel-global-window-controls" aria-label="Kontrole prozora">
+        <button className="pixel-icon-button" onClick={() => void window.ricky.minimizeApp()} title="Minimizuj">
+          <IconMinimize />
+        </button>
+        <button className="pixel-icon-button" onClick={() => void window.ricky.toggleMaximizeApp()} title="Maksimizuj">
+          <IconMaximize />
+        </button>
+        <button className="pixel-icon-button pixel-close" onClick={() => void window.ricky.quitApp()} title="Zatvori">
+          <IconClose />
+        </button>
+      </div>
     </main>
   );
 }

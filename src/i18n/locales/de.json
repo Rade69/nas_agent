@@ -1,0 +1,113 @@
+{
+  "tabs": {
+    "home": "Startseite",
+    "activity": "Aktivität",
+    "plans": "Pläne",
+    "memory": "Speicher",
+    "screens": "Bildschirmaufnahmen",
+    "settings": "Einstellungen"
+  },
+  "sidebar": {
+    "backendConnected": "Backend: OK · Lokal",
+    "backendDisconnected": "Backend: offline"
+  },
+  "topBar": {
+    "dictation": "Diktat",
+    "stopAll": "Alles stoppen",
+    "stopAllTitle": "Alle Aktivitäten stoppen",
+    "computerMode": "Computermodus:",
+    "on": "AN",
+    "off": "AUS",
+    "enterDictation": "Diktat starten",
+    "voice": "Stimme",
+    "plans": "Pläne"
+  },
+  "voice": {
+    "state": {
+      "idle": "Bereit",
+      "listening": "Höre zu",
+      "transcribing": "Verarbeite",
+      "thinking": "Denke nach",
+      "speaking": "Spreche",
+      "waiting_confirmation": "Warte auf Bestätigung",
+      "interrupted": "Unterbrochen",
+      "muted": "Stummgeschaltet",
+      "error": "Fehler"
+    }
+  },
+  "dashboard": {
+    "readyTitle": "BEREIT",
+    "readyDescription": "Ruhezustand. Fokus auf Mikrofon und letzte Aktivität. Alles andere bei Bedarf verfügbar.",
+    "dictationTitle": "DIKTAT",
+    "dictationDescription": "Der Editor steht im Fokus. Nur die wichtigsten Aktionen. Andere Bereiche ausgeblendet.",
+    "confirmationTitle": "BESTÄTIGUNG",
+    "confirmationDescription": "Zeigt die tatsächliche ausstehende Bestätigung, falls vorhanden. Zur Entscheidung öffnet sich ein separater Dialog.",
+    "activityTitle": "AKTIVITÄT",
+    "activityDescription": "Detaillierter Verlauf aller Ereignisse und Aktionen.",
+    "plansTitle": "PLÄNE",
+    "plansDescription": "Deine Pläne, Aufgaben und Erinnerungen.",
+    "noMemory": "Kein gespeicherter Speicher.",
+    "noScreenshots": "Keine Bildschirmaufnahmen."
+  },
+  "idle": {
+    "ready": "Ricky ist bereit",
+    "hint": "Klicke das Mikrofon oder sage \"Ricky\"",
+    "stop": "Stopp",
+    "disconnect": "Verbindung trennen",
+    "startVoice": "Sprache starten",
+    "promptPlaceholder": "Stattdessen tippen...",
+    "sendText": "Text senden",
+    "recentActivity": "Letzte Aktivität",
+    "showAll": "Alle anzeigen",
+    "noActivity": "Keine Aktivität",
+    "noActivityDetail": "Der Verlauf füllt sich, sobald du Sprache oder ein Tool nutzt.",
+    "quickCommands": "Schnellbefehle",
+    "cmdEmail": "E-Mail schreiben",
+    "cmdScreenshot": "Bildschirmfoto machen",
+    "cmdNotepad": "Notepad öffnen",
+    "cmdMeeting": "Meeting planen"
+  },
+  "previews": {
+    "confirmTitle": "Ricky möchte diese Aktion ausführen",
+    "confirmDefaultSummary": "Prüfe die Details sorgfältig vor der Bestätigung.",
+    "actionLabel": "Aktion",
+    "riskLabel": "Risiko",
+    "respondInDialog": "Antworte im Bestätigungsdialog.",
+    "noConfirmation": "Keine aktive Bestätigung",
+    "noConfirmationDetail": "Ricky zeigt hier ausstehende Aktionen an.",
+    "noActivityShort": "Noch keine Aktivität",
+    "noActivityShortDetail": "Ereignisse erscheinen hier, sobald Ricky etwas tut.",
+    "showFullHistory": "Vollständigen Verlauf anzeigen",
+    "tabActive": "Aktiv",
+    "tabProposed": "Vorgeschlagen",
+    "tabCompleted": "Abgeschlossen",
+    "noPlans": "Keine aktiven Pläne",
+    "noPlansDetail": "Erstelle einen neuen Plan, den Ricky verfolgen soll.",
+    "newPlan": "Neuer Plan",
+    "stepsCount_one": "{{count}} Schritt",
+    "stepsCount_other": "{{count}} Schritte"
+  },
+  "planStatus": {
+    "active": "AKTIV",
+    "completed": "ABGESCHLOSSEN",
+    "cancelled": "ABGEBROCHEN",
+    "draft": "ENTWURF",
+    "pending": "AUSSTEHEND"
+  },
+  "drawer": {
+    "close": "Schließen"
+  },
+  "settings": {
+    "loading": "Einstellungen werden geladen...",
+    "personalSection": "Persönlich",
+    "yourName": "Dein Name",
+    "nameHint": "Ricky wird dich im Gespräch so ansprechen.",
+    "save": "Speichern",
+    "saving": "Speichere...",
+    "saved": "Gespeichert.",
+    "error": "Fehler — bitte erneut versuchen.",
+    "languageSection": "Sprache",
+    "dictationLanguage": "Diktatsprache",
+    "dictationLanguageHint": "Sprache für die Spracherkennung im Diktat. Gilt ab der nächsten Sprachverbindung."
+  }
+}

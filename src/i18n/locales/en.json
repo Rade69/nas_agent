@@ -1,0 +1,113 @@
+{
+  "tabs": {
+    "home": "Home",
+    "activity": "Activity",
+    "plans": "Plans",
+    "memory": "Memory",
+    "screens": "Screenshots",
+    "settings": "Settings"
+  },
+  "sidebar": {
+    "backendConnected": "Backend: OK · Local",
+    "backendDisconnected": "Backend: offline"
+  },
+  "topBar": {
+    "dictation": "Dictation",
+    "stopAll": "Stop all",
+    "stopAllTitle": "Stop all activity",
+    "computerMode": "Computer mode:",
+    "on": "ON",
+    "off": "OFF",
+    "enterDictation": "Enter dictation",
+    "voice": "Voice",
+    "plans": "Plans"
+  },
+  "voice": {
+    "state": {
+      "idle": "Ready",
+      "listening": "Listening",
+      "transcribing": "Transcribing",
+      "thinking": "Thinking",
+      "speaking": "Speaking",
+      "waiting_confirmation": "Waiting for confirmation",
+      "interrupted": "Interrupted",
+      "muted": "Muted",
+      "error": "Error"
+    }
+  },
+  "dashboard": {
+    "readyTitle": "READY",
+    "readyDescription": "Calm state. Focus on the microphone and recent activity. Everything else available on demand.",
+    "dictationTitle": "DICTATION",
+    "dictationDescription": "The editor is in focus. Only the most important actions. Other panels hidden.",
+    "confirmationTitle": "CONFIRMATION",
+    "confirmationDescription": "Shows the real pending confirmation, if any. Opens a separate dialog to decide.",
+    "activityTitle": "ACTIVITY",
+    "activityDescription": "Detailed history of all events and actions.",
+    "plansTitle": "PLANS",
+    "plansDescription": "Your plans, tasks and reminders.",
+    "noMemory": "No saved memory.",
+    "noScreenshots": "No screenshots."
+  },
+  "idle": {
+    "ready": "Ricky is ready",
+    "hint": "Click the microphone or say \"Ricky\"",
+    "stop": "Stop",
+    "disconnect": "Disconnect",
+    "startVoice": "Start voice",
+    "promptPlaceholder": "Type instead of speaking...",
+    "sendText": "Send text",
+    "recentActivity": "Recent activity",
+    "showAll": "Show all",
+    "noActivity": "No activity",
+    "noActivityDetail": "History will fill in once you use voice or a tool.",
+    "quickCommands": "Quick commands",
+    "cmdEmail": "Write an email",
+    "cmdScreenshot": "Take a screenshot",
+    "cmdNotepad": "Open Notepad",
+    "cmdMeeting": "Schedule a meeting"
+  },
+  "previews": {
+    "confirmTitle": "Ricky wants to perform this action",
+    "confirmDefaultSummary": "Carefully review the details before confirming.",
+    "actionLabel": "Action",
+    "riskLabel": "Risk",
+    "respondInDialog": "Respond in the confirmation dialog.",
+    "noConfirmation": "No active confirmation",
+    "noConfirmationDetail": "Ricky will show pending actions here.",
+    "noActivityShort": "No activity yet",
+    "noActivityShortDetail": "Events will appear here once Ricky does something.",
+    "showFullHistory": "Show full history",
+    "tabActive": "Active",
+    "tabProposed": "Proposed",
+    "tabCompleted": "Completed",
+    "noPlans": "No active plans",
+    "noPlansDetail": "Create a new plan for Ricky to track.",
+    "newPlan": "New plan",
+    "stepsCount_one": "{{count}} step",
+    "stepsCount_other": "{{count}} steps"
+  },
+  "planStatus": {
+    "active": "ACTIVE",
+    "completed": "COMPLETED",
+    "cancelled": "CANCELLED",
+    "draft": "DRAFT",
+    "pending": "PENDING"
+  },
+  "drawer": {
+    "close": "Close"
+  },
+  "settings": {
+    "loading": "Loading settings...",
+    "personalSection": "Personal",
+    "yourName": "Your name",
+    "nameHint": "Ricky will address you like this in conversation.",
+    "save": "Save",
+    "saving": "Saving...",
+    "saved": "Saved.",
+    "error": "Error — try again.",
+    "languageSection": "Language",
+    "dictationLanguage": "Dictation language",
+    "dictationLanguageHint": "Language for speech recognition in Dictation. Applies on the next voice connection."
+  }
+}

@@ -1,5 +1,8 @@
 /** Pixel mockup drawer previews — confirmation / activity / plans empty states.
- *  Verbatim move from App.tsx (R3 refactor). JSX unchanged. */
+ *  Verbatim move from App.tsx (R3 refactor). Later localized (Localization
+ *  PR-1, docs/RICKY_GUI_LOCALIZATION_PLAN.md). */
+import { useTranslation } from "react-i18next";
+import i18n from "../../i18n";
 import IconWarning from "../../../assets/brending/icons/safety/icon-warning.svg?react";
 import IconSuccess from "../../../assets/brending/icons/status/icon-status-success.svg?react";
 import IconBackend from "../../../assets/brending/icons/system/icon-backend.svg?react";
@@ -15,12 +18,13 @@ import type { Confirmation, Plan } from "../../vite-env";
 // (this panel is read-only glanceable awareness, not a second action surface).
 // Context: agent_reports/2026-07-10_dictation-and-dashboard-fixes.md
 export function ConfirmationPreview({ confirmation }: { confirmation: Confirmation | null }) {
+  const { t } = useTranslation();
   if (!confirmation) {
     return (
       <div className="pixel-confirmation-preview">
         <EmptyPreviewState
-          title="Nema aktivne potvrde"
-          detail="Ricky će ovdje prikazati akcije koje čekaju tvoju potvrdu."
+          title={t("previews.noConfirmation")}
+          detail={t("previews.noConfirmationDetail")}
         />
       </div>
     );
@@ -37,21 +41,21 @@ export function ConfirmationPreview({ confirmation }: { confirmation: Confirmati
           <IconWarning />
         </div>
         <div className="pixel-confirm-content">
-          <h3>Ricky želi izvršiti ovu akciju</h3>
-          <p>{confirmation.summary || "Pažljivo provjeri detalje prije potvrde."}</p>
+          <h3>{t("previews.confirmTitle")}</h3>
+          <p>{confirmation.summary || t("previews.confirmDefaultSummary")}</p>
           <dl className="pixel-confirm-table">
             <div>
-              <dt>Akcija</dt>
+              <dt>{t("previews.actionLabel")}</dt>
               <dd>{confirmation.action_name}</dd>
             </div>
             <div>
-              <dt>Rizik</dt>
+              <dt>{t("previews.riskLabel")}</dt>
               <dd>
                 <span className="pixel-risk-badge">{confirmation.risk_level.toUpperCase()}</span>
               </dd>
             </div>
           </dl>
-          <p className="pixel-confirm-link">Odgovori u dijalogu potvrde.</p>
+          <p className="pixel-confirm-link">{t("previews.respondInDialog")}</p>
         </div>
       </article>
     </div>
@@ -59,10 +63,11 @@ export function ConfirmationPreview({ confirmation }: { confirmation: Confirmati
 }
 
 export function ActivityDrawerPreview({ activityEvents }: { activityEvents: ActivityEvent[] }) {
+  const { t } = useTranslation();
   return (
     <aside className="pixel-preview-drawer">
       <header>
-        <strong>Aktivnost</strong>
+        <strong>{t("tabs.activity")}</strong>
       </header>
       <div className="pixel-preview-list">
         {activityEvents.length > 0 ? (
@@ -82,24 +87,25 @@ export function ActivityDrawerPreview({ activityEvents }: { activityEvents: Acti
             );
           })
         ) : (
-          <EmptyPreviewState title="Još nema aktivnosti" detail="Događaji će se pojaviti ovdje kada Ricky nešto uradi." />
+          <EmptyPreviewState title={t("previews.noActivityShort")} detail={t("previews.noActivityShortDetail")} />
         )}
       </div>
-      <button className="pixel-full-history">Prikaži cijelu historiju</button>
+      <button className="pixel-full-history">{t("previews.showFullHistory")}</button>
     </aside>
   );
 }
 
 export function PlansDrawerPreview({ plans }: { plans: Plan[] }) {
+  const { t } = useTranslation();
   return (
     <aside className="pixel-preview-drawer pixel-preview-plans">
       <header>
-        <strong>Planovi</strong>
+        <strong>{t("tabs.plans")}</strong>
       </header>
       <div className="pixel-plan-tabs">
-        <button className="active">Aktivni</button>
-        <button>Predloženi</button>
-        <button>Završeni</button>
+        <button className="active">{t("previews.tabActive")}</button>
+        <button>{t("previews.tabProposed")}</button>
+        <button>{t("previews.tabCompleted")}</button>
       </div>
       <div className="pixel-preview-list">
         {plans.length > 0 ? (
@@ -112,17 +118,17 @@ export function PlansDrawerPreview({ plans }: { plans: Plan[] }) {
                 </span>
                 <span>
                   <strong>{plan.title}</strong>
-                  <small>{plan.summary || `${plan.steps.length} koraka`}</small>
+                  <small>{plan.summary || t("previews.stepsCount", { count: plan.steps.length })}</small>
                 </span>
                 <em className={status.tone}>{status.label}</em>
               </article>
             );
           })
         ) : (
-          <EmptyPreviewState title="Nema aktivnih planova" detail="Napravi novi plan kada želiš da Ricky prati zadatke." />
+          <EmptyPreviewState title={t("previews.noPlans")} detail={t("previews.noPlansDetail")} />
         )}
       </div>
-      <button className="pixel-full-history">Novi plan</button>
+      <button className="pixel-full-history">{t("previews.newPlan")}</button>
     </aside>
   );
 }
@@ -136,20 +142,22 @@ export function EmptyPreviewState({ title, detail }: { title: string; detail: st
   );
 }
 
+// Plain function, not a component — uses i18n.t() directly, same pattern as
+// voiceStateLabel() in src/lib/voiceState.ts.
 export function planStatusLabel(status: Plan["status"]): { label: string; tone: "active" | "pending" } {
   switch (status) {
     case "approved":
     case "running":
-      return { label: "AKTIVAN", tone: "active" };
+      return { label: i18n.t("planStatus.active"), tone: "active" };
     case "completed":
-      return { label: "ZAVRŠEN", tone: "active" };
+      return { label: i18n.t("planStatus.completed"), tone: "active" };
     case "rejected":
     case "cancelled":
-      return { label: "OTKAZAN", tone: "pending" };
+      return { label: i18n.t("planStatus.cancelled"), tone: "pending" };
     case "draft":
-      return { label: "NACRT", tone: "pending" };
+      return { label: i18n.t("planStatus.draft"), tone: "pending" };
     case "proposed":
     default:
-      return { label: "NA ČEKANJU", tone: "pending" };
+      return { label: i18n.t("planStatus.pending"), tone: "pending" };
   }
 }

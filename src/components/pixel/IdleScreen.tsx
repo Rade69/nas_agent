@@ -1,4 +1,10 @@
-/** Pixel idle/ready screen — verbatim move from App.tsx (R3). JSX unchanged. */
+/** Pixel idle/ready screen — verbatim move from App.tsx (R3), later localized
+ *  (Localization PR-1, docs/RICKY_GUI_LOCALIZATION_PLAN.md). Quick command
+ *  button text is also the literal text sent via onQuickCommand — translating
+ *  the label naturally translates the command sent, consistent with the
+ *  "Prefer replying in languageName" prompt addition
+ *  (agent_reports/2026-07-11_dictation-language-cascade.md). */
+import { useTranslation } from "react-i18next";
 import IconStop from "../../../assets/brending/icons/voice/icon-stop.svg?react";
 import IconMicOff from "../../../assets/brending/icons/voice/icon-microphone-muted.svg?react";
 import IconMic from "../../../assets/brending/icons/voice/icon-microphone.svg?react";
@@ -37,16 +43,17 @@ export function IdleScreen({
   onOpenActivity: () => void;
   onQuickCommand: (text: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="pixel-idle">
       <section className="pixel-hero">
         <RickyOrb voiceState={voiceState} />
-        <h1>Ricky je spreman</h1>
-        <p>Klikni mikrofon ili reci "Ricky"</p>
+        <h1>{t("idle.ready")}</h1>
+        <p>{t("idle.hint")}</p>
         <button
           className={`pixel-mic-button ${isActive ? "stop" : ""}`}
           onClick={isActive ? onStop : onVoiceToggle}
-          title={isActive ? "Stop" : isConnected ? "Prekini vezu" : "Pokreni glas"}
+          title={isActive ? t("idle.stop") : isConnected ? t("idle.disconnect") : t("idle.startVoice")}
         >
           {isActive ? <IconStop /> : isConnected ? <IconMicOff /> : <IconMic />}
         </button>
@@ -57,9 +64,9 @@ export function IdleScreen({
             onKeyDown={(event) => {
               if (event.key === "Enter") onSendTextPrompt();
             }}
-            placeholder="Upiši umjesto govora..."
+            placeholder={t("idle.promptPlaceholder")}
           />
-          <button onClick={onSendTextPrompt} aria-label="Pošalji tekst">
+          <button onClick={onSendTextPrompt} aria-label={t("idle.sendText")}>
             <IconSend />
           </button>
         </div>
@@ -67,8 +74,8 @@ export function IdleScreen({
       <aside className="pixel-idle-side">
         <section className="pixel-card pixel-activity-card">
           <header>
-            <h2>Zadnja aktivnost</h2>
-            <button onClick={onOpenActivity}>Prikaži sve</button>
+            <h2>{t("idle.recentActivity")}</h2>
+            <button onClick={onOpenActivity}>{t("idle.showAll")}</button>
           </header>
           <div className="pixel-list">
             {recentActivity.length > 0 ? (
@@ -88,25 +95,25 @@ export function IdleScreen({
                 );
               })
             ) : (
-              <EmptyPreviewState title="Nema aktivnosti" detail="Historija će se popuniti kada pokreneš glas ili alat." />
+              <EmptyPreviewState title={t("idle.noActivity")} detail={t("idle.noActivityDetail")} />
             )}
           </div>
         </section>
         <section className="pixel-card pixel-command-card">
           <header>
-            <h2>Brze komande</h2>
+            <h2>{t("idle.quickCommands")}</h2>
           </header>
-          <button onClick={() => onQuickCommand("Napiši email šefu")}>
-            <IconChevronRight /> Napiši email šefu
+          <button onClick={() => onQuickCommand(t("idle.cmdEmail"))}>
+            <IconChevronRight /> {t("idle.cmdEmail")}
           </button>
-          <button onClick={() => onQuickCommand("Napravi screenshot")}>
-            <IconScreenshot /> Napravi screenshot
+          <button onClick={() => onQuickCommand(t("idle.cmdScreenshot"))}>
+            <IconScreenshot /> {t("idle.cmdScreenshot")}
           </button>
-          <button onClick={() => onQuickCommand("Otvori Notepad")}>
-            <IconOpenApp /> Otvori Notepad
+          <button onClick={() => onQuickCommand(t("idle.cmdNotepad"))}>
+            <IconOpenApp /> {t("idle.cmdNotepad")}
           </button>
-          <button onClick={() => onQuickCommand("Planiraj sastanak sutra u 10h")}>
-            <IconCalendar /> Planiraj sastanak sutra u 10h
+          <button onClick={() => onQuickCommand(t("idle.cmdMeeting"))}>
+            <IconCalendar /> {t("idle.cmdMeeting")}
           </button>
         </section>
       </aside>

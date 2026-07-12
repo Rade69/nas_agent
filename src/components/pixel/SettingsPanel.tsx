@@ -4,7 +4,9 @@
  *  Context: agent_reports/2026-07-11_settings-panel-foundation.md
  *  Context: agent_reports/2026-07-11_interface-language-stt-hint.md */
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { UserSettings } from "../../vite-env";
+import i18n from "../../i18n";
 
 type SaveStatus = "loading" | "idle" | "saving" | "saved" | "error";
 
@@ -19,6 +21,7 @@ const LANGUAGE_OPTIONS: { value: string; label: string }[] = [
 ];
 
 export function SettingsPanel() {
+  const { t } = useTranslation();
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [nameInput, setNameInput] = useState("");
   const [nameStatus, setNameStatus] = useState<SaveStatus>("loading");
@@ -68,6 +71,9 @@ export function SettingsPanel() {
       const updated = await window.ricky.updateSettings({ interface_language: languageInput });
       setSettings(updated);
       setLanguageInput(updated.interface_language ?? "sr-Latn");
+      // Applies immediately, no app restart — docs/RICKY_GUI_LOCALIZATION_PLAN.md
+      // prefers live language switching over a "restart to apply" message.
+      void i18n.changeLanguage(updated.interface_language ?? "sr-Latn");
       setLanguageStatus("saved");
       window.setTimeout(() => setLanguageStatus((current) => (current === "saved" ? "idle" : current)), 2000);
     } catch {
@@ -76,7 +82,7 @@ export function SettingsPanel() {
   }
 
   if (nameStatus === "loading" || languageStatus === "loading") {
-    return <p className="drawer-placeholder-text">Učitavam postavke...</p>;
+    return <p className="drawer-placeholder-text">{t("settings.loading")}</p>;
   }
 
   const nameDirty = settings !== null && nameInput.trim() !== settings.user_name && nameInput.trim() !== "";
@@ -85,32 +91,32 @@ export function SettingsPanel() {
   return (
     <div className="pixel-settings-panel">
       <section className="pixel-settings-section">
-        <h3>Lično</h3>
+        <h3>{t("settings.personalSection")}</h3>
         <label className="pixel-settings-field">
-          <span>Tvoje ime</span>
+          <span>{t("settings.yourName")}</span>
           <input
             type="text"
             value={nameInput}
             onChange={(event) => setNameInput(event.target.value)}
             placeholder="Riley"
           />
-          <span className="pixel-settings-hint">Riki će te ovako oslovljavati u razgovoru.</span>
+          <span className="pixel-settings-hint">{t("settings.nameHint")}</span>
         </label>
         <div className="pixel-settings-actions">
           <button className="pixel-primary" onClick={() => void handleSaveName()} disabled={!nameDirty || nameStatus === "saving"}>
-            {nameStatus === "saving" ? "Čuvam..." : "Sačuvaj"}
+            {nameStatus === "saving" ? t("settings.saving") : t("settings.save")}
           </button>
-          {nameStatus === "saved" ? <span className="pixel-settings-feedback pixel-settings-feedback-ok">Sačuvano.</span> : null}
+          {nameStatus === "saved" ? <span className="pixel-settings-feedback pixel-settings-feedback-ok">{t("settings.saved")}</span> : null}
           {nameStatus === "error" ? (
-            <span className="pixel-settings-feedback pixel-settings-feedback-error">Greška — pokušaj ponovo.</span>
+            <span className="pixel-settings-feedback pixel-settings-feedback-error">{t("settings.error")}</span>
           ) : null}
         </div>
       </section>
 
       <section className="pixel-settings-section">
-        <h3>Jezik</h3>
+        <h3>{t("settings.languageSection")}</h3>
         <label className="pixel-settings-field">
-          <span>Jezik diktiranja</span>
+          <span>{t("settings.dictationLanguage")}</span>
           <select
             value={languageInput}
             onChange={(event) => setLanguageInput(event.target.value)}
@@ -121,17 +127,15 @@ export function SettingsPanel() {
               </option>
             ))}
           </select>
-          <span className="pixel-settings-hint">
-            Jezik za prepoznavanje govora u Diktatu. Promjena se primjenjuje pri sljedećem povezivanju glasa.
-          </span>
+          <span className="pixel-settings-hint">{t("settings.dictationLanguageHint")}</span>
         </label>
         <div className="pixel-settings-actions">
           <button className="pixel-primary" onClick={() => void handleSaveLanguage()} disabled={!languageDirty || languageStatus === "saving"}>
-            {languageStatus === "saving" ? "Čuvam..." : "Sačuvaj"}
+            {languageStatus === "saving" ? t("settings.saving") : t("settings.save")}
           </button>
-          {languageStatus === "saved" ? <span className="pixel-settings-feedback pixel-settings-feedback-ok">Sačuvano.</span> : null}
+          {languageStatus === "saved" ? <span className="pixel-settings-feedback pixel-settings-feedback-ok">{t("settings.saved")}</span> : null}
           {languageStatus === "error" ? (
-            <span className="pixel-settings-feedback pixel-settings-feedback-error">Greška — pokušaj ponovo.</span>
+            <span className="pixel-settings-feedback pixel-settings-feedback-error">{t("settings.error")}</span>
           ) : null}
         </div>
       </section>

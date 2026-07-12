@@ -1,6 +1,8 @@
 /** Pixel mockup board (all-sections preview) + MockupSection wrapper.
- *  Verbatim move from App.tsx (R3). JSX unchanged. */
+ *  Verbatim move from App.tsx (R3), later localized (Localization PR-1,
+ *  docs/RICKY_GUI_LOCALIZATION_PLAN.md). */
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Sidebar } from "../Sidebar";
 import { ActivityTimeline } from "../ActivityTimeline";
 import { PlansPanel } from "../PlansPanel";
@@ -101,6 +103,7 @@ export function PixelMockupBoard({
   onUpdateStepStatus: (planId: string, stepId: string, status: string) => Promise<void>;
   onCreatePlan: () => Promise<void>;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="pixel-mockup-board">
       {/* Idle and Dictation are mutually exclusive main-area modes — you can't
@@ -111,10 +114,10 @@ export function PixelMockupBoard({
         <MockupSection
           className="pixel-section-main"
           number="2"
-          title="DIKTIRANJE"
-          description="Editor je u fokusu. Samo najvažnije akcije. Ostali paneli skriveni."
+          title={t("dashboard.dictationTitle")}
+          description={t("dashboard.dictationDescription")}
         >
-          <section className="pixel-window pixel-window-dictation" aria-label="Diktiranje">
+          <section className="pixel-window pixel-window-dictation" aria-label={t("topBar.dictation")}>
             <TopBar mode={mode} screen="dictation" voiceState={voiceState} onToggleMode={onToggleMode} onOpenPlans={onOpenPlans} />
             <section className="pixel-main pixel-main-full">
               <DictationScreen
@@ -138,10 +141,10 @@ export function PixelMockupBoard({
         <MockupSection
           className="pixel-section-main"
           number="1"
-          title="SPREMAN"
-          description="Mirno stanje. Fokus na mikrofon i zadnju aktivnost. Sve ostalo dostupno po potrebi."
+          title={t("dashboard.readyTitle")}
+          description={t("dashboard.readyDescription")}
         >
-          <section className="pixel-window pixel-window-idle" aria-label="Spreman">
+          <section className="pixel-window pixel-window-idle" aria-label={t("voice.state.idle")}>
             <TopBar
               mode={mode}
               screen={screen}
@@ -182,8 +185,8 @@ export function PixelMockupBoard({
                       onCreatePlan={onCreatePlan}
                     />
                   ) : null}
-                  {activeDrawer === "memory" ? <p className="drawer-placeholder-text">Nema sačuvane memorije.</p> : null}
-                  {activeDrawer === "screens" ? <p className="drawer-placeholder-text">Nema snimaka ekrana.</p> : null}
+                  {activeDrawer === "memory" ? <p className="drawer-placeholder-text">{t("dashboard.noMemory")}</p> : null}
+                  {activeDrawer === "screens" ? <p className="drawer-placeholder-text">{t("dashboard.noScreenshots")}</p> : null}
                   {activeDrawer === "settings" ? <SettingsPanel /> : null}
                 </Drawer>
               ) : null}
@@ -195,8 +198,8 @@ export function PixelMockupBoard({
       <MockupSection
         className="pixel-section-confirmation"
         number="3"
-        title="POTVRDA"
-        description="Prikazuje stvarnu potvrdu na čekanju, ako postoji. Za odluku otvara se zaseban dijalog."
+        title={t("dashboard.confirmationTitle")}
+        description={t("dashboard.confirmationDescription")}
       >
         <ConfirmationPreview confirmation={pendingConfirmation} />
       </MockupSection>
@@ -204,8 +207,8 @@ export function PixelMockupBoard({
       <MockupSection
         className="pixel-section-activity"
         number="4"
-        title="AKTIVNOST"
-        description="Detaljna historija svih događaja i akcija."
+        title={t("dashboard.activityTitle")}
+        description={t("dashboard.activityDescription")}
       >
         <ActivityDrawerPreview activityEvents={recentActivity} />
       </MockupSection>
@@ -213,8 +216,8 @@ export function PixelMockupBoard({
       <MockupSection
         className="pixel-section-plans"
         number="5"
-        title="PLANOVI"
-        description="Tvoji planovi, zadaci i podsjetnici."
+        title={t("dashboard.plansTitle")}
+        description={t("dashboard.plansDescription")}
       >
         <PlansDrawerPreview plans={plans} />
       </MockupSection>

@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { CompanionOrb } from "./components/CompanionOrb";
+import "./i18n";
 import "./styles.css";
 
 // FAZA 12: Companion orb is a separate renderer entry mounted when the window

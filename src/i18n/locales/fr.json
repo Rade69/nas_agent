@@ -1,0 +1,113 @@
+{
+  "tabs": {
+    "home": "Accueil",
+    "activity": "Activité",
+    "plans": "Plans",
+    "memory": "Mémoire",
+    "screens": "Captures d'écran",
+    "settings": "Paramètres"
+  },
+  "sidebar": {
+    "backendConnected": "Backend : OK · Local",
+    "backendDisconnected": "Backend : hors ligne"
+  },
+  "topBar": {
+    "dictation": "Dictée",
+    "stopAll": "Tout arrêter",
+    "stopAllTitle": "Arrêter toute l'activité",
+    "computerMode": "Mode ordinateur :",
+    "on": "ACTIVÉ",
+    "off": "DÉSACTIVÉ",
+    "enterDictation": "Démarrer la dictée",
+    "voice": "Voix",
+    "plans": "Plans"
+  },
+  "voice": {
+    "state": {
+      "idle": "Prêt",
+      "listening": "J'écoute",
+      "transcribing": "Transcription en cours",
+      "thinking": "Je réfléchis",
+      "speaking": "Je parle",
+      "waiting_confirmation": "En attente de confirmation",
+      "interrupted": "Interrompu",
+      "muted": "Muet",
+      "error": "Erreur"
+    }
+  },
+  "dashboard": {
+    "readyTitle": "PRÊT",
+    "readyDescription": "État calme. Focus sur le microphone et l'activité récente. Tout le reste disponible à la demande.",
+    "dictationTitle": "DICTÉE",
+    "dictationDescription": "L'éditeur est au premier plan. Seulement les actions les plus importantes. Les autres panneaux sont masqués.",
+    "confirmationTitle": "CONFIRMATION",
+    "confirmationDescription": "Affiche la confirmation réelle en attente, le cas échéant. Une boîte de dialogue séparée s'ouvre pour décider.",
+    "activityTitle": "ACTIVITÉ",
+    "activityDescription": "Historique détaillé de tous les événements et actions.",
+    "plansTitle": "PLANS",
+    "plansDescription": "Tes plans, tâches et rappels.",
+    "noMemory": "Aucune mémoire enregistrée.",
+    "noScreenshots": "Aucune capture d'écran."
+  },
+  "idle": {
+    "ready": "Ricky est prêt",
+    "hint": "Clique sur le microphone ou dis \"Ricky\"",
+    "stop": "Arrêter",
+    "disconnect": "Déconnecter",
+    "startVoice": "Démarrer la voix",
+    "promptPlaceholder": "Écris au lieu de parler...",
+    "sendText": "Envoyer le texte",
+    "recentActivity": "Activité récente",
+    "showAll": "Tout afficher",
+    "noActivity": "Aucune activité",
+    "noActivityDetail": "L'historique se remplira dès que tu utilises la voix ou un outil.",
+    "quickCommands": "Commandes rapides",
+    "cmdEmail": "Écrire un e-mail",
+    "cmdScreenshot": "Prendre une capture d'écran",
+    "cmdNotepad": "Ouvrir le Bloc-notes",
+    "cmdMeeting": "Planifier une réunion"
+  },
+  "previews": {
+    "confirmTitle": "Ricky souhaite effectuer cette action",
+    "confirmDefaultSummary": "Vérifie attentivement les détails avant de confirmer.",
+    "actionLabel": "Action",
+    "riskLabel": "Risque",
+    "respondInDialog": "Réponds dans la boîte de dialogue de confirmation.",
+    "noConfirmation": "Aucune confirmation active",
+    "noConfirmationDetail": "Ricky affichera ici les actions en attente.",
+    "noActivityShort": "Pas encore d'activité",
+    "noActivityShortDetail": "Les événements apparaîtront ici dès que Ricky fera quelque chose.",
+    "showFullHistory": "Afficher l'historique complet",
+    "tabActive": "Actifs",
+    "tabProposed": "Proposés",
+    "tabCompleted": "Terminés",
+    "noPlans": "Aucun plan actif",
+    "noPlansDetail": "Crée un nouveau plan que Ricky pourra suivre.",
+    "newPlan": "Nouveau plan",
+    "stepsCount_one": "{{count}} étape",
+    "stepsCount_other": "{{count}} étapes"
+  },
+  "planStatus": {
+    "active": "ACTIF",
+    "completed": "TERMINÉ",
+    "cancelled": "ANNULÉ",
+    "draft": "BROUILLON",
+    "pending": "EN ATTENTE"
+  },
+  "drawer": {
+    "close": "Fermer"
+  },
+  "settings": {
+    "loading": "Chargement des paramètres...",
+    "personalSection": "Personnel",
+    "yourName": "Ton nom",
+    "nameHint": "Ricky t'appellera ainsi dans la conversation.",
+    "save": "Enregistrer",
+    "saving": "Enregistrement...",
+    "saved": "Enregistré.",
+    "error": "Erreur — réessaie.",
+    "languageSection": "Langue",
+    "dictationLanguage": "Langue de dictée",
+    "dictationLanguageHint": "Langue pour la reconnaissance vocale en Dictée. S'applique à la prochaine connexion vocale."
+  }
+}

@@ -1,0 +1,113 @@
+{
+  "tabs": {
+    "home": "Početna",
+    "activity": "Aktivnost",
+    "plans": "Planovi",
+    "memory": "Memorija",
+    "screens": "Snimci ekrana",
+    "settings": "Postavke"
+  },
+  "sidebar": {
+    "backendConnected": "Backend: OK · Lokalno",
+    "backendDisconnected": "Backend: offline"
+  },
+  "topBar": {
+    "dictation": "Diktiranje",
+    "stopAll": "Stop sve",
+    "stopAllTitle": "Zaustavi sve aktivnosti",
+    "computerMode": "Računarski režim:",
+    "on": "UKLJUČEN",
+    "off": "ISKLJUČEN",
+    "enterDictation": "Uđi u diktiranje",
+    "voice": "Glas",
+    "plans": "Planovi"
+  },
+  "voice": {
+    "state": {
+      "idle": "Spreman",
+      "listening": "Slušam",
+      "transcribing": "Obrađujem",
+      "thinking": "Razmišljam",
+      "speaking": "Govorim",
+      "waiting_confirmation": "Čekam potvrdu",
+      "interrupted": "Prekinuto",
+      "muted": "Utišano",
+      "error": "Greška"
+    }
+  },
+  "dashboard": {
+    "readyTitle": "SPREMAN",
+    "readyDescription": "Mirno stanje. Fokus na mikrofon i zadnju aktivnost. Sve ostalo dostupno po potrebi.",
+    "dictationTitle": "DIKTIRANJE",
+    "dictationDescription": "Editor je u fokusu. Samo najvažnije akcije. Ostali paneli skriveni.",
+    "confirmationTitle": "POTVRDA",
+    "confirmationDescription": "Prikazuje stvarnu potvrdu na čekanju, ako postoji. Za odluku otvara se zaseban dijalog.",
+    "activityTitle": "AKTIVNOST",
+    "activityDescription": "Detaljna historija svih događaja i akcija.",
+    "plansTitle": "PLANOVI",
+    "plansDescription": "Tvoji planovi, zadaci i podsjetnici.",
+    "noMemory": "Nema sačuvane memorije.",
+    "noScreenshots": "Nema snimaka ekrana."
+  },
+  "idle": {
+    "ready": "Ricky je spreman",
+    "hint": "Klikni mikrofon ili reci \"Ricky\"",
+    "stop": "Stop",
+    "disconnect": "Prekini vezu",
+    "startVoice": "Pokreni glas",
+    "promptPlaceholder": "Upiši umjesto govora...",
+    "sendText": "Pošalji tekst",
+    "recentActivity": "Zadnja aktivnost",
+    "showAll": "Prikaži sve",
+    "noActivity": "Nema aktivnosti",
+    "noActivityDetail": "Historija će se popuniti kada pokreneš glas ili alat.",
+    "quickCommands": "Brze komande",
+    "cmdEmail": "Napiši email",
+    "cmdScreenshot": "Napravi screenshot",
+    "cmdNotepad": "Otvori Notepad",
+    "cmdMeeting": "Planiraj sastanak"
+  },
+  "previews": {
+    "confirmTitle": "Ricky želi izvršiti ovu akciju",
+    "confirmDefaultSummary": "Pažljivo provjeri detalje prije potvrde.",
+    "actionLabel": "Akcija",
+    "riskLabel": "Rizik",
+    "respondInDialog": "Odgovori u dijalogu potvrde.",
+    "noConfirmation": "Nema aktivne potvrde",
+    "noConfirmationDetail": "Ricky će ovdje prikazati akcije koje čekaju tvoju potvrdu.",
+    "noActivityShort": "Još nema aktivnosti",
+    "noActivityShortDetail": "Događaji će se pojaviti ovdje kada Ricky nešto uradi.",
+    "showFullHistory": "Prikaži cijelu historiju",
+    "tabActive": "Aktivni",
+    "tabProposed": "Predloženi",
+    "tabCompleted": "Završeni",
+    "noPlans": "Nema aktivnih planova",
+    "noPlansDetail": "Napravi novi plan kada želiš da Ricky prati zadatke.",
+    "newPlan": "Novi plan",
+    "stepsCount_one": "{{count}} korak",
+    "stepsCount_other": "{{count}} koraka"
+  },
+  "planStatus": {
+    "active": "AKTIVAN",
+    "completed": "ZAVRŠEN",
+    "cancelled": "OTKAZAN",
+    "draft": "NACRT",
+    "pending": "NA ČEKANJU"
+  },
+  "drawer": {
+    "close": "Zatvori"
+  },
+  "settings": {
+    "loading": "Učitavam postavke...",
+    "personalSection": "Lično",
+    "yourName": "Tvoje ime",
+    "nameHint": "Riki će te ovako oslovljavati u razgovoru.",
+    "save": "Sačuvaj",
+    "saving": "Čuvam...",
+    "saved": "Sačuvano.",
+    "error": "Greška — pokušaj ponovo.",
+    "languageSection": "Jezik",
+    "dictationLanguage": "Jezik diktiranja",
+    "dictationLanguageHint": "Jezik za prepoznavanje govora u Diktatu. Promjena se primjenjuje pri sljedećem povezivanju glasa."
+  }
+}

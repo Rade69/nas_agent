@@ -56,6 +56,7 @@
   background: rgba(5, 13, 25, 0.76);
   backdrop-filter: blur(16px);
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
+  -webkit-app-region: no-drag;
 }
 
 .pixel-global-window-controls .pixel-icon-button {
@@ -91,6 +92,11 @@
   min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
+  /* Header (title+description) and the content box below had zero gap
+     between them — only the label's own 3px bottom padding, so the small
+     11px description sat almost touching the box's top border.
+     Context: agent_reports/2026-07-11_i18n-foundation.md */
+  gap: 10px;
 }
 
 /* Idle and Dictation are mutually exclusive (only one renders at a time —
@@ -118,6 +124,17 @@
 .pixel-section-label {
   min-height: 32px;
   padding: 0 4px 3px;
+  /* Drag handle for the frame:false window (electron/core/window.cjs) — the
+     title+description header of each dashboard card, no buttons inside it.
+     Only "main" (SPREMAN/DIKTIRANJE) spans the full grid row and reaches
+     .pixel-global-window-controls' corner; that element already declares
+     its own -webkit-app-region: no-drag with a higher z-index, which should
+     take priority for the overlapping pixels. (An earlier attempt at this
+     broke the window-controls buttons, but that was tested at the same time
+     as -webkit-app-region: drag on the blurred .pixel-top-bar elsewhere —
+     removing that turned out to be what mattered; isolating this one change
+     to verify.) Context: agent_reports/2026-07-11_i18n-foundation.md */
+  -webkit-app-region: drag;
 }
 
 .pixel-section-main:has(.pixel-window-dictation) .pixel-section-label {
@@ -135,7 +152,7 @@
 .pixel-section-label p {
   margin: 2px 0 0;
   color: var(--pixel-text-secondary);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .pixel-mockup-board .pixel-window {
@@ -274,7 +291,10 @@
 }
 
 .pixel-window-idle {
-  grid-template-columns: 108px minmax(0, 1fr);
+  /* Same reasoning as the base .pixel-window rule (11-pixel-shell.css) —
+     108px is the sr-Latn/en floor, max-content grows for longer translated
+     nav labels instead of wrapping/truncating them. */
+  grid-template-columns: minmax(108px, max-content) minmax(0, 1fr);
   grid-template-rows: 50px minmax(0, 1fr);
 }
 
@@ -345,7 +365,7 @@
 }
 
 .pixel-window-idle .pixel-card h2 {
-  font-size: 13px;
+  font-size: 15px;
 }
 
 .pixel-window-idle .pixel-card header {
@@ -372,13 +392,13 @@
 }
 
 .pixel-window-idle .pixel-command-card {
-  gap: 5px;
+  gap: 6px;
 }
 
 .pixel-window-idle .pixel-command-card button:not(header button) {
-  min-height: 21px;
+  min-height: 28px;
   max-width: 100%;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .pixel-window-idle .pixel-list {
@@ -456,7 +476,9 @@
   background:
     radial-gradient(circle at 42% 42%, rgba(22, 139, 255, 0.08), transparent 36%),
     rgba(6, 13, 24, 0.9);
-  padding-top: 2px;
+  /* Was 2px — the empty-state card sat almost touching the box's own top
+     border. Context: agent_reports/2026-07-11_i18n-foundation.md */
+  padding-top: 22px;
 }
 
 .pixel-blurred-shell {
@@ -773,15 +795,15 @@
 
 .pixel-empty-preview strong {
   color: #dbe6f5;
-  font-size: 11px;
+  font-size: 13px;
 }
 
 .pixel-empty-preview span {
-  max-width: 220px;
+  max-width: 240px;
   margin-top: 4px;
   color: #8292a8;
-  font-size: 10px;
-  line-height: 1.35;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 .pixel-plan-tabs {

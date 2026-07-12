@@ -1,3 +1,5 @@
+import i18n from "../i18n";
+
 export type VoiceState =
   | "idle"
   | "listening"
@@ -36,26 +38,31 @@ export function createActivityEvent(
   };
 }
 
+// Localized (Localization PR-1, docs/RICKY_GUI_LOCALIZATION_PLAN.md). This is
+// a plain function, not a component, so it can't use the useTranslation()
+// hook — calls the i18next instance directly instead (valid react-i18next
+// pattern for non-component code). The VoiceState enum itself stays
+// language-independent per the doc's own rule (line 315-330).
 export function voiceStateLabel(state: VoiceState): string {
   switch (state) {
     case "listening":
-      return "Slušam";
+      return i18n.t("voice.state.listening");
     case "transcribing":
-      return "Obrađujem";
+      return i18n.t("voice.state.transcribing");
     case "thinking":
-      return "Razmišljam";
+      return i18n.t("voice.state.thinking");
     case "speaking":
-      return "Govorim";
+      return i18n.t("voice.state.speaking");
     case "waiting_confirmation":
-      return "Čekam potvrdu";
+      return i18n.t("voice.state.waiting_confirmation");
     case "interrupted":
-      return "Prekinuto";
+      return i18n.t("voice.state.interrupted");
     case "muted":
-      return "Utišano";
+      return i18n.t("voice.state.muted");
     case "error":
-      return "Greška";
+      return i18n.t("voice.state.error");
     case "idle":
     default:
-      return "Spreman";
+      return i18n.t("voice.state.idle");
   }
 }

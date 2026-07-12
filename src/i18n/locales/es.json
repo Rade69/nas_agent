@@ -1,0 +1,113 @@
+{
+  "tabs": {
+    "home": "Inicio",
+    "activity": "Actividad",
+    "plans": "Planes",
+    "memory": "Memoria",
+    "screens": "Capturas de pantalla",
+    "settings": "Configuración"
+  },
+  "sidebar": {
+    "backendConnected": "Backend: OK · Local",
+    "backendDisconnected": "Backend: sin conexión"
+  },
+  "topBar": {
+    "dictation": "Dictado",
+    "stopAll": "Detener todo",
+    "stopAllTitle": "Detener toda la actividad",
+    "computerMode": "Modo de computadora:",
+    "on": "ACTIVADO",
+    "off": "DESACTIVADO",
+    "enterDictation": "Iniciar dictado",
+    "voice": "Voz",
+    "plans": "Planes"
+  },
+  "voice": {
+    "state": {
+      "idle": "Listo",
+      "listening": "Escuchando",
+      "transcribing": "Procesando",
+      "thinking": "Pensando",
+      "speaking": "Hablando",
+      "waiting_confirmation": "Esperando confirmación",
+      "interrupted": "Interrumpido",
+      "muted": "Silenciado",
+      "error": "Error"
+    }
+  },
+  "dashboard": {
+    "readyTitle": "LISTO",
+    "readyDescription": "Estado tranquilo. Enfoque en el micrófono y la actividad reciente. Todo lo demás disponible según sea necesario.",
+    "dictationTitle": "DICTADO",
+    "dictationDescription": "El editor está en foco. Solo las acciones más importantes. Los demás paneles están ocultos.",
+    "confirmationTitle": "CONFIRMACIÓN",
+    "confirmationDescription": "Muestra la confirmación real pendiente, si existe. Se abre un diálogo aparte para decidir.",
+    "activityTitle": "ACTIVIDAD",
+    "activityDescription": "Historial detallado de todos los eventos y acciones.",
+    "plansTitle": "PLANES",
+    "plansDescription": "Tus planes, tareas y recordatorios.",
+    "noMemory": "Sin memoria guardada.",
+    "noScreenshots": "Sin capturas de pantalla."
+  },
+  "idle": {
+    "ready": "Ricky está listo",
+    "hint": "Haz clic en el micrófono o di \"Ricky\"",
+    "stop": "Detener",
+    "disconnect": "Desconectar",
+    "startVoice": "Iniciar voz",
+    "promptPlaceholder": "Escribe en lugar de hablar...",
+    "sendText": "Enviar texto",
+    "recentActivity": "Actividad reciente",
+    "showAll": "Mostrar todo",
+    "noActivity": "Sin actividad",
+    "noActivityDetail": "El historial se completará cuando uses la voz o una herramienta.",
+    "quickCommands": "Comandos rápidos",
+    "cmdEmail": "Escribir un correo",
+    "cmdScreenshot": "Tomar una captura de pantalla",
+    "cmdNotepad": "Abrir el Bloc de notas",
+    "cmdMeeting": "Programar una reunión"
+  },
+  "previews": {
+    "confirmTitle": "Ricky quiere realizar esta acción",
+    "confirmDefaultSummary": "Revisa los detalles cuidadosamente antes de confirmar.",
+    "actionLabel": "Acción",
+    "riskLabel": "Riesgo",
+    "respondInDialog": "Responde en el diálogo de confirmación.",
+    "noConfirmation": "Sin confirmación activa",
+    "noConfirmationDetail": "Ricky mostrará aquí las acciones pendientes.",
+    "noActivityShort": "Aún no hay actividad",
+    "noActivityShortDetail": "Los eventos aparecerán aquí cuando Ricky haga algo.",
+    "showFullHistory": "Mostrar historial completo",
+    "tabActive": "Activos",
+    "tabProposed": "Propuestos",
+    "tabCompleted": "Completados",
+    "noPlans": "Sin planes activos",
+    "noPlansDetail": "Crea un nuevo plan para que Ricky lo siga.",
+    "newPlan": "Nuevo plan",
+    "stepsCount_one": "{{count}} paso",
+    "stepsCount_other": "{{count}} pasos"
+  },
+  "planStatus": {
+    "active": "ACTIVO",
+    "completed": "COMPLETADO",
+    "cancelled": "CANCELADO",
+    "draft": "BORRADOR",
+    "pending": "PENDIENTE"
+  },
+  "drawer": {
+    "close": "Cerrar"
+  },
+  "settings": {
+    "loading": "Cargando configuración...",
+    "personalSection": "Personal",
+    "yourName": "Tu nombre",
+    "nameHint": "Ricky te llamará así en la conversación.",
+    "save": "Guardar",
+    "saving": "Guardando...",
+    "saved": "Guardado.",
+    "error": "Error — inténtalo de nuevo.",
+    "languageSection": "Idioma",
+    "dictationLanguage": "Idioma de dictado",
+    "dictationLanguageHint": "Idioma para el reconocimiento de voz en el Dictado. Se aplica en la próxima conexión de voz."
+  }
+}

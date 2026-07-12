@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import IconHome from "../../assets/brending/icons/navigation/icon-home.svg?react";
 import IconActivity from "../../assets/brending/icons/navigation/icon-activity.svg?react";
 import IconPlans from "../../assets/brending/icons/navigation/icon-plans.svg?react";
@@ -11,27 +12,30 @@ type SidebarProps = {
   backendConnected: boolean;
 };
 
-const NAV_ITEMS: { id: string; label: string; Icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: "home", label: "Početna", Icon: IconHome },
-  { id: "activity", label: "Aktivnost", Icon: IconActivity },
-  { id: "plans", label: "Planovi", Icon: IconPlans },
-  { id: "memory", label: "Memorija", Icon: IconMemory },
-  { id: "screens", label: "Snimci ekrana", Icon: IconScreenshots },
-  { id: "settings", label: "Postavke", Icon: IconSettings },
+// Localized labels (Localization PR-1, docs/RICKY_GUI_LOCALIZATION_PLAN.md) —
+// keys live in src/i18n/locales/*.json under "tabs.*".
+const NAV_ITEMS: { id: string; labelKey: string; Icon: React.ComponentType<{ className?: string }> }[] = [
+  { id: "home", labelKey: "tabs.home", Icon: IconHome },
+  { id: "activity", labelKey: "tabs.activity", Icon: IconActivity },
+  { id: "plans", labelKey: "tabs.plans", Icon: IconPlans },
+  { id: "memory", labelKey: "tabs.memory", Icon: IconMemory },
+  { id: "screens", labelKey: "tabs.screens", Icon: IconScreenshots },
+  { id: "settings", labelKey: "tabs.settings", Icon: IconSettings },
 ];
 
 export function Sidebar({ activeTab, onTabChange, backendConnected }: SidebarProps) {
+  const { t } = useTranslation();
   return (
     <nav className="sidebar">
       <div className="sidebar-nav">
-        {NAV_ITEMS.map(({ id, label, Icon }) => (
+        {NAV_ITEMS.map(({ id, labelKey, Icon }) => (
           <button
             key={id}
             className={`sidebar-item${activeTab === id ? " active" : ""}`}
             onClick={() => onTabChange(id)}
           >
             <Icon className="sidebar-item-icon" />
-            <span>{label}</span>
+            <span>{t(labelKey)}</span>
           </button>
         ))}
       </div>
@@ -41,7 +45,7 @@ export function Sidebar({ activeTab, onTabChange, backendConnected }: SidebarPro
         <div className="sidebar-footer-version">Ricky v1.0.0</div>
         <div className="sidebar-footer-backend">
           <span className={`sidebar-backend-dot ${backendConnected ? "connected" : "disconnected"}`} />
-          <span>{backendConnected ? "Backend: OK · Lokalno" : "Backend: offline"}</span>
+          <span>{backendConnected ? t("sidebar.backendConnected") : t("sidebar.backendDisconnected")}</span>
         </div>
       </div>
     </nav>

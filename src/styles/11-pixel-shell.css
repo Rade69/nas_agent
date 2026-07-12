@@ -41,7 +41,10 @@
 .pixel-window {
   position: relative;
   display: grid;
-  grid-template-columns: 142px minmax(0, 1fr);
+  /* min = current width (sr-Latn/en fit here); max-content grows the column
+     for longer translated nav labels (e.g. German "Bildschirmaufnahmen")
+     instead of truncating them. Context: agent_reports/2026-07-11_i18n-foundation.md */
+  grid-template-columns: minmax(142px, max-content) minmax(0, 1fr);
   grid-template-rows: 58px minmax(0, 1fr);
   width: min(1368px, calc(100vw - 56px));
   height: min(760px, calc(100vh - 48px));
@@ -95,6 +98,15 @@
 .pixel-brand {
   gap: 12px;
   min-width: 0;
+  /* Drag handle for the frame:false window (electron/core/window.cjs).
+     .pixel-brand has no buttons (logo + "Ricky" + voice-state text only)
+     and, unlike its .pixel-top-bar parent, no backdrop-filter of its own —
+     putting -webkit-app-region directly on a blurred element proved
+     unreliable (drag worked once, then silently broke after an unrelated
+     CSS change elsewhere in the file). Content-sized, so it never needs a
+     guessed pixel width the way a separate floating strip would.
+     Context: agent_reports/2026-07-11_i18n-foundation.md */
+  -webkit-app-region: drag;
 }
 
 .pixel-brand strong {
@@ -242,6 +254,7 @@
   align-items: center;
   gap: 9px;
   width: 100%;
+  min-width: 0;
   min-height: 34px;
   padding: 0 10px;
   border: 1px solid transparent;
@@ -249,6 +262,17 @@
   color: #b6c2d4;
   background: transparent;
   font-size: 13px;
+}
+
+/* Longer translated labels (e.g. German "Bildschirmaufnahmen" vs English
+   "Screenshots"/Serbian "Snimci ekrana") wrapped to multiple lines and broke
+   the sidebar's single-line rhythm. The sidebar column itself now grows to
+   fit (grid-template-columns: minmax(142px, max-content) above, and the
+   matching .pixel-window-idle override in 12-pixel-board.css) — nowrap here
+   just guarantees a single line rather than truncating with ellipsis.
+   Context: agent_reports/2026-07-11_i18n-foundation.md */
+.pixel-window .sidebar-item span {
+  white-space: nowrap;
 }
 
 .pixel-window .sidebar-item.active {
@@ -552,8 +576,8 @@
 }
 
 .pixel-command-card svg {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   flex: 0 0 auto;
 }
 
