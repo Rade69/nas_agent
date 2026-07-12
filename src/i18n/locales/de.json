@@ -118,7 +118,12 @@
     "error": "Fehler — bitte erneut versuchen.",
     "languageSection": "Sprache",
     "dictationLanguage": "Diktatsprache",
-    "dictationLanguageHint": "Sprache für die Spracherkennung im Diktat. Gilt ab der nächsten Sprachverbindung."
+    "dictationLanguageHint": "Sprache für die Spracherkennung im Diktat. Gilt ab der nächsten Sprachverbindung.",
+    "quickCommandsSection": "Schnellbefehle",
+    "quickCommandsHint": "Wenn du keine hinzufügst, werden die Standardbefehle verwendet.",
+    "addQuickCommand": "Befehl hinzufügen",
+    "removeQuickCommand": "Entfernen",
+    "quickCommandPlaceholder": "z. B. Meine Dokumente öffnen"
   },
   "dictation": {
     "badge": "DIKTAT",

@@ -110,17 +110,22 @@ export default function App() {
   useEffect(() => {
     interfaceLanguageRef.current = interfaceLanguage;
   }, [interfaceLanguage]);
+  // Empty = IdleScreen falls back to its 4 built-in localized defaults.
+  // Context: agent_reports/2026-07-12_custom-quick-commands.md
+  const [quickCommands, setQuickCommands] = useState<string[]>([]);
   // Fetch interface_language once at mount so dictation trigger/exit phrases
   // match the user's chosen language. Fail-open: if the fetch fails, stays
   // on default "sr-Latn" — same principle as user_name in realtime.cjs. Also
   // applies the same value to i18next so the GUI text (Sidebar/TopBar/voice
-  // state labels) matches on load, not just the dictation cascade.
+  // state labels) matches on load, not just the dictation cascade. Same
+  // fetch now also picks up quick_commands — one settings round trip, not two.
   // Context: agent_reports/2026-07-11_i18n-foundation.md
   useEffect(() => {
     window.ricky
       .getSettings()
       .then((s) => {
         setInterfaceLanguage(s.interface_language);
+        setQuickCommands(s.quick_commands ?? []);
         void i18n.changeLanguage(s.interface_language);
       })
       .catch(() => {});
@@ -609,6 +614,7 @@ export default function App() {
         textPrompt={textPrompt}
         dictationText={dictationText}
         recentActivity={recentActivity}
+        quickCommands={quickCommands}
         activityEvents={activityEvents}
         transcript={transcript}
         plans={plans}
@@ -622,6 +628,7 @@ export default function App() {
           void switchMode(nextMode);
         }}
         onOpenPlans={() => openDrawer("plans")}
+        onQuickCommandsChange={setQuickCommands}
         onSidebarChange={handleSidebarChange}
         onTextPromptChange={setTextPrompt}
         onSendTextPrompt={sendTextPrompt}

@@ -39,6 +39,17 @@ def _restore_interface_language():
     repo.set("interface_language", original if original is not None else "sr-Latn")
 
 
+@pytest.fixture
+def _restore_quick_commands():
+    # Same reasoning as _restore_user_name.
+    settings = get_settings()
+    initialize_database(settings)
+    repo = SettingsRepository(settings.database_path)
+    original = repo.get("quick_commands")
+    yield
+    repo.set("quick_commands", original if original is not None else [])
+
+
 def test_get_settings_default_user_name(_restore_user_name) -> None:
     repo = SettingsRepository(get_settings().database_path)
     repo.set("user_name", "Riley")
@@ -79,10 +90,7 @@ def test_unknown_stored_keys_are_ignored(_restore_user_name) -> None:
 
     assert response.status_code == 200
     # Only declared UserSettings fields are ever returned.
-    assert response.json() == {
-        "user_name": response.json()["user_name"],
-        "interface_language": response.json()["interface_language"],
-    }
+    assert set(response.json().keys()) == {"user_name", "interface_language", "quick_commands"}
 
 
 def test_get_settings_default_interface_language(_restore_interface_language) -> None:
@@ -114,3 +122,37 @@ def test_patch_settings_with_unset_field_does_not_overwrite_language(
 
     assert response.status_code == 200
     assert response.json()["interface_language"] == "de"
+
+
+def test_get_settings_default_quick_commands_is_empty(_restore_quick_commands) -> None:
+    # Empty = frontend falls back to the built-in localized defaults
+    # (idle.cmd* i18n keys) — see app/schemas/settings.py UserSettings docstring.
+    with TestClient(app) as client:
+        response = client.get("/settings")
+
+    assert response.status_code == 200
+    assert response.json()["quick_commands"] == []
+
+
+def test_patch_settings_updates_quick_commands(_restore_quick_commands) -> None:
+    with TestClient(app) as client:
+        response = client.patch(
+            "/settings", json={"quick_commands": ["Otvori deklaracije", "Napravi izvještaj"]}
+        )
+        assert response.status_code == 200
+        assert response.json()["quick_commands"] == ["Otvori deklaracije", "Napravi izvještaj"]
+
+        follow_up = client.get("/settings")
+        assert follow_up.json()["quick_commands"] == ["Otvori deklaracije", "Napravi izvještaj"]
+
+
+def test_patch_settings_can_clear_quick_commands_back_to_empty(_restore_quick_commands) -> None:
+    with TestClient(app) as client:
+        client.patch("/settings", json={"quick_commands": ["Nešto"]})
+        # Explicit empty list (not an unset field) must actually save as empty,
+        # not be treated as "nothing provided" — exercises the `value is None`
+        # vs `value == []` distinction in SettingsService.update().
+        response = client.patch("/settings", json={"quick_commands": []})
+
+    assert response.status_code == 200
+    assert response.json()["quick_commands"] == []

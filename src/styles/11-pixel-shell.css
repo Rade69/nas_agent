@@ -1048,6 +1048,42 @@
   color: #6b7d92;
 }
 
+/* Custom quick commands editor (Settings → Brze komande).
+   Context: agent_reports/2026-07-12_custom-quick-commands.md */
+.pixel-quick-commands-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pixel-quick-command-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pixel-quick-command-row input {
+  flex: 1;
+  border: 1px solid rgba(80, 135, 190, 0.24);
+  border-radius: 8px;
+  outline: 0;
+  color: #f6f9ff;
+  background: rgba(8, 17, 31, 0.76);
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.pixel-quick-command-row input:focus {
+  border-color: rgba(58, 215, 255, 0.42);
+  box-shadow: 0 0 0 3px rgba(22, 139, 255, 0.1);
+}
+
+.pixel-quick-command-row .pixel-icon-button {
+  flex: 0 0 auto;
+}
+
 /* FAZA S-4: kill-switch on-screen confirmation banner. Fixed, top-center, high
    z-index so it is unmistakable even outside an active voice session. */
 .kill-switch-flash {

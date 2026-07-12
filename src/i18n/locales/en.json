@@ -118,7 +118,12 @@
     "error": "Error — try again.",
     "languageSection": "Language",
     "dictationLanguage": "Dictation language",
-    "dictationLanguageHint": "Language for speech recognition in Dictation. Applies on the next voice connection."
+    "dictationLanguageHint": "Language for speech recognition in Dictation. Applies on the next voice connection.",
+    "quickCommandsSection": "Quick commands",
+    "quickCommandsHint": "If you don't add any, the built-in defaults are used.",
+    "addQuickCommand": "Add command",
+    "removeQuickCommand": "Remove",
+    "quickCommandPlaceholder": "e.g. Open my documents"
   },
   "dictation": {
     "badge": "DICTATION",

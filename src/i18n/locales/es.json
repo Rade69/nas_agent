@@ -118,7 +118,12 @@
     "error": "Error — inténtalo de nuevo.",
     "languageSection": "Idioma",
     "dictationLanguage": "Idioma de dictado",
-    "dictationLanguageHint": "Idioma para el reconocimiento de voz en el Dictado. Se aplica en la próxima conexión de voz."
+    "dictationLanguageHint": "Idioma para el reconocimiento de voz en el Dictado. Se aplica en la próxima conexión de voz.",
+    "quickCommandsSection": "Comandos rápidos",
+    "quickCommandsHint": "Si no añades ninguno, se usan los predeterminados.",
+    "addQuickCommand": "Añadir comando",
+    "removeQuickCommand": "Eliminar",
+    "quickCommandPlaceholder": "p. ej. Abrir mis documentos"
   },
   "dictation": {
     "badge": "DICTADO",

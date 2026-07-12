@@ -26,6 +26,7 @@ export function PixelMockupBoard({
   textPrompt,
   dictationText,
   recentActivity,
+  quickCommands,
   activityEvents,
   transcript,
   plans,
@@ -36,6 +37,7 @@ export function PixelMockupBoard({
   pendingConfirmation,
   onToggleMode,
   onOpenPlans,
+  onQuickCommandsChange,
   onSidebarChange,
   onTextPromptChange,
   onSendTextPrompt,
@@ -69,6 +71,7 @@ export function PixelMockupBoard({
   textPrompt: string;
   dictationText: string;
   recentActivity: ActivityEvent[];
+  quickCommands: string[];
   activityEvents: ActivityEvent[];
   transcript: TranscriptEntry[];
   plans: Plan[];
@@ -79,6 +82,7 @@ export function PixelMockupBoard({
   pendingConfirmation: Confirmation | null;
   onToggleMode: () => void;
   onOpenPlans: () => void;
+  onQuickCommandsChange: (commands: string[]) => void;
   onSidebarChange: (id: string) => void;
   onTextPromptChange: (value: string) => void;
   onSendTextPrompt: () => void;
@@ -167,6 +171,7 @@ export function PixelMockupBoard({
                 isConnected={isConnected}
                 textPrompt={textPrompt}
                 recentActivity={recentActivity}
+                quickCommands={quickCommands}
                 onTextPromptChange={onTextPromptChange}
                 onSendTextPrompt={onSendTextPrompt}
                 onVoiceToggle={onVoiceToggle}
@@ -192,7 +197,7 @@ export function PixelMockupBoard({
                   ) : null}
                   {activeDrawer === "memory" ? <p className="drawer-placeholder-text">{t("dashboard.noMemory")}</p> : null}
                   {activeDrawer === "screens" ? <ScreenshotsGallery /> : null}
-                  {activeDrawer === "settings" ? <SettingsPanel /> : null}
+                  {activeDrawer === "settings" ? <SettingsPanel onQuickCommandsChange={onQuickCommandsChange} /> : null}
                 </Drawer>
               ) : null}
             </section>

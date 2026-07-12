@@ -106,6 +106,9 @@ export type PlanStep = {
 export type UserSettings = {
   user_name: string;
   interface_language: string;
+  // Empty = use the built-in localized defaults (idle.cmd* i18n keys).
+  // Context: agent_reports/2026-07-12_custom-quick-commands.md
+  quick_commands: string[];
 };
 
 // Dictation Mode "Doradi" menu — mirrors python_backend/app/schemas/text.py

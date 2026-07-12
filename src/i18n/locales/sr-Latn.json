@@ -118,7 +118,12 @@
     "error": "Greška — pokušaj ponovo.",
     "languageSection": "Jezik",
     "dictationLanguage": "Jezik diktiranja",
-    "dictationLanguageHint": "Jezik za prepoznavanje govora u Diktatu. Promjena se primjenjuje pri sljedećem povezivanju glasa."
+    "dictationLanguageHint": "Jezik za prepoznavanje govora u Diktatu. Promjena se primjenjuje pri sljedećem povezivanju glasa.",
+    "quickCommandsSection": "Brze komande",
+    "quickCommandsHint": "Ako ne dodaš nijednu, koriste se podrazumijevane komande.",
+    "addQuickCommand": "Dodaj komandu",
+    "removeQuickCommand": "Ukloni",
+    "quickCommandPlaceholder": "npr. Otvori deklaracije"
   },
   "dictation": {
     "badge": "DIKTIRANJE",

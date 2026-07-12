@@ -118,7 +118,12 @@
     "error": "Erreur — réessaie.",
     "languageSection": "Langue",
     "dictationLanguage": "Langue de dictée",
-    "dictationLanguageHint": "Langue pour la reconnaissance vocale en Dictée. S'applique à la prochaine connexion vocale."
+    "dictationLanguageHint": "Langue pour la reconnaissance vocale en Dictée. S'applique à la prochaine connexion vocale.",
+    "quickCommandsSection": "Commandes rapides",
+    "quickCommandsHint": "Si tu n'en ajoutes aucune, les commandes par défaut sont utilisées.",
+    "addQuickCommand": "Ajouter une commande",
+    "removeQuickCommand": "Supprimer",
+    "quickCommandPlaceholder": "p. ex. Ouvrir mes documents"
   },
   "dictation": {
     "badge": "DICTÉE",

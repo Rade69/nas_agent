@@ -24,6 +24,7 @@ export function IdleScreen({
   isConnected,
   textPrompt,
   recentActivity,
+  quickCommands,
   onTextPromptChange,
   onSendTextPrompt,
   onVoiceToggle,
@@ -36,6 +37,10 @@ export function IdleScreen({
   isConnected: boolean;
   textPrompt: string;
   recentActivity: ActivityEvent[];
+  // Empty = show the 4 built-in localized defaults below. Non-empty = user
+  // has customized their own list in Settings, use exactly that instead.
+  // Context: agent_reports/2026-07-12_custom-quick-commands.md
+  quickCommands: string[];
   onTextPromptChange: (value: string) => void;
   onSendTextPrompt: () => void;
   onVoiceToggle: () => void;
@@ -112,18 +117,28 @@ export function IdleScreen({
           <header>
             <h2>{t("idle.quickCommands")}</h2>
           </header>
-          <button onClick={() => onQuickCommand(t("idle.cmdEmail"))}>
-            <IconChevronRight /> {t("idle.cmdEmail")}
-          </button>
-          <button onClick={() => onQuickCommand(t("idle.cmdScreenshot"))}>
-            <IconScreenshot /> {t("idle.cmdScreenshot")}
-          </button>
-          <button onClick={() => onQuickCommand(t("idle.cmdNotepad"))}>
-            <IconOpenApp /> {t("idle.cmdNotepad")}
-          </button>
-          <button onClick={() => onQuickCommand(t("idle.cmdMeeting"))}>
-            <IconCalendar /> {t("idle.cmdMeeting")}
-          </button>
+          {quickCommands.length > 0 ? (
+            quickCommands.map((command, index) => (
+              <button key={`${index}-${command}`} onClick={() => onQuickCommand(command)}>
+                <IconChevronRight /> {command}
+              </button>
+            ))
+          ) : (
+            <>
+              <button onClick={() => onQuickCommand(t("idle.cmdEmail"))}>
+                <IconChevronRight /> {t("idle.cmdEmail")}
+              </button>
+              <button onClick={() => onQuickCommand(t("idle.cmdScreenshot"))}>
+                <IconScreenshot /> {t("idle.cmdScreenshot")}
+              </button>
+              <button onClick={() => onQuickCommand(t("idle.cmdNotepad"))}>
+                <IconOpenApp /> {t("idle.cmdNotepad")}
+              </button>
+              <button onClick={() => onQuickCommand(t("idle.cmdMeeting"))}>
+                <IconCalendar /> {t("idle.cmdMeeting")}
+              </button>
+            </>
+          )}
         </section>
       </aside>
     </div>
