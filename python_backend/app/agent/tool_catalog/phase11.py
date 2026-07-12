@@ -37,6 +37,7 @@ def register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) -> 
         allowed_apps: list[str] | None = None,
         blocked_apps: list[str] | None = None,
         reads_external_content: bool = False,
+        outbound: bool = False,
     ) -> ToolDefinition:
         return ToolDefinition(
             name=name,
@@ -54,6 +55,7 @@ def register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) -> 
             implemented_by="python",
             enabled=enabled,
             reads_external_content=reads_external_content,
+            outbound=outbound,
         )
 
     # --- Memory tools (low risk, no confirmation) ---
@@ -271,6 +273,7 @@ def register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) -> 
             },
             timeout_ms=30000,
             reads_external_content=True,
+            outbound=True,
         ),
         web_handlers["web_search"],
     )
@@ -288,6 +291,7 @@ def register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) -> 
                 "additionalProperties": False,
             },
             timeout_ms=90000,
+            outbound=True,
         ),
         image_handlers["image_generate"],
     )

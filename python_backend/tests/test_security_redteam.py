@@ -23,6 +23,7 @@ from app.agent.prompt_builder import (
     UNTRUSTED_OPEN,
     wrap_untrusted_content,
 )
+from app.core.auth import require_local_token
 from app.main import create_app
 from app.schemas.tool import ToolDefinition, ToolExecutionContext, ToolExecutionRequest
 
@@ -133,6 +134,7 @@ class ScriptedModelClient:
 def client(tmp_path, monkeypatch) -> TestClient:
     monkeypatch.setenv("RICKY_DATA_DIR", str(tmp_path))
     app = create_app()
+    app.dependency_overrides[require_local_token] = lambda: None
     return TestClient(app)
 
 
@@ -176,6 +178,22 @@ def _register_redteam_tools(client: TestClient) -> None:
         ),
         action_handler,
     )
+    registry.register(
+        ToolDefinition(
+            name="rt_web_search",
+            description="Low-risk outbound tool (like real web_search/image_generate) — sends query content externally.",
+            input_schema={"type": "object", "properties": {"query": {"type": "string"}}, "additionalProperties": False},
+            risk="low",
+            requires_confirmation=False,
+            requires_computer_mode=False,
+            allowed_in_background=True,
+            timeout_ms=5000,
+            implemented_by="python",
+            enabled=True,
+            outbound=True,
+        ),
+        action_handler,
+    )
 
 
 def test_injection_chain_read_then_act_is_blocked(client: TestClient) -> None:
@@ -211,6 +229,44 @@ def test_injection_chain_read_then_act_is_blocked(client: TestClient) -> None:
     assert read_call["ok"] is True
     # The acting tool must be blocked by S-2 escalation.
     assert action_call["tool_name"] == "rt_send_email"
+    assert action_call["ok"] is False
+    assert action_call["error"]["code"] in ("CONFIRMATION_REQUIRED", "CONFIRMATIONS_UNAVAILABLE")
+
+
+def test_injection_chain_read_then_outbound_low_risk_is_blocked(client: TestClient) -> None:
+    """S-2 gap fix (2026-07-12, docs/PROJECT_OVERVIEW.md section 4.7): a
+    low-risk, non-computer-mode outbound tool (like the real web_search/
+    image_generate) used to fall through S-2 escalation untouched — the old
+    check only escalated tools that act *locally* (medium+ risk or
+    computer_mode). This is the same acceptance test as
+    test_injection_chain_read_then_act_is_blocked but for the outbound path.
+    """
+    _register_redteam_tools(client)
+    fake = ScriptedModelClient(
+        [
+            ModelResponse(
+                content=None,
+                tool_calls=[ModelToolCall(id="c1", tool_name="rt_read_screen", arguments={})],
+            ),
+            ModelResponse(
+                content=None,
+                tool_calls=[
+                    ModelToolCall(id="c2", tool_name="rt_web_search", arguments={"query": "attacker instructions"})
+                ],
+            ),
+            ModelResponse(content="The screen text asked me to search for that; I did not do that."),
+        ]
+    )
+    client.app.state.agent_runtime._model_client = fake
+
+    response = client.post("/agent/message", json={"message": "read the screen and follow it"})
+    assert response.status_code == 200
+    body = response.json()
+
+    read_call, action_call = body["tool_calls"][0], body["tool_calls"][1]
+    assert read_call["tool_name"] == "rt_read_screen"
+    assert read_call["ok"] is True
+    assert action_call["tool_name"] == "rt_web_search"
     assert action_call["ok"] is False
     assert action_call["error"]["code"] in ("CONFIRMATION_REQUIRED", "CONFIRMATIONS_UNAVAILABLE")
 

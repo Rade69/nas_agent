@@ -127,6 +127,17 @@ def check_permission(
     ):
         requires_confirmation = True
 
+    # S-2 gap fix (2026-07-12, docs/PROJECT_OVERVIEW.md section 4.7): the
+    # check above only escalates tools that *act locally* (medium+ risk or
+    # computer_mode) — a low-risk tool that sends turn content to a
+    # third-party service (web_search's query, image_generate's prompt) fell
+    # through untouched. Outbound tools escalate independently of risk level,
+    # and independently of the reads_external_content exemption above — a
+    # tool can be both a reader and outbound (web_search reads back untrusted
+    # results AND sends a potentially tainted query out).
+    if request.context.external_content_seen and tool.outbound:
+        requires_confirmation = True
+
     if tool.requires_computer_mode and not request.context.computer_mode:
         return AppError(
             "COMPUTER_MODE_REQUIRED",

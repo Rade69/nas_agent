@@ -7,8 +7,14 @@ from app.main import create_app
 
 
 @pytest.fixture()
-def unauthenticated_client(tmp_path, monkeypatch) -> TestClient:
-    """No RICKY_LOCAL_TOKEN set — matches tests/dev-without-Electron per README."""
+def auto_token_client(tmp_path, monkeypatch) -> TestClient:
+    """No RICKY_LOCAL_TOKEN set — matches dev-without-Electron per README.
+
+    Security Gate 1 fix (2026-07-12, docs/PROJECT_OVERVIEW.md section 4.7):
+    this path used to fail open (any unauthenticated request was let through).
+    Now get_settings() auto-generates its own per-process token instead — see
+    app/core/config.py's _resolve_local_token() — so auth is still enforced.
+    """
     monkeypatch.setenv("RICKY_DATA_DIR", str(tmp_path))
     monkeypatch.delenv("RICKY_LOCAL_TOKEN", raising=False)
     app = create_app()
@@ -24,9 +30,30 @@ def authenticated_client(tmp_path, monkeypatch) -> TestClient:
     return TestClient(app)
 
 
-def test_no_token_configured_fails_open(unauthenticated_client: TestClient) -> None:
-    response = unauthenticated_client.get("/health")
+def test_no_env_token_still_fails_closed(auto_token_client: TestClient) -> None:
+    response = auto_token_client.get("/health")
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "UNAUTHORIZED"
+
+
+def test_no_env_token_auto_generates_and_persists_one(tmp_path, monkeypatch) -> None:
+    """The core Security Gate 1 regression test: even with no Electron and no
+    RICKY_LOCAL_TOKEN, a real per-process token exists, is written to a file
+    a developer can read, and actually authenticates requests."""
+    monkeypatch.setenv("RICKY_DATA_DIR", str(tmp_path))
+    monkeypatch.delenv("RICKY_LOCAL_TOKEN", raising=False)
+    app = create_app()
+    client = TestClient(app)
+
+    token_file = tmp_path / "dev_local_token.txt"
+    assert token_file.exists()
+    token = token_file.read_text(encoding="utf-8").strip()
+    assert token == app.state.settings.local_token
+    assert len(token) > 20
+
+    response = client.get("/health", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
+    assert response.json() == {"ok": True}
 
 
 def test_configured_token_blocks_missing_header(authenticated_client: TestClient) -> None:

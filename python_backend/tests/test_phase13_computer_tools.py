@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core.auth import require_local_token
 from app.main import create_app
 
 
@@ -28,6 +29,7 @@ def client(tmp_path, monkeypatch) -> TestClient:
     """FastAPI test client with isolated data directory."""
     monkeypatch.setenv("RICKY_DATA_DIR", str(tmp_path))
     app = create_app()
+    app.dependency_overrides[require_local_token] = lambda: None
     return TestClient(app)
 
 

@@ -4,13 +4,16 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 
+from app.core.auth import require_local_token
 from app.main import create_app
 from app.storage.repositories.screenshot_repo import ScreenshotRepository
 
 
 def _client(tmp_path, monkeypatch) -> TestClient:
     monkeypatch.setenv("RICKY_DATA_DIR", str(tmp_path))
-    return TestClient(create_app())
+    app = create_app()
+    app.dependency_overrides[require_local_token] = lambda: None
+    return TestClient(app)
 
 
 def test_list_screenshots_empty(tmp_path, monkeypatch) -> None:

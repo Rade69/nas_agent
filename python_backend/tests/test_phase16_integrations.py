@@ -5,6 +5,7 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
+from app.core.auth import require_local_token
 from app.main import create_app
 
 
@@ -19,6 +20,7 @@ def client(tmp_path, monkeypatch) -> TestClient:
     monkeypatch.setenv("EXA_API_KEY", "")
     monkeypatch.setenv("OPENAI_API_KEY", "")
     app = create_app()
+    app.dependency_overrides[require_local_token] = lambda: None
     return TestClient(app)
 
 
@@ -38,6 +40,11 @@ def test_web_search_tool_definition_carries_low_risk(client: TestClient) -> None
     assert tools["web_search"]["requires_computer_mode"] is False
     # FAZA 16: web search is a network call — longer timeout than local tools.
     assert tools["web_search"]["timeout_ms"] >= 30000
+    # S-2 gap fix (2026-07-12): low risk + no computer_mode means this tool
+    # would never have been escalated by the older S-2 check without
+    # outbound=True — see test_permission_engine.py's
+    # test_external_content_escalates_outbound_reader_tool.
+    assert tools["web_search"]["outbound"] is True
 
 
 def test_image_generate_tool_definition_carries_low_risk(client: TestClient) -> None:
@@ -47,6 +54,8 @@ def test_image_generate_tool_definition_carries_low_risk(client: TestClient) -> 
     assert tools["image_generate"]["requires_confirmation"] is False
     # Image generation can take a while — timeout should reflect that.
     assert tools["image_generate"]["timeout_ms"] >= 60000
+    # S-2 gap fix (2026-07-12) — see test_web_search_tool_definition_carries_low_risk.
+    assert tools["image_generate"]["outbound"] is True
 
 
 def test_web_search_without_api_key_returns_structured_error(client: TestClient) -> None:

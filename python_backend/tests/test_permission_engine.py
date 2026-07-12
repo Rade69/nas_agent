@@ -318,3 +318,69 @@ def test_external_content_no_escalation_when_not_seen(tmp_path) -> None:
         make_confirmations(tmp_path),
     )
     assert error is None
+
+
+# =============================================================================
+#  S-2 gap fix (2026-07-12): outbound low-risk tools now escalate too
+#  Context: docs/PROJECT_OVERVIEW.md section 4.7 (found by FABLE-5 review)
+# =============================================================================
+
+
+def test_external_content_escalates_outbound_low_risk_tool(tmp_path) -> None:
+    """A low-risk, non-computer-mode, non-reader tool (e.g. image_generate)
+    used to fall through both prior conditions untouched — the risk/
+    computer_mode escalation only covers tools that act locally. outbound=True
+    now escalates it independently of risk level."""
+    tool = low_risk_tool(
+        risk="low",
+        reads_external_content=False,
+        requires_computer_mode=False,
+        requires_confirmation=False,
+        outbound=True,
+    )
+    error = check_permission(
+        tool,
+        make_request(external_content_seen=True),
+        make_confirmations(tmp_path),
+    )
+    assert isinstance(error, AppError)
+    assert error.code == "CONFIRMATION_REQUIRED"
+
+
+def test_external_content_escalates_outbound_reader_tool(tmp_path) -> None:
+    """A tool that is both a reader and outbound (e.g. web_search: its results
+    are untrusted content, and its query itself is sent externally) must not
+    be exempted by the reads_external_content reader exemption — that
+    exemption only covers the local-acting escalation branch."""
+    tool = low_risk_tool(
+        risk="low",
+        reads_external_content=True,
+        requires_computer_mode=False,
+        requires_confirmation=False,
+        outbound=True,
+    )
+    error = check_permission(
+        tool,
+        make_request(external_content_seen=True),
+        make_confirmations(tmp_path),
+    )
+    assert isinstance(error, AppError)
+    assert error.code == "CONFIRMATION_REQUIRED"
+
+
+def test_non_outbound_low_risk_tool_still_not_escalated(tmp_path) -> None:
+    """Regression guard: a plain local low-risk tool (e.g. note_add) must stay
+    unescalated — outbound=False by default, so this fix must not widen S-2
+    beyond tools that actually send data externally."""
+    tool = low_risk_tool(
+        risk="low",
+        reads_external_content=False,
+        requires_computer_mode=False,
+        requires_confirmation=False,
+    )
+    error = check_permission(
+        tool,
+        make_request(external_content_seen=True),
+        make_confirmations(tmp_path),
+    )
+    assert error is None

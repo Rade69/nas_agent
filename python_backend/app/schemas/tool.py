@@ -43,6 +43,16 @@ class ToolDefinition(BaseModel):
     # turn is auto-escalated to require confirmation. See
     # docs/SECURITY_GAP_ANALYSIS_AND_PLAN.md (S7/S8).
     reads_external_content: bool = False
+    # S-2 gap fix (2026-07-12, docs/PROJECT_OVERVIEW.md section 4.7, found by
+    # external review — FABLE-5): True for tools that send conversation/turn
+    # content to a third-party service (web_search's query, image_generate's
+    # prompt). The reads_external_content risk/computer_mode escalation above
+    # only covers tools that *act locally*; a low-risk outbound tool with no
+    # computer_mode requirement could otherwise leak tainted content to an
+    # external API without ever being escalated. Independent of
+    # reads_external_content — a tool can be both (e.g. web_search reads back
+    # untrusted results AND sends a potentially tainted query out).
+    outbound: bool = False
 
 
 class ToolsListResponse(BaseModel):
