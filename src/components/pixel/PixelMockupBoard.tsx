@@ -149,10 +149,14 @@ export function PixelMockupBoard({
               mode={mode}
               screen={screen}
               voiceState={voiceState}
+              isActive={isActive}
+              isConnected={isConnected}
               onToggleMode={onToggleMode}
               onOpenPlans={onOpenPlans}
               onStopAll={onStopAll}
               onEnterDictation={onEnterDictation}
+              onVoiceToggle={onVoiceToggle}
+              onStop={onStop}
             />
             <Sidebar activeTab={activeDrawer ?? screen} onTabChange={onSidebarChange} backendConnected={backendConnected} />
             <section className="pixel-main">

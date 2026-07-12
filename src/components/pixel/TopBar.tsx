@@ -4,6 +4,8 @@
 import { useTranslation } from "react-i18next";
 import IconLogoR from "../../../assets/brending/logo/ricky-logo-r.svg?react";
 import IconWave from "../../../assets/brending/icons/voice/icon-audio-wave.svg?react";
+import IconMic from "../../../assets/brending/icons/voice/icon-microphone.svg?react";
+import IconMicOff from "../../../assets/brending/icons/voice/icon-microphone-muted.svg?react";
 import IconStop from "../../../assets/brending/icons/voice/icon-stop.svg?react";
 import IconCalendar from "../../../assets/brending/icons/actions/icon-calendar.svg?react";
 import { voiceStateLabel } from "../../lib/voiceState";
@@ -14,18 +16,26 @@ export function TopBar({
   mode,
   screen,
   voiceState,
+  isActive,
+  isConnected,
   onToggleMode,
   onOpenPlans,
   onStopAll,
   onEnterDictation,
+  onVoiceToggle,
+  onStop,
 }: {
   mode: RickyMode;
   screen: ScreenState;
   voiceState: VoiceState;
+  isActive?: boolean;
+  isConnected?: boolean;
   onToggleMode: () => void;
   onOpenPlans: () => void;
   onStopAll?: () => void;
   onEnterDictation?: () => void;
+  onVoiceToggle?: () => void;
+  onStop?: () => void;
 }) {
   const { t } = useTranslation();
   return (
@@ -64,9 +74,15 @@ export function TopBar({
               {t("topBar.dictation")}
             </button>
           ) : null}
-          <button className="pixel-icon-button" title={t("topBar.voice")}>
-            <IconWave />
-          </button>
+          {onVoiceToggle && onStop ? (
+            <button
+              className="pixel-icon-button"
+              onClick={isActive ? onStop : onVoiceToggle}
+              title={isActive ? t("idle.stop") : isConnected ? t("idle.disconnect") : t("idle.startVoice")}
+            >
+              {isActive ? <IconStop /> : isConnected ? <IconMicOff /> : <IconMic />}
+            </button>
+          ) : null}
           <button className="pixel-icon-button" onClick={onOpenPlans} title={t("topBar.plans")}>
             <IconCalendar />
           </button>
