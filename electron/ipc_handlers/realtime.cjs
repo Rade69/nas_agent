@@ -10,19 +10,18 @@ const DEFAULT_USER_NAME = "Riley";
 // STT jezički hint za Dictation Mode (OpenAI Realtime whisper-1 language
 // param). Mapiranje po docs/RICKY_GUI_LOCALIZATION_PLAN.md — sr-Latn ostaje
 // "sr" (NE "bs"), zadržava postojeće, već testirano ponašanje.
-const STT_LANGUAGE_HINTS = { "sr-Latn": "sr", en: "en", de: "de", es: "es", fr: "fr" };
-const DEFAULT_STT_LANGUAGE_HINT = "sr";
-
-// Jezička imena za umetanje u system prompt (Deo B,
-// agent_reports/2026-07-11_dictation-language-cascade.md).
-const LANGUAGE_NAMES = {
-  "sr-Latn": "Serbian (Latin script)",
-  en: "English",
-  de: "German",
-  es: "Spanish",
-  fr: "French",
+// Jedan izvor istine za sve po-jeziku vrijednosti na Electron strani. Ne
+// dijeli se sa src/shared/languages.ts (renderer, ESM/Vite) jer bi to
+// zahtijevalo nov build korak za CJS/ESM most — van obima ovog zadatka.
+// Context: agent_reports/2026-07-12_language-map-consolidation.md
+const LANGUAGE_CONFIG = {
+  "sr-Latn": { sttHint: "sr", promptName: "Serbian (Latin script)" },
+  en: { sttHint: "en", promptName: "English" },
+  de: { sttHint: "de", promptName: "German" },
+  es: { sttHint: "es", promptName: "Spanish" },
+  fr: { sttHint: "fr", promptName: "French" },
 };
-const DEFAULT_LANGUAGE_NAME = "Serbian (Latin script)";
+const DEFAULT_LANGUAGE_CONFIG = LANGUAGE_CONFIG["sr-Latn"];
 
 // The user's own name was hardcoded as "Riley" throughout (matches the
 // product's own branding origin) — now interpolated from the Settings panel
@@ -67,23 +66,21 @@ Let the user interrupt. If audio is unclear, ask one short clarifying question i
 async function handleRealtimeCreateToken() {
   const db = await readDb();
   let userName = DEFAULT_USER_NAME;
-  let sttLanguageHint = DEFAULT_STT_LANGUAGE_HINT;
-  let languageName = DEFAULT_LANGUAGE_NAME;
+  let languageConfig = DEFAULT_LANGUAGE_CONFIG;
   try {
     const settings = await getSettings();
     if (settings && typeof settings.user_name === "string" && settings.user_name.trim()) {
       userName = settings.user_name.trim();
     }
     if (settings && typeof settings.interface_language === "string") {
-      sttLanguageHint = STT_LANGUAGE_HINTS[settings.interface_language] ?? DEFAULT_STT_LANGUAGE_HINT;
-      languageName = LANGUAGE_NAMES[settings.interface_language] ?? DEFAULT_LANGUAGE_NAME;
+      languageConfig = LANGUAGE_CONFIG[settings.interface_language] ?? DEFAULT_LANGUAGE_CONFIG;
     }
   } catch (error) {
     // Cosmetic preference, not security-critical — fail open to the default
     // name rather than blocking the whole voice session over a settings fetch.
     console.warn("[settings] Could not load user_name, using default:", error);
   }
-  const instructions = `${buildRickyInstructions(userName, languageName)}\n\n${buildThumbnailBoardInstructions(db)}`;
+  const instructions = `${buildRickyInstructions(userName, languageConfig.promptName)}\n\n${buildThumbnailBoardInstructions(db)}`;
 
   const session = {
     type: "realtime",
@@ -114,7 +111,7 @@ async function handleRealtimeCreateToken() {
         // Context: agent_reports/2026-07-11_dictation-guardrails-and-exit.md
         transcription: {
           model: "whisper-1",
-          language: sttLanguageHint,
+          language: languageConfig.sttHint,
         },
       },
       output: {
@@ -132,7 +129,7 @@ async function handleRealtimeCreateToken() {
   // (instructions/tools depend on Electron-side DB state not yet migrated) and forwards
   // it for the backend to mint the ephemeral Realtime credential.
   const { value, expiresAt } = await createRealtimeSession(session);
-  return { value, expiresAt: expiresAt ?? null, sttLanguageHint };
+  return { value, expiresAt: expiresAt ?? null, sttLanguageHint: languageConfig.sttHint };
 }
 
 module.exports = { handleRealtimeCreateToken };

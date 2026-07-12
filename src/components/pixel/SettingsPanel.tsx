@@ -2,23 +2,16 @@
  *  Structured as sections (currently two: "Lično" and "Jezik") so future
  *  preferences can be added as new sections without restructuring this file.
  *  Context: agent_reports/2026-07-11_settings-panel-foundation.md
- *  Context: agent_reports/2026-07-11_interface-language-stt-hint.md */
+ *  Context: agent_reports/2026-07-11_interface-language-stt-hint.md
+ *  Context: agent_reports/2026-07-12_language-map-consolidation.md */
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { UserSettings } from "../../vite-env";
 import i18n from "../../i18n";
+// Jedan izvor istine za jezičke mape (agent_reports/2026-07-12_language-map-consolidation.md).
+import { SUPPORTED_LANGUAGES } from "../../shared/languages";
 
 type SaveStatus = "loading" | "idle" | "saving" | "saved" | "error";
-
-// STT jezički hint mapiranje — istovjetno electron/ipc_handlers/realtime.cjs.
-// Sr-Latn ostaje "sr" (NE "bs"), zadržava postojeće ponašanje.
-const LANGUAGE_OPTIONS: { value: string; label: string }[] = [
-  { value: "sr-Latn", label: "Srpski (latinica)" },
-  { value: "en", label: "English" },
-  { value: "de", label: "Deutsch" },
-  { value: "es", label: "Español" },
-  { value: "fr", label: "Français" },
-];
 
 export function SettingsPanel() {
   const { t } = useTranslation();
@@ -121,9 +114,9 @@ export function SettingsPanel() {
             value={languageInput}
             onChange={(event) => setLanguageInput(event.target.value)}
           >
-            {LANGUAGE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
+            {SUPPORTED_LANGUAGES.map((lang) => (
+              <option key={lang.code} value={lang.code}>
+                {lang.nativeName}
               </option>
             ))}
           </select>
