@@ -106,7 +106,10 @@ Ovo je sažetak stvarno implementiranih kontrola, ne plana. Izvor istine za prod
 - CSP i secure web preferences (`electron/core/secureWebPreferences.cjs`) — `sandbox`/`webSecurity`/`allowRunningInsecureContent` eksplicitno postavljeni, ne oslonjeni na Electron default.
 
 ### 4.7 Šta NIJE zatvoreno (transparentno)
-- **Legacy PowerShell computer-use alati** (`computer_open_app`, `computer_type_text`, `computer_click`, `computer_scroll` — implementirani direktno u `electron/main.cjs`) rade **bez permission sloja i bez auth tokena**, dok se ne migriraju u Python. Ovo je poznat, dokumentovan rizik (`SECURITY_MODEL.md`), ne previd.
+- **Dev-mode auth fail-open.** Kad backend nije pokrenut preko Electron-a (npr. direktan `uvicorn` dev rad), auth provjera je fail-open (`app/core/auth.py:25-26`, `if not expected: return`). Rizik: baš dev mašina drži pravi OpenAI ključ i izvorni kod; localhost fail-open ne razlikuje "developer testira" od "zlonamjerna stranica u browser tabu gađa localhost". Planirani fix: uvijek fail-closed, dev `uvicorn` pri startu sam generiše i ispisuje/upiše token u gitignored fajl koji frontend čita — nije implementirano.
+- **S-2 eskalacija ima rupu za "odlazne" low-risk alate.** `permission_engine.py:123-128` eskalira potvrdu poslije taint-a samo za `risk in (medium,high,critical)` ili `requires_computer_mode`. `image_generate` je `risk="low"` bez `requires_computer_mode` (`tool_catalog/phase11.py:277-293`) — nikad se ne eskalira, iako šalje sadržaj (uklj. potencijalno zatrovan tekst) OpenAI-u. `web_search` je strukturno izuzet (`reads_external_content=True`, namjerno da lančana pretraga ne zaključa samu sebe) — ali to isto izuzeće znači da se query string nikad ne tretira kao odlazni kanal. Nije implementiran fix (predložen: `outbound: true` atribut u `ToolDefinition`, pravilo `taint + outbound → potvrda`, nezavisno od risk nivoa).
+- **Legacy computer-use — manji rezidualni gap nego što je ranije ovdje pisalo.** `computer_click`/`computer_type_text` (najopasnija kategorija) idu kroz Python PRVO (`PHASE11_DELEGATED_TOOLS`, `electron/main.cjs:193-197`) sa `risk="high"`, `requires_confirmation=True`, `requires_active_window_match=True`, I nikad ne padaju na legacy fallback čak i kad je legacy uključen (`LEGACY_FAIL_CLOSED_TOOLS`, `main.cjs:212-217`) — ovo je najjače zaštićena kategorija u sistemu, ne najslabija. Stvaran, manji gap: `computer_open_app`/`computer_press_key`/`computer_scroll` (medium risk) NISU u `LEGACY_FAIL_CLOSED_TOOLS` — ako Python padne I `RICKY_USE_LEGACY_POWERSHELL_TOOLS=1` je eksplicitno postavljen (default je `0`), ova tri bi prošla kroz legacy PowerShell bez permission provjere.
+- Nema JS/TS testova za confirmation flow (frontend, security-kritičan put) — vidi sekciju 6.
 - Security Gate 1 (document privacy modes, CI security checks, rate limiting) i Gate 2 (code signing, produkcijski packaging) nisu zatvoreni — projekat nije spreman za javni/produkcijski release.
 - Nema rate limiting-a na backend-u.
 
@@ -147,15 +150,32 @@ Namjerno uključeno, ne izostavljeno — dokument bi bio nepošten bez ovoga.
 | `App.tsx` veličina | 778 linija, ~40 handler funkcija | Kandidat za razdvajanje u custom hooks (`useVoiceSession`, `useDictation`, `useConfirmations` itd.) — nije urađeno, procijenjen kao srednji prioritet, ne hitno. |
 | Duplirane jezičke mape | 5 mjesta u kodu | `STT_LANGUAGE_HINTS`, `LANGUAGE_NAMES`, `DICTATION_TRIGGER_WORDS`, `DICTATION_EXIT_PHRASES`, `LANGUAGE_OPTIONS` + 5 JSON locale fajlova — dodavanje 6. jezika trenutno zahtijeva izmjenu na 6 mjesta. Konsolidacija u jedan shared config nije urađena. |
 | Cloud-only STT | Lokalni STT (faster-whisper) nije implementiran | Arhitektura isplanirana (`docs/LOCALIZATION_AND_STT_ENGINE_PLAN.md`), namjerno odloženo — dva paralelna STT koda znače duplo održavanje, ne raditi dok ne postoji jasan razlog (offline rad, trošak). |
-| Legacy computer-use bez permission sloja | Poznato, dokumentovano | Vidi sekciju 4.7 — najveći preostali sigurnosni gap prije produkcijskog release-a. |
+| Dev-mode auth fail-open | Poznato, nije popravljeno | Vidi sekciju 4.7 — realan, jeftin fix, nije hitno u dosadašnjem radu jer stvaran Electron-pokrenut put nije pogođen. |
+| S-2 eskalacija: outbound low-risk alati (`image_generate`, `web_search`) | Poznato, nije popravljeno | Vidi sekciju 4.7 — pronađeno tek eksternim pregledom (FABLE-5, 2026-07-12), potvrđeno u kodu nakon toga. |
+| Legacy computer-use — rezidualni gap (medium-risk alati) | Poznato, dokumentovano | Vidi sekciju 4.7 — manji obim nego što je ranija verzija ovog dokumenta tvrdila (ispravljeno 2026-07-12, vidi sekciju 8). |
 | Polling umjesto push notifikacija | `setInterval` na 3s za events/confirmations | `EventBus` na backend-u već postoji; SSE (`GET /events/stream`) bi eliminisao polling, nije implementirano. |
 | Rate limiting | Ne postoji na backend-u | Jedina zaštita je auth token, ne broj zahtjeva. Nisko-prioritetno za desktop app sa jednim korisnikom, ali odsutno. |
 | Security Gate 1/2 | Nisu zatvoreni | Projekat nije spreman za javni/produkcijski release — vidi `docs/MIGRATION_PLAN.md` "Security Gates" tabelu. |
 
 ---
 
-## 7. Zaključak
+## 7. Eksterni pregled i ispravke (2026-07-12)
 
-Projekat ima stvarnu arhitektonsku disciplinu koja se **provjerava, ne samo deklariše** — jasna podjela slojeva, permission/risk model koji je testovima dokazan da nema zaobilaznih puteva, fail-closed dizajn na više nivoa (legacy tools, kill-switch, security self-test). Multi-agent radni tok (Claude Code + pi) funkcioniše uz eksplicitnu, ponovljivu disciplinu provjere — dokazano više puta u ovoj sesiji da nijedna strana (uključujući mene) ne uzima tvrdnje zdravo za gotovo bez provjere u stvarnom kodu.
+Ovaj dokument je pregledao FABLE-5 (drugi AI model, eksterna recenzija). Sve tvrdnje iz tog pregleda su provjerene direktno u kodu od strane Claude Code (mene) prije nego što su prihvaćene — isti princip koji sekcija 5.1 opisuje za pi-jev rad, primijenjen ovdje na sopstveni dokument i na tuđu recenziju podjednako.
 
-Istovremeno, projekat ima realne, imenovane praznine — GUI lokalizacija je na pola puta, frontend nema testove, legacy computer-use put je poznat sigurnosni rizik, i produkcijski gates nisu zatvoreni. Nijedna od ovih stavki nije skrivena ili uljepšana u ovom dokumentu.
+**Rezultat provjere:**
+
+- **Original verzija sekcije 4.7 je sadržala grešku** — tvrdila je da `computer_click`/`computer_type_text` rade "bez permission sloja i bez auth tokena", prepisano iz zastarjelog pasusa u `docs/SECURITY_MODEL.md` koji nije ažuriran nakon FAZE 13/14. Stvarno stanje (provjereno u `electron/main.cjs` i `python_backend/app/agent/tool_catalog/phase13.py`): ova dva alata idu kroz Python prvo, zahtijevaju potvrdu, i fail-closed su čak i na legacy putu — **najjača** zaštita u sistemu, ne najslabija. Ispravljeno.
+- **Dvije nove, stvarne praznine potvrđene i dodate** (nisu bile u originalnoj verziji ovog dokumenta): dev-mode auth fail-open (sekcija 4.7) i S-2 eskalacija koja ne pokriva "odlazne" low-risk alate poput `image_generate`/`web_search` (sekcija 4.7).
+- **Jedan predlog je već bio implementiran** prije recenzije — min-delay na confirm dugme (`ConfirmationDialog.tsx`, `armed` state, FAZA S-4/S30) — provjereno, potvrđeno, nije ponovljen rad.
+- **Jedan spot-check testa** (`test_agent_runtime.py:97-128`, `records_delete` bez potvrde) potvrdio da asertuje tačnu, jaku tvrdnju (`ok is False` + `CONFIRMATION_REQUIRED`), ne slabiju verziju — ne dokazuje da su svih 236 testova jednako strogi, samo da primjer istaknut u sekciji 5.1 drži vodu.
+
+Implementacija predloženih fix-ova (dev auth fail-closed, outbound taint eskalacija, Vitest za confirmation flow) je planirana kao zaseban rad, van obima ove revizije dokumenta.
+
+---
+
+## 8. Zaključak
+
+Projekat ima stvarnu arhitektonsku disciplinu koja se **provjerava, ne samo deklariše** — jasna podjela slojeva, permission/risk model koji je testovima dokazan da nema zaobilaznih puteva, fail-closed dizajn na više nivoa (legacy tools, kill-switch, security self-test). Multi-agent radni tok (Claude Code + pi) funkcioniše uz eksplicitnu, ponovljivu disciplinu provjere — dokazano više puta, uključujući i na sopstvenom dokumentu (sekcija 7), da se tvrdnje ne uzimaju zdravo za gotovo bez provjere u stvarnom kodu, bez obzira da li dolaze od pi-ja, od eksterne AI recenzije, ili od mene samog.
+
+Istovremeno, projekat ima realne, imenovane praznine — GUI lokalizacija je na pola puta, frontend nema testove, dev-mode auth je fail-open, S-2 eskalacija ne pokriva odlazne low-risk alate, i produkcijski gates nisu zatvoreni. Nijedna od ovih stavki nije skrivena ili uljepšana u ovom dokumentu.
