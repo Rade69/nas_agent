@@ -643,9 +643,20 @@
 
 .pixel-dictation-head button {
   gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid rgba(80, 135, 190, 0.28);
+  border-radius: 7px;
   color: #bdcadc;
-  background: transparent;
+  background: rgba(20, 34, 54, 0.55);
   font-size: 13px;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.pixel-dictation-head button:hover {
+  border-color: rgba(120, 175, 230, 0.55);
+  background: rgba(41, 70, 105, 0.6);
+  color: #f0f5ff;
 }
 
 .pixel-dictation-head button svg {
