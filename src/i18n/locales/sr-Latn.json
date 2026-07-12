@@ -65,7 +65,17 @@
     "cmdEmail": "Napiši email",
     "cmdScreenshot": "Napravi screenshot",
     "cmdNotepad": "Otvori Notepad",
-    "cmdMeeting": "Planiraj sastanak"
+    "cmdMeeting": "Planiraj sastanak",
+    "state": {
+      "listening": { "title": "Slušam te...", "hint": "Reci šta ti treba" },
+      "transcribing": { "title": "Obrađujem tvoje riječi...", "hint": "" },
+      "thinking": { "title": "Razmišljam...", "hint": "Samo trenutak" },
+      "speaking": { "title": "Govorim...", "hint": "" },
+      "waiting_confirmation": { "title": "Čekam tvoju odluku", "hint": "Pogledaj dijalog potvrde" },
+      "interrupted": { "title": "Prekinuto", "hint": "Reci ponovo, slušam" },
+      "muted": { "title": "Mikrofon je utišan", "hint": "Uključi mikrofon da nastaviš" },
+      "error": { "title": "Nešto nije uspjelo", "hint": "Pokušaj ponovo" }
+    }
   },
   "previews": {
     "confirmTitle": "Ricky želi izvršiti ovu akciju",

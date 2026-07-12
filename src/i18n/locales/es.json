@@ -65,7 +65,17 @@
     "cmdEmail": "Escribir un correo",
     "cmdScreenshot": "Tomar una captura de pantalla",
     "cmdNotepad": "Abrir el Bloc de notas",
-    "cmdMeeting": "Programar una reunión"
+    "cmdMeeting": "Programar una reunión",
+    "state": {
+      "listening": { "title": "Escuchando...", "hint": "Dime qué necesitas" },
+      "transcribing": { "title": "Procesando lo que dijiste...", "hint": "" },
+      "thinking": { "title": "Pensando...", "hint": "Un momento" },
+      "speaking": { "title": "Hablando...", "hint": "" },
+      "waiting_confirmation": { "title": "Esperando tu decisión", "hint": "Revisa el diálogo de confirmación" },
+      "interrupted": { "title": "Interrumpido", "hint": "Continúa, te escucho" },
+      "muted": { "title": "Micrófono silenciado", "hint": "Reactiva el micrófono para continuar" },
+      "error": { "title": "Algo salió mal", "hint": "Inténtalo de nuevo" }
+    }
   },
   "previews": {
     "confirmTitle": "Ricky quiere realizar esta acción",

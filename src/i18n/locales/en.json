@@ -65,7 +65,17 @@
     "cmdEmail": "Write an email",
     "cmdScreenshot": "Take a screenshot",
     "cmdNotepad": "Open Notepad",
-    "cmdMeeting": "Schedule a meeting"
+    "cmdMeeting": "Schedule a meeting",
+    "state": {
+      "listening": { "title": "Listening...", "hint": "Tell me what you need" },
+      "transcribing": { "title": "Processing what you said...", "hint": "" },
+      "thinking": { "title": "Thinking...", "hint": "Just a moment" },
+      "speaking": { "title": "Speaking...", "hint": "" },
+      "waiting_confirmation": { "title": "Waiting for your decision", "hint": "Check the confirmation dialog" },
+      "interrupted": { "title": "Interrupted", "hint": "Go ahead, I'm listening" },
+      "muted": { "title": "Microphone is muted", "hint": "Unmute to continue" },
+      "error": { "title": "Something went wrong", "hint": "Try again" }
+    }
   },
   "previews": {
     "confirmTitle": "Ricky wants to perform this action",

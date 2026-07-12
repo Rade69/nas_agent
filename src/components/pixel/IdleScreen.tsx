@@ -44,12 +44,21 @@ export function IdleScreen({
   onQuickCommand: (text: string) => void;
 }) {
   const { t } = useTranslation();
+  // Hero text was static ("Ricky je spreman") regardless of voiceState — the
+  // header (voiceStateLabel()) already updates live per state, but this big
+  // central heading never did, so it visibly contradicted the header outside
+  // "idle" (e.g. header says "Slušam" while this still said "Ricky je
+  // spreman"). Header stays the short machine-state label; this is the
+  // human-friendly, live counterpart — deliberately different wording, not
+  // a copy of the header text. Context: agent_reports/2026-07-12_hero-text-state-aware.md
+  const heroTitle = voiceState === "idle" ? t("idle.ready") : t(`idle.state.${voiceState}.title`);
+  const heroHint = voiceState === "idle" ? t("idle.hint") : t(`idle.state.${voiceState}.hint`);
   return (
     <div className="pixel-idle">
       <section className="pixel-hero">
         <RickyOrb voiceState={voiceState} />
-        <h1>{t("idle.ready")}</h1>
-        <p>{t("idle.hint")}</p>
+        <h1>{heroTitle}</h1>
+        {heroHint ? <p>{heroHint}</p> : null}
         <button
           className={`pixel-mic-button ${isActive ? "stop" : ""}`}
           onClick={isActive ? onStop : onVoiceToggle}

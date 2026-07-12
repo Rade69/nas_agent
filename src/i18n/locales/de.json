@@ -65,7 +65,17 @@
     "cmdEmail": "E-Mail schreiben",
     "cmdScreenshot": "Bildschirmfoto machen",
     "cmdNotepad": "Notepad öffnen",
-    "cmdMeeting": "Meeting planen"
+    "cmdMeeting": "Meeting planen",
+    "state": {
+      "listening": { "title": "Ich höre zu...", "hint": "Sag mir, was du brauchst" },
+      "transcribing": { "title": "Verarbeite, was du gesagt hast...", "hint": "" },
+      "thinking": { "title": "Ich denke nach...", "hint": "Einen Moment" },
+      "speaking": { "title": "Ich spreche...", "hint": "" },
+      "waiting_confirmation": { "title": "Warte auf deine Entscheidung", "hint": "Sieh dir den Bestätigungsdialog an" },
+      "interrupted": { "title": "Unterbrochen", "hint": "Sprich weiter, ich höre zu" },
+      "muted": { "title": "Mikrofon stummgeschaltet", "hint": "Stummschaltung aufheben, um fortzufahren" },
+      "error": { "title": "Etwas ist schiefgelaufen", "hint": "Versuch es erneut" }
+    }
   },
   "previews": {
     "confirmTitle": "Ricky möchte diese Aktion ausführen",
