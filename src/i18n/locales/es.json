@@ -109,5 +109,77 @@
     "languageSection": "Idioma",
     "dictationLanguage": "Idioma de dictado",
     "dictationLanguageHint": "Idioma para el reconocimiento de voz en el Dictado. Se aplica en la próxima conexión de voz."
+  },
+  "dictation": {
+    "badge": "DICTADO",
+    "processing": "procesando...",
+    "autoSave": "auto-guardado activado",
+    "cancel": "Cancelar dictado",
+    "placeholder": "El texto dictado aparecerá aquí...",
+    "wordCount_one": "{{count}} palabra",
+    "wordCount_other": "{{count}} palabras",
+    "continueDictating": "Continuar dictado",
+    "continueTitle": "Reconecta la voz si se interrumpió y continúa el dictado",
+    "refine": "Refinar",
+    "formalize": "Formalizar",
+    "shorten": "Acortar",
+    "proofread": "Revisar ortografía",
+    "translateEn": "Traducir al inglés",
+    "more": "Más",
+    "moreTitle": "Más opciones",
+    "copy": "Copiar texto",
+    "clear": "Borrar todo",
+    "undo": "Deshacer",
+    "download": "Descargar como .txt",
+    "send": "Enviar al agente"
+  },
+  "plans": {
+    "stepStatus": {
+      "pending": "Pendiente",
+      "inProgress": "En progreso",
+      "completed": "Completado",
+      "skipped": "Omitido",
+      "failed": "Fallido"
+    },
+    "status": {
+      "active": "ACTIVO",
+      "pending": "PENDIENTE",
+      "completed": "COMPLETADO",
+      "cancelled": "CANCELADO",
+      "rejected": "RECHAZADO"
+    },
+    "empty": "No hay planes en esta categoría.",
+    "advanceTo": "Mover a: {{status}}",
+    "approve": "Aprobar plan",
+    "run": "Ejecutar",
+    "complete": "Marcar como completado",
+    "reject": "Rechazar"
+  },
+  "activity": {
+    "empty": "Aún no hay actividad."
+  },
+  "confirmation": {
+    "field": {
+      "to": "Para",
+      "subject": "Asunto",
+      "content": "Contenido",
+      "app": "Aplicación"
+    },
+    "risk": {
+      "low": "Riesgo bajo",
+      "medium": "Riesgo medio",
+      "high": "Riesgo alto — confirmación requerida",
+      "critical": "Riesgo crítico — confirmación requerida"
+    },
+    "summary": "Resumen",
+    "plan": "Plan",
+    "details": "Detalles",
+    "cancel": "Cancelar",
+    "sendEmail": "Enviar correo",
+    "run": "Ejecutar",
+    "discardAria": "Descartar confirmación",
+    "discard": "Descartar",
+    "dialogAria": "Ricky propone una acción",
+    "wait": "Espera un momento…"
   }
 }

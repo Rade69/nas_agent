@@ -109,5 +109,77 @@
     "languageSection": "Jezik",
     "dictationLanguage": "Jezik diktiranja",
     "dictationLanguageHint": "Jezik za prepoznavanje govora u Diktatu. Promjena se primjenjuje pri sljedećem povezivanju glasa."
+  },
+  "dictation": {
+    "badge": "DIKTIRANJE",
+    "processing": "obrađujem...",
+    "autoSave": "auto-čuvanje uključeno",
+    "cancel": "Otkaži diktiranje",
+    "placeholder": "Diktirani tekst će se pojaviti ovdje...",
+    "wordCount_one": "{{count}} riječ",
+    "wordCount_other": "{{count}} riječi",
+    "continueDictating": "Nastavi diktiranje",
+    "continueTitle": "Ponovo poveži glas ako je prekinut i nastavi diktiranje",
+    "refine": "Doradi",
+    "formalize": "Formalizuj",
+    "shorten": "Skrati",
+    "proofread": "Provjeri pravopis",
+    "translateEn": "Prevedi na engleski",
+    "more": "Više",
+    "moreTitle": "Više opcija",
+    "copy": "Kopiraj tekst",
+    "clear": "Obriši sve",
+    "undo": "Undo",
+    "download": "Preuzmi kao .txt",
+    "send": "Pošalji agentu"
+  },
+  "plans": {
+    "stepStatus": {
+      "pending": "Na čekanju",
+      "inProgress": "U toku",
+      "completed": "Završeno",
+      "skipped": "Preskočeno",
+      "failed": "Neuspješno"
+    },
+    "status": {
+      "active": "AKTIVAN",
+      "pending": "NA ČEKANJU",
+      "completed": "ZAVRŠENO",
+      "cancelled": "OTKAZANO",
+      "rejected": "ODBAČENO"
+    },
+    "empty": "Nema planova u ovoj kategoriji.",
+    "advanceTo": "Pomjeri na: {{status}}",
+    "approve": "Odobri plan",
+    "run": "Pokreni",
+    "complete": "Označi završenim",
+    "reject": "Odbaci"
+  },
+  "activity": {
+    "empty": "Još nema aktivnosti."
+  },
+  "confirmation": {
+    "field": {
+      "to": "Prima",
+      "subject": "Predmet",
+      "content": "Sadržaj",
+      "app": "Aplikacija"
+    },
+    "risk": {
+      "low": "Nizak rizik",
+      "medium": "Srednji rizik",
+      "high": "Visok rizik — potrebna potvrda",
+      "critical": "Kritičan rizik — potrebna potvrda"
+    },
+    "summary": "Sažetak",
+    "plan": "Plan",
+    "details": "Detalji",
+    "cancel": "Otkaži",
+    "sendEmail": "Pošalji email",
+    "run": "Pokreni",
+    "discardAria": "Odbaci potvrdu",
+    "discard": "Odbaci",
+    "dialogAria": "Ricky predlaže akciju",
+    "wait": "Pričekaj trenutak…"
   }
 }

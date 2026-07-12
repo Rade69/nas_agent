@@ -1,23 +1,43 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import i18n from "../i18n";
 import type { Confirmation, RiskLevel } from "../vite-env";
 import IconWarning from "../../assets/brending/icons/safety/icon-warning.svg?react";
 import IconConfirm from "../../assets/brending/icons/safety/icon-confirm.svg?react";
 import IconCancel from "../../assets/brending/icons/safety/icon-cancel.svg?react";
 
-// Common payload keys across tool arguments, mapped to the mockup's field
-// labels (assets/GUI-SETS/GUI-SET-3.png) so e.g. an email-send confirmation
-// shows "Prima" / "Predmet" instead of a raw JSON dump. Falls back to JSON
-// for payloads that don't match any of these (e.g. computer_click's x/y).
-const PAYLOAD_FIELD_LABELS: Record<string, string> = {
-  to: "Prima",
-  recipient: "Prima",
-  email: "Prima",
-  subject: "Predmet",
-  title: "Predmet",
-  text: "Sadržaj",
-  body: "Sadržaj",
-  appName: "Aplikacija",
-};
+// i18n key-evi za payload polja — plain funkcija, koristi i18n.t() direktno
+// (isti pattern kao voiceStateLabel i planStatusLabel). PAYLOAD_FIELD_KEYS
+// je jedini izvor istine za "koji payload ključevi imaju labelu" — koristi
+// se i ovdje i za recognizedEntries/unrecognizedPayload filtere ispod.
+const PAYLOAD_FIELD_KEYS = ["to", "recipient", "email", "subject", "title", "text", "body", "appName"];
+
+function fieldLabel(key: string): string {
+  const map: Record<string, string> = {
+    to: "confirmation.field.to",
+    recipient: "confirmation.field.to",
+    email: "confirmation.field.to",
+    subject: "confirmation.field.subject",
+    title: "confirmation.field.subject",
+    text: "confirmation.field.content",
+    body: "confirmation.field.content",
+    appName: "confirmation.field.app",
+  };
+  return i18n.t(map[key] || key);
+}
+
+// Risk label — plain funkcija, direktan i18n.t(). NE skraćivati/mijenjati
+// značenje: ovo su bezbjednosno značajne poruke (S-2/permission_engine).
+// Context: docs/PI_TASK_GUI_LOCALIZATION_PR2_BRIEF.md
+function riskLabel(risk: RiskLevel): string {
+  const map: Record<RiskLevel, string> = {
+    low: "confirmation.risk.low",
+    medium: "confirmation.risk.medium",
+    high: "confirmation.risk.high",
+    critical: "confirmation.risk.critical",
+  };
+  return i18n.t(map[risk]);
+}
 
 type ConfirmationDialogProps = {
   confirmation: Confirmation | null;
@@ -25,13 +45,6 @@ type ConfirmationDialogProps = {
   onApprove: (confirmationId: string) => void;
   onReject: (confirmationId: string) => void;
   onCancel: (confirmationId: string) => void;
-};
-
-const RISK_LABEL: Record<RiskLevel, string> = {
-  low: "Nizak rizik",
-  medium: "Srednji rizik",
-  high: "Visok rizik — potrebna potvrda",
-  critical: "Kritičan rizik — potrebna potvrda",
 };
 
 function riskClassName(risk: RiskLevel): string {
@@ -45,6 +58,7 @@ export function ConfirmationDialog({
   onReject,
   onCancel,
 }: ConfirmationDialogProps) {
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
   // FAZA S-4 (S30): rate-limit the confirm action. The approve button stays
   // disabled for a short window after the dialog appears so a stray
@@ -67,35 +81,33 @@ export function ConfirmationDialog({
   const isPending = confirmation.status === "pending";
 
   const payload = confirmation.payload || {};
-  const recognizedEntries = Object.entries(payload).filter(([key]) => key in PAYLOAD_FIELD_LABELS);
+  const recognizedEntries = Object.entries(payload).filter(([key]) => PAYLOAD_FIELD_KEYS.includes(key));
   const unrecognizedPayload = Object.fromEntries(
-    Object.entries(payload).filter(([key]) => !(key in PAYLOAD_FIELD_LABELS)),
+    Object.entries(payload).filter(([key]) => !PAYLOAD_FIELD_KEYS.includes(key)),
   );
   const hasUnrecognized = Object.keys(unrecognizedPayload).length > 0;
 
-  // Dynamic confirm label matching the mockup's "Pošalji email" pattern —
-  // falls back to a generic verb for actions this heuristic doesn't cover.
   const confirmLabel = /email|mail/i.test(confirmation.action_name)
-    ? "Pošalji email"
-    : "Pokreni";
+    ? t("confirmation.sendEmail")
+    : t("confirmation.run");
 
   return (
-    <div className="confirmation-overlay" role="dialog" aria-modal="true" aria-label="Ricky predlaže akciju">
+    <div className="confirmation-overlay" role="dialog" aria-modal="true" aria-label={t("confirmation.dialogAria")}>
       <div className="confirmation-dialog">
         <header className="confirmation-header">
           <span className="confirmation-icon">
             <IconWarning className="confirmation-icon-svg" />
           </span>
           <div className="confirmation-title-block">
-            <strong>Ricky želi izvršiti ovu akciju</strong>
-            <small>Pažljivo provjeri detalje prije potvrde.</small>
+            <strong>{t("previews.confirmTitle")}</strong>
+            <small>{t("previews.confirmDefaultSummary")}</small>
           </div>
           <button
             className="confirmation-close"
             onClick={() => confirmation && onCancel(confirmation.id)}
             disabled={!isPending || busy}
-            aria-label="Odbaci potvrdu"
-            title="Odbaci"
+            aria-label={t("confirmation.discardAria")}
+            title={t("confirmation.discard")}
           >
             <IconCancel className="confirmation-icon-svg" />
           </button>
@@ -103,36 +115,36 @@ export function ConfirmationDialog({
 
         <section className="confirmation-body">
           <div className="confirmation-row">
-            <span className="confirmation-label">Akcija</span>
+            <span className="confirmation-label">{t("previews.actionLabel")}</span>
             <span className="confirmation-value">{confirmation.action_name}</span>
           </div>
           {confirmation.summary ? (
             <div className="confirmation-row">
-              <span className="confirmation-label">Sažetak</span>
+              <span className="confirmation-label">{t("confirmation.summary")}</span>
               <span className="confirmation-value">{confirmation.summary}</span>
             </div>
           ) : null}
           {recognizedEntries.map(([key, value]) => (
             <div className="confirmation-row" key={key}>
-              <span className="confirmation-label">{PAYLOAD_FIELD_LABELS[key]}</span>
+              <span className="confirmation-label">{fieldLabel(key)}</span>
               <span className="confirmation-value">{String(value)}</span>
             </div>
           ))}
           <div className="confirmation-row">
-            <span className="confirmation-label">Rizik</span>
+            <span className="confirmation-label">{t("previews.riskLabel")}</span>
             <span className={riskClassName(confirmation.risk_level)}>
-              {RISK_LABEL[confirmation.risk_level]}
+              {riskLabel(confirmation.risk_level)}
             </span>
           </div>
           {confirmation.plan_id ? (
             <div className="confirmation-row">
-              <span className="confirmation-label">Plan</span>
+              <span className="confirmation-label">{t("confirmation.plan")}</span>
               <span className="confirmation-value confirmation-mono">{confirmation.plan_id}</span>
             </div>
           ) : null}
           {hasUnrecognized ? (
             <div className="confirmation-row confirmation-row-payload">
-              <span className="confirmation-label">Detalji</span>
+              <span className="confirmation-label">{t("confirmation.details")}</span>
               <pre className="confirmation-payload">{JSON.stringify(unrecognizedPayload, null, 2)}</pre>
             </div>
           ) : null}
@@ -145,13 +157,13 @@ export function ConfirmationDialog({
             disabled={!isPending || busy}
           >
             <IconCancel className="confirmation-icon-svg" />
-            <span>Otkaži</span>
+            <span>{t("confirmation.cancel")}</span>
           </button>
           <button
             className="confirmation-button confirmation-approve"
             onClick={() => confirmation && onApprove(confirmation.id)}
             disabled={!isPending || busy || !armed}
-            title={!armed ? "Pričekaj trenutak…" : undefined}
+            title={!armed ? t("confirmation.wait") : undefined}
           >
             <IconConfirm className="confirmation-icon-svg" />
             <span>{confirmLabel}</span>

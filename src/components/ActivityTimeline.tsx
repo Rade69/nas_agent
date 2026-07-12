@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { ActivityEvent } from "../lib/voiceState";
 import type { TranscriptEntry } from "../lib/realtime";
 import { categoryForActivity } from "../lib/activityIcons";
@@ -16,6 +17,7 @@ type ActivityRow = {
 };
 
 export function ActivityTimeline({ transcript, activityEvents }: ActivityTimelineProps) {
+  const { t } = useTranslation();
   const rows: ActivityRow[] = [
     ...activityEvents.map((event) => ({
       id: event.id,
@@ -27,6 +29,7 @@ export function ActivityTimeline({ transcript, activityEvents }: ActivityTimelin
     ...transcript.map((entry) => ({
       id: entry.id,
       kind: entry.role,
+      // "Ricky" je brend ime, NE prevoditi (isto pravilo kao svuda u projektu).
       title: entry.role === "ricky" ? "Ricky" : entry.role,
       detail: entry.text,
       at: entry.at,
@@ -37,7 +40,7 @@ export function ActivityTimeline({ transcript, activityEvents }: ActivityTimelin
     <section className="transcript activity-timeline">
       <div className="transcript-list">
         {rows.length === 0 ? (
-          <p className="activity-empty">Još nema aktivnosti.</p>
+          <p className="activity-empty">{t("activity.empty")}</p>
         ) : (
           rows.map((row) => {
             const { Icon, className } = categoryForActivity(row);
@@ -59,7 +62,7 @@ export function ActivityTimeline({ transcript, activityEvents }: ActivityTimelin
         )}
       </div>
       {rows.length > 0 ? (
-        <button className="activity-history-btn" type="button">Prikaži cijelu historiju</button>
+        <button className="activity-history-btn" type="button">{t("previews.showFullHistory")}</button>
       ) : null}
     </section>
   );

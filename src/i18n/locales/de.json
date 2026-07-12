@@ -109,5 +109,77 @@
     "languageSection": "Sprache",
     "dictationLanguage": "Diktatsprache",
     "dictationLanguageHint": "Sprache für die Spracherkennung im Diktat. Gilt ab der nächsten Sprachverbindung."
+  },
+  "dictation": {
+    "badge": "DIKTAT",
+    "processing": "verarbeite...",
+    "autoSave": "automatisch gespeichert",
+    "cancel": "Diktat abbrechen",
+    "placeholder": "Diktierter Text erscheint hier...",
+    "wordCount_one": "{{count}} Wort",
+    "wordCount_other": "{{count}} Wörter",
+    "continueDictating": "Diktat fortsetzen",
+    "continueTitle": "Stimme neu verbinden, falls unterbrochen, und Diktat fortsetzen",
+    "refine": "Bearbeiten",
+    "formalize": "Formalisieren",
+    "shorten": "Kürzen",
+    "proofread": "Rechtschreibung prüfen",
+    "translateEn": "Ins Englische übersetzen",
+    "more": "Mehr",
+    "moreTitle": "Weitere Optionen",
+    "copy": "Text kopieren",
+    "clear": "Alles löschen",
+    "undo": "Rückgängig",
+    "download": "Als .txt herunterladen",
+    "send": "An Agent senden"
+  },
+  "plans": {
+    "stepStatus": {
+      "pending": "Ausstehend",
+      "inProgress": "In Bearbeitung",
+      "completed": "Abgeschlossen",
+      "skipped": "Übersprungen",
+      "failed": "Fehlgeschlagen"
+    },
+    "status": {
+      "active": "AKTIV",
+      "pending": "AUSSTEHEND",
+      "completed": "ABGESCHLOSSEN",
+      "cancelled": "ABGEBROCHEN",
+      "rejected": "ABGELEHNT"
+    },
+    "empty": "Keine Pläne in dieser Kategorie.",
+    "advanceTo": "Verschieben nach: {{status}}",
+    "approve": "Plan genehmigen",
+    "run": "Starten",
+    "complete": "Als abgeschlossen markieren",
+    "reject": "Ablehnen"
+  },
+  "activity": {
+    "empty": "Noch keine Aktivität."
+  },
+  "confirmation": {
+    "field": {
+      "to": "An",
+      "subject": "Betreff",
+      "content": "Inhalt",
+      "app": "Anwendung"
+    },
+    "risk": {
+      "low": "Niedriges Risiko",
+      "medium": "Mittleres Risiko",
+      "high": "Hohes Risiko — Bestätigung erforderlich",
+      "critical": "Kritisches Risiko — Bestätigung erforderlich"
+    },
+    "summary": "Zusammenfassung",
+    "plan": "Plan",
+    "details": "Details",
+    "cancel": "Abbrechen",
+    "sendEmail": "E-Mail senden",
+    "run": "Starten",
+    "discardAria": "Bestätigung verwerfen",
+    "discard": "Verwerfen",
+    "dialogAria": "Ricky schlägt eine Aktion vor",
+    "wait": "Einen Moment warten…"
   }
 }

@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import i18n from "../i18n";
 import type { Plan, PlanStatus, PlanStep, PlanStepStatus } from "../vite-env";
 import IconSuccess from "../../assets/brending/icons/status/icon-status-success.svg?react";
 import IconRunning from "../../assets/brending/icons/status/icon-status-running.svg?react";
@@ -23,13 +25,18 @@ const STEP_STATUS_NEXT: Record<PlanStepStatus, PlanStepStatus | null> = {
   failed: "pending",
 };
 
-const STEP_STATUS_LABEL: Record<PlanStepStatus, string> = {
-  pending: "Na čekanju",
-  in_progress: "U toku",
-  completed: "Završeno",
-  skipped: "Preskočeno",
-  failed: "Neuspješno",
-};
+// Plain function van React stabla — koristi i18n.t() direktno (isti pattern
+// kao voiceStateLabel() i planStatusLabel() iz PR-1).
+function stepStatusLabel(status: PlanStepStatus): string {
+  const map: Record<PlanStepStatus, string> = {
+    pending: "plans.stepStatus.pending",
+    in_progress: "plans.stepStatus.inProgress",
+    completed: "plans.stepStatus.completed",
+    skipped: "plans.stepStatus.skipped",
+    failed: "plans.stepStatus.failed",
+  };
+  return i18n.t(map[status]);
+}
 
 // Matches assets/GUI-SETS/GUI-SET-5.png "Plans Drawer" — three tabs
 // grouping the backend's finer-grained PlanStatus values.
@@ -41,17 +48,31 @@ const TAB_STATUSES: Record<PlanTab, PlanStatus[]> = {
   zavrseni: ["completed", "rejected", "cancelled"],
 };
 
-const TAB_LABEL: Record<PlanTab, string> = {
-  aktivni: "Aktivni",
-  predlozeni: "Predloženi",
-  zavrseni: "Završeni",
-};
+// Reuse previews.tabActive / previews.tabProposed / previews.tabCompleted —
+// identičan tekst kao Previews.tsx PlansDrawerPreview, jedan izvor istine.
+function tabLabel(tab: PlanTab): string {
+  const map: Record<PlanTab, string> = {
+    aktivni: "previews.tabActive",
+    predlozeni: "previews.tabProposed",
+    zavrseni: "previews.tabCompleted",
+  };
+  return i18n.t(map[tab]);
+}
 
+// plans.status.* — NAMJERNO zaseban namespace od planStatus.* (Previews.tsx).
+// Tekst je bio drugačiji i prije i18n-a (npr. "ZAVRŠEN" vs "ZAVRŠENO"), plus
+// PlansPanel ima peti status "ODBAČENO" koji Previews nema. Vjerno prevedeno
+// onakvo kakvo jeste — ne "ispravljati" postojeću nekonzistentnost usput.
+// Context: docs/PI_TASK_GUI_LOCALIZATION_PR2_BRIEF.md
 function statusBadge(status: PlanStatus): { label: string; className: string } {
-  if (status === "approved" || status === "running") return { label: "AKTIVAN", className: "plan-badge-active" };
-  if (status === "draft" || status === "proposed") return { label: "NA ČEKANJU", className: "plan-badge-pending" };
-  if (status === "completed") return { label: "ZAVRŠENO", className: "plan-badge-done" };
-  return { label: status === "cancelled" ? "OTKAZANO" : "ODBAČENO", className: "plan-badge-rejected" };
+  if (status === "approved" || status === "running") return { label: i18n.t("plans.status.active"), className: "plan-badge-active" };
+  if (status === "draft" || status === "proposed") return { label: i18n.t("plans.status.pending"), className: "plan-badge-pending" };
+  if (status === "completed") return { label: i18n.t("plans.status.completed"), className: "plan-badge-done" };
+  // Original: "OTKAZANO" : "ODBAČENO"
+  return {
+    label: status === "cancelled" ? i18n.t("plans.status.cancelled") : i18n.t("plans.status.rejected"),
+    className: "plan-badge-rejected",
+  };
 }
 
 function statusIcon(status: PlanStatus) {
@@ -73,6 +94,7 @@ export function PlansPanel({
   onUpdateStepStatus,
   onCreatePlan,
 }: PlansPanelProps) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<PlanTab>("aktivni");
   if (!visible) return null;
 
@@ -81,20 +103,20 @@ export function PlansPanel({
   return (
     <section className="plans-panel" aria-label="Ricky plans and proposals">
       <div className="plans-tabs">
-        {(Object.keys(TAB_LABEL) as PlanTab[]).map((t) => (
+        {(Object.keys(TAB_STATUSES) as PlanTab[]).map((planTab) => (
           <button
-            key={t}
-            className={`plans-tab${tab === t ? " active" : ""}`}
-            onClick={() => setTab(t)}
+            key={planTab}
+            className={`plans-tab${tab === planTab ? " active" : ""}`}
+            onClick={() => setTab(planTab)}
           >
-            {TAB_LABEL[t]}
+            {tabLabel(planTab)}
           </button>
         ))}
       </div>
 
       <div className="plans-list">
         {filteredPlans.length === 0 ? (
-          <p className="plans-empty">Nema planova u ovoj kategoriji.</p>
+          <p className="plans-empty">{t("plans.empty")}</p>
         ) : (
           filteredPlans.map((plan) => {
             const badge = statusBadge(plan.status);
@@ -121,13 +143,13 @@ export function PlansPanel({
                         <li key={step.id} className={`plan-step plan-step-${step.status}`}>
                           <span className="plan-step-index">{step.step_index + 1}</span>
                           <span className="plan-step-title">{step.title}</span>
-                          <span className="plan-step-status">{STEP_STATUS_LABEL[step.status]}</span>
+                          <span className="plan-step-status">{stepStatusLabel(step.status)}</span>
                           {next ? (
                             <button
                               className="plan-step-advance"
                               onClick={() => onUpdateStepStatus(plan.id, step.id, next)}
                               disabled={stepBusy}
-                              title={`Pomjeri na: ${STEP_STATUS_LABEL[next]}`}
+                              title={t("plans.advanceTo", { status: stepStatusLabel(next) })}
                             >
                               <Check size={12} />
                             </button>
@@ -145,7 +167,7 @@ export function PlansPanel({
                       onClick={() => onUpdatePlanStatus(plan.id, "approved")}
                       disabled={busyPlanId === plan.id}
                     >
-                      Odobri plan
+                      {t("plans.approve")}
                     </button>
                   ) : null}
                   {plan.status === "approved" ? (
@@ -154,7 +176,7 @@ export function PlansPanel({
                       onClick={() => onUpdatePlanStatus(plan.id, "running")}
                       disabled={busyPlanId === plan.id}
                     >
-                      Pokreni
+                      {t("plans.run")}
                     </button>
                   ) : null}
                   {plan.status === "running" ? (
@@ -163,7 +185,7 @@ export function PlansPanel({
                       onClick={() => onUpdatePlanStatus(plan.id, "completed")}
                       disabled={busyPlanId === plan.id}
                     >
-                      Označi završenim
+                      {t("plans.complete")}
                     </button>
                   ) : null}
                   {plan.status !== "completed" && plan.status !== "rejected" && plan.status !== "cancelled" ? (
@@ -172,7 +194,7 @@ export function PlansPanel({
                       onClick={() => onUpdatePlanStatus(plan.id, "rejected")}
                       disabled={busyPlanId === plan.id}
                     >
-                      Odbaci
+                      {t("plans.reject")}
                     </button>
                   ) : null}
                 </footer>
@@ -183,7 +205,7 @@ export function PlansPanel({
       </div>
 
       <button className="plans-new-btn" onClick={onCreatePlan}>
-        Novi plan
+        {t("previews.newPlan")}
       </button>
     </section>
   );

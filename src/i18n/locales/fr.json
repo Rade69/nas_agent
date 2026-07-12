@@ -109,5 +109,77 @@
     "languageSection": "Langue",
     "dictationLanguage": "Langue de dictée",
     "dictationLanguageHint": "Langue pour la reconnaissance vocale en Dictée. S'applique à la prochaine connexion vocale."
+  },
+  "dictation": {
+    "badge": "DICTÉE",
+    "processing": "traitement...",
+    "autoSave": "sauvegarde automatique activée",
+    "cancel": "Annuler la dictée",
+    "placeholder": "Le texte dicté apparaîtra ici...",
+    "wordCount_one": "{{count}} mot",
+    "wordCount_other": "{{count}} mots",
+    "continueDictating": "Continuer la dictée",
+    "continueTitle": "Reconnecte la voix si interrompue et continue la dictée",
+    "refine": "Affiner",
+    "formalize": "Formaliser",
+    "shorten": "Raccourcir",
+    "proofread": "Vérifier l'orthographe",
+    "translateEn": "Traduire en anglais",
+    "more": "Plus",
+    "moreTitle": "Plus d'options",
+    "copy": "Copier le texte",
+    "clear": "Tout effacer",
+    "undo": "Annuler",
+    "download": "Télécharger en .txt",
+    "send": "Envoyer à l'agent"
+  },
+  "plans": {
+    "stepStatus": {
+      "pending": "En attente",
+      "inProgress": "En cours",
+      "completed": "Terminé",
+      "skipped": "Ignoré",
+      "failed": "Échoué"
+    },
+    "status": {
+      "active": "ACTIF",
+      "pending": "EN ATTENTE",
+      "completed": "TERMINÉ",
+      "cancelled": "ANNULÉ",
+      "rejected": "REJETÉ"
+    },
+    "empty": "Aucun plan dans cette catégorie.",
+    "advanceTo": "Déplacer vers : {{status}}",
+    "approve": "Approuver le plan",
+    "run": "Exécuter",
+    "complete": "Marquer comme terminé",
+    "reject": "Rejeter"
+  },
+  "activity": {
+    "empty": "Pas encore d'activité."
+  },
+  "confirmation": {
+    "field": {
+      "to": "À",
+      "subject": "Objet",
+      "content": "Contenu",
+      "app": "Application"
+    },
+    "risk": {
+      "low": "Risque faible",
+      "medium": "Risque moyen",
+      "high": "Risque élevé — confirmation requise",
+      "critical": "Risque critique — confirmation requise"
+    },
+    "summary": "Résumé",
+    "plan": "Plan",
+    "details": "Détails",
+    "cancel": "Annuler",
+    "sendEmail": "Envoyer l'e-mail",
+    "run": "Exécuter",
+    "discardAria": "Rejeter la confirmation",
+    "discard": "Rejeter",
+    "dialogAria": "Ricky propose une action",
+    "wait": "Attends un instant…"
   }
 }

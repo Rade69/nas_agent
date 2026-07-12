@@ -109,5 +109,77 @@
     "languageSection": "Language",
     "dictationLanguage": "Dictation language",
     "dictationLanguageHint": "Language for speech recognition in Dictation. Applies on the next voice connection."
+  },
+  "dictation": {
+    "badge": "DICTATION",
+    "processing": "processing...",
+    "autoSave": "auto-save on",
+    "cancel": "Cancel dictation",
+    "placeholder": "Dictated text will appear here...",
+    "wordCount_one": "{{count}} word",
+    "wordCount_other": "{{count}} words",
+    "continueDictating": "Continue dictating",
+    "continueTitle": "Reconnect voice if interrupted and continue dictating",
+    "refine": "Refine",
+    "formalize": "Formalize",
+    "shorten": "Shorten",
+    "proofread": "Proofread",
+    "translateEn": "Translate to English",
+    "more": "More",
+    "moreTitle": "More options",
+    "copy": "Copy text",
+    "clear": "Clear all",
+    "undo": "Undo",
+    "download": "Download as .txt",
+    "send": "Send to agent"
+  },
+  "plans": {
+    "stepStatus": {
+      "pending": "Pending",
+      "inProgress": "In progress",
+      "completed": "Completed",
+      "skipped": "Skipped",
+      "failed": "Failed"
+    },
+    "status": {
+      "active": "ACTIVE",
+      "pending": "PENDING",
+      "completed": "COMPLETED",
+      "cancelled": "CANCELLED",
+      "rejected": "REJECTED"
+    },
+    "empty": "No plans in this category.",
+    "advanceTo": "Move to: {{status}}",
+    "approve": "Approve plan",
+    "run": "Run",
+    "complete": "Mark completed",
+    "reject": "Reject"
+  },
+  "activity": {
+    "empty": "No activity yet."
+  },
+  "confirmation": {
+    "field": {
+      "to": "To",
+      "subject": "Subject",
+      "content": "Content",
+      "app": "Application"
+    },
+    "risk": {
+      "low": "Low risk",
+      "medium": "Medium risk",
+      "high": "High risk — confirmation required",
+      "critical": "Critical risk — confirmation required"
+    },
+    "summary": "Summary",
+    "plan": "Plan",
+    "details": "Details",
+    "cancel": "Cancel",
+    "sendEmail": "Send email",
+    "run": "Run",
+    "discardAria": "Discard confirmation",
+    "discard": "Discard",
+    "dialogAria": "Ricky proposes an action",
+    "wait": "Wait a moment…"
   }
 }
