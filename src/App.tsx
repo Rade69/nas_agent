@@ -234,6 +234,11 @@ export default function App() {
       try {
         const response = await window.ricky.listEvents(cursor ?? undefined);
         if (cancelled) return;
+        // This call already doubles as the backend health check (the
+        // previous separate pollHealth() made an identical, redundant
+        // listEvents() request every 3s just to check connectivity — three
+        // HTTP requests per poll cycle instead of two).
+        setBackendConnected(true);
         const events: BackendEvent[] = response?.events ?? [];
         if (response?.next_cursor) cursor = response.next_cursor;
         const replayingHistory = isFirstPoll;
@@ -258,27 +263,17 @@ export default function App() {
             if (replayingHistory) continue;
             addActivityEvent(createActivityEvent("tool", event.title || event.type, event.type));
           } else if (event.type === "backend.ready") {
-            setBackendConnected(true);
             if (replayingHistory) continue;
             addActivityEvent(createActivityEvent("status", "Backend spreman", "Python backend povezan"));
           }
         }
       } catch {
-        /* polling stays silent */
-      }
-    }
-
-    async function pollHealth() {
-      try {
-        await window.ricky.listEvents();
-        setBackendConnected(true);
-      } catch {
-        setBackendConnected(false);
+        if (!cancelled) setBackendConnected(false);
       }
     }
 
     async function pollAll() {
-      await Promise.allSettled([refreshPending(), pollEvents(), pollHealth()]);
+      await Promise.allSettled([refreshPending(), pollEvents()]);
     }
 
     void pollAll();

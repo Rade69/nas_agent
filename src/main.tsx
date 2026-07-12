@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";
 import { CompanionOrb } from "./components/CompanionOrb";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./i18n";
 import "./styles.css";
 
@@ -15,6 +16,6 @@ const view = params.get("view");
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    {view === "companion" ? <CompanionOrb /> : <App />}
+    <ErrorBoundary>{view === "companion" ? <CompanionOrb /> : <App />}</ErrorBoundary>
   </React.StrictMode>,
 );
