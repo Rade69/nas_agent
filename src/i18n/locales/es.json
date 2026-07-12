@@ -181,5 +181,15 @@
     "discard": "Descartar",
     "dialogAria": "Ricky propone una acción",
     "wait": "Espera un momento…"
+  },
+  "screenshots": {
+    "loading": "Cargando capturas de pantalla...",
+    "loadError": "Error al cargar las capturas de pantalla.",
+    "deleteAll": "Eliminar todo",
+    "deleting": "Eliminando...",
+    "confirmDeleteAll": "¿Eliminar todas las capturas de pantalla? Esto no se puede deshacer.",
+    "retentionNote": "Las capturas de pantalla se eliminan automáticamente después de 30 días.",
+    "sentToModel": "Enviado al modelo",
+    "localOnly": "Solo local"
   }
 }

@@ -998,6 +998,56 @@
   color: #ff8197;
 }
 
+/* Screenshots gallery ("Snimci ekrana" drawer) — was a static "no
+   screenshots" placeholder with zero UI visibility into what actually
+   accumulates on disk. Context: agent_reports/2026-07-12_screenshot-privacy.md */
+.pixel-screenshots-gallery {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pixel-screenshots-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pixel-screenshots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.pixel-screenshot-item {
+  margin: 0;
+  border: 1px solid rgba(80, 135, 190, 0.18);
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(8, 17, 31, 0.76);
+}
+
+.pixel-screenshot-item img {
+  display: block;
+  width: 100%;
+  height: 90px;
+  object-fit: cover;
+}
+
+.pixel-screenshot-item figcaption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  font-size: 10px;
+  color: #8fa0b5;
+}
+
+.pixel-screenshot-badge {
+  color: #6b7d92;
+}
+
 /* FAZA S-4: kill-switch on-screen confirmation banner. Fixed, top-center, high
    z-index so it is unmistakable even outside an active voice session. */
 .kill-switch-flash {

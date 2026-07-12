@@ -18,6 +18,10 @@ contextBridge.exposeInMainWorld("ricky", {
   // Dictation Mode "Doradi" menu. Context:
   // agent_reports/2026-07-11_dictation-rewrite-menu.md
   rewriteText: (payload) => ipcRenderer.invoke("text:rewrite", payload),
+  // Screenshot gallery/retention. Context:
+  // agent_reports/2026-07-12_screenshot-privacy.md
+  listScreenshots: () => ipcRenderer.invoke("screenshots:list"),
+  deleteAllScreenshots: () => ipcRenderer.invoke("screenshots:delete-all"),
   // App
   quitApp: () => ipcRenderer.invoke("app:quit"),
   minimizeApp: () => ipcRenderer.invoke("app:minimize"),

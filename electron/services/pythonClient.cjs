@@ -211,6 +211,18 @@ async function rewriteText(payload, options = {}) {
   });
 }
 
+// Screenshot gallery/retention (agent_reports/2026-07-12_screenshot-privacy.md).
+async function listScreenshots(options = {}) {
+  return await requestJson("/screenshots", options);
+}
+
+async function deleteAllScreenshots(options = {}) {
+  return await requestJson("/screenshots", {
+    ...options,
+    method: "DELETE",
+  });
+}
+
 module.exports = {
   DEFAULT_BACKEND_URL,
   approveConfirmation,
@@ -227,6 +239,8 @@ module.exports = {
   listEvents,
   listPlans,
   listPendingConfirmations,
+  listScreenshots,
+  deleteAllScreenshots,
   listTools,
   normalizeBaseUrl,
   rejectConfirmation,

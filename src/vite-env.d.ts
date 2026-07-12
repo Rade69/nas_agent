@@ -112,6 +112,15 @@ export type UserSettings = {
 // TextRewriteOperation. Context: agent_reports/2026-07-11_dictation-rewrite-menu.md
 export type TextRewriteOperation = "formalize" | "shorten" | "proofread" | "translate_en";
 
+// Screenshot gallery/retention — mirrors python_backend/app/schemas/screenshot.py.
+// Context: agent_reports/2026-07-12_screenshot-privacy.md
+export type Screenshot = {
+  id: string;
+  filePath: string;
+  createdAt: string;
+  sentToModel: boolean;
+};
+
 export type Plan = {
   id: string;
   title: string;
@@ -144,6 +153,8 @@ declare global {
       getSettings: () => Promise<UserSettings>;
       updateSettings: (payload: Partial<UserSettings>) => Promise<UserSettings>;
       rewriteText: (payload: { text: string; operation: TextRewriteOperation }) => Promise<{ text: string }>;
+      listScreenshots: () => Promise<{ screenshots: Screenshot[] }>;
+      deleteAllScreenshots: () => Promise<{ ok: boolean; deletedCount: number }>;
       quitApp: () => Promise<void>;
       minimizeApp: () => Promise<void>;
       toggleMaximizeApp: () => Promise<void>;

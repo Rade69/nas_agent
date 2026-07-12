@@ -41,7 +41,7 @@ Raditi fazu po fazu iz [docs/MIGRATION_PLAN.md](./docs/MIGRATION_PLAN.md), jedna
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **nas_agent** (5135 symbols, 7753 relationships, 134 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **nas_agent** (5143 symbols, 7755 relationships, 134 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

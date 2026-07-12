@@ -181,5 +181,15 @@
     "discard": "Verwerfen",
     "dialogAria": "Ricky schlägt eine Aktion vor",
     "wait": "Einen Moment warten…"
+  },
+  "screenshots": {
+    "loading": "Bildschirmaufnahmen werden geladen...",
+    "loadError": "Fehler beim Laden der Bildschirmaufnahmen.",
+    "deleteAll": "Alle löschen",
+    "deleting": "Lösche...",
+    "confirmDeleteAll": "Alle Bildschirmaufnahmen löschen? Dies kann nicht rückgängig gemacht werden.",
+    "retentionNote": "Bildschirmaufnahmen werden nach 30 Tagen automatisch gelöscht.",
+    "sentToModel": "An Modell gesendet",
+    "localOnly": "Nur lokal"
   }
 }

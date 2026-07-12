@@ -127,6 +127,22 @@ SCHEMA_STATEMENTS = [
         conversation_id TEXT
     )
     """,
+    # Screenshot retention/privacy tracking (agent_reports/2026-07-12_screenshot-privacy.md,
+    # from FABLE-5 GUI review finding #3). screen_snapshot's own tool response
+    # already returns an ephemeral inline artifact for immediate display in the
+    # Artifact panel — this table is the separate, persistent record needed for
+    # the "Snimci ekrana" gallery, retention cleanup, and delete-all. sent_to_model
+    # is always 0 today (no vision/image API call exists anywhere in this codebase
+    # yet — verified, not assumed); the column exists so the day that changes, the
+    # audit trail doesn't need a schema migration.
+    """
+    CREATE TABLE IF NOT EXISTS screenshots (
+        id TEXT PRIMARY KEY,
+        file_path TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        sent_to_model INTEGER NOT NULL DEFAULT 0
+    )
+    """,
     # FAZA 11: memory tool storage (notes + records migrated from Electron JSON db).
     """
     CREATE TABLE IF NOT EXISTS notes (

@@ -108,6 +108,7 @@ const {
 const { handleEventsList } = require("./ipc_handlers/events.cjs");
 const { handleSettingsGet, handleSettingsUpdate } = require("./ipc_handlers/settings.cjs");
 const { handleTextRewrite } = require("./ipc_handlers/text.cjs");
+const { handleScreenshotsList, handleScreenshotsDeleteAll } = require("./ipc_handlers/screenshots.cjs");
 const {
   handlePlansList,
   handlePlanCreate,
@@ -620,6 +621,8 @@ registerIpcHandlers({
   "settings:get": handleSettingsGet,
   "settings:update": handleSettingsUpdate,
   "text:rewrite": handleTextRewrite,
+  "screenshots:list": handleScreenshotsList,
+  "screenshots:delete-all": handleScreenshotsDeleteAll,
   // FAZA 9: confirmations + plans IPC channels (allowlist entries).
   "confirmations:list": handleConfirmationsList,
   "confirmations:pending": handleConfirmationsPending,

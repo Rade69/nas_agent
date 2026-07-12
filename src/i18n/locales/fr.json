@@ -181,5 +181,15 @@
     "discard": "Rejeter",
     "dialogAria": "Ricky propose une action",
     "wait": "Attends un instant…"
+  },
+  "screenshots": {
+    "loading": "Chargement des captures d'écran...",
+    "loadError": "Erreur lors du chargement des captures d'écran.",
+    "deleteAll": "Tout supprimer",
+    "deleting": "Suppression...",
+    "confirmDeleteAll": "Supprimer toutes les captures d'écran ? Cette action est irréversible.",
+    "retentionNote": "Les captures d'écran sont automatiquement supprimées après 30 jours.",
+    "sentToModel": "Envoyé au modèle",
+    "localOnly": "Local uniquement"
   }
 }

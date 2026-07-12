@@ -11,6 +11,7 @@ import { IdleScreen } from "./IdleScreen";
 import { Drawer } from "./Drawer";
 import { DictationScreen } from "./DictationScreen";
 import { SettingsPanel } from "./SettingsPanel";
+import { ScreenshotsGallery } from "./ScreenshotsGallery";
 import { ConfirmationPreview, ActivityDrawerPreview, PlansDrawerPreview } from "./Previews";
 import type { ActivityEvent, TranscriptEntry, VoiceState } from "../../lib/realtime";
 import type { Confirmation, Plan, TextRewriteOperation } from "../../vite-env";
@@ -190,7 +191,7 @@ export function PixelMockupBoard({
                     />
                   ) : null}
                   {activeDrawer === "memory" ? <p className="drawer-placeholder-text">{t("dashboard.noMemory")}</p> : null}
-                  {activeDrawer === "screens" ? <p className="drawer-placeholder-text">{t("dashboard.noScreenshots")}</p> : null}
+                  {activeDrawer === "screens" ? <ScreenshotsGallery /> : null}
                   {activeDrawer === "settings" ? <SettingsPanel /> : null}
                 </Drawer>
               ) : null}

@@ -181,5 +181,15 @@
     "discard": "Discard",
     "dialogAria": "Ricky proposes an action",
     "wait": "Wait a moment…"
+  },
+  "screenshots": {
+    "loading": "Loading screenshots...",
+    "loadError": "Error loading screenshots.",
+    "deleteAll": "Delete all",
+    "deleting": "Deleting...",
+    "confirmDeleteAll": "Delete all screenshots? This can't be undone.",
+    "retentionNote": "Screenshots are automatically deleted after 30 days.",
+    "sentToModel": "Sent to model",
+    "localOnly": "Local only"
   }
 }

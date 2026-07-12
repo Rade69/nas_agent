@@ -18,7 +18,7 @@ def register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) -> 
     notes_handlers = make_notes_handlers(services["notes"])
     records_handlers = make_records_handlers(services["records"])
     artifact_handlers = make_artifact_handlers(services["artifact"])
-    screenshot_handlers = make_screenshot_handlers(services["screenshots_dir"])
+    screenshot_handlers = make_screenshot_handlers(services["screenshots_dir"], services.get("screenshot_service"))
     ui_inspect_handlers = make_ui_inspect_handlers()
     web_handlers = make_web_handlers(services["exa_client"])
     image_handlers = make_image_handlers(services["openai_image_client"], services["images_dir"])

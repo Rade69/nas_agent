@@ -181,5 +181,15 @@
     "discard": "Odbaci",
     "dialogAria": "Ricky predlaže akciju",
     "wait": "Pričekaj trenutak…"
+  },
+  "screenshots": {
+    "loading": "Učitavam snimke ekrana...",
+    "loadError": "Greška pri učitavanju snimaka.",
+    "deleteAll": "Obriši sve",
+    "deleting": "Brišem...",
+    "confirmDeleteAll": "Obrisati sve snimke ekrana? Ovo se ne može poništiti.",
+    "retentionNote": "Snimci se automatski brišu nakon 30 dana.",
+    "sentToModel": "Poslano modelu",
+    "localOnly": "Lokalno"
   }
 }

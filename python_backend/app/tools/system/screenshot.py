@@ -16,8 +16,10 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from app.services.screenshot_service import ScreenshotService
 
-def make_handlers(screenshots_dir: Path) -> dict[str, Any]:
+
+def make_handlers(screenshots_dir: Path, screenshot_service: ScreenshotService | None = None) -> dict[str, Any]:
     def screen_snapshot(arguments: dict[str, Any]) -> dict[str, Any]:
         # Local import keeps the tool module importable on non-Windows for tests
         # (the handler only fails when actually invoked without Pillow).
@@ -46,6 +48,13 @@ def make_handlers(screenshots_dir: Path) -> dict[str, Any]:
         else:
             image = ImageGrab.grab()
             image.save(screenshot_path, "PNG")
+
+        # Persistent record for the "Snimci ekrana" gallery + retention
+        # cleanup (agent_reports/2026-07-12_screenshot-privacy.md) — separate
+        # from the ephemeral `artifact` field below, which only exists for
+        # this one response and is never written to the DB.
+        if screenshot_service is not None:
+            screenshot_service.record(str(screenshot_path))
 
         # Return a path relative to the repo root for the UI to resolve, plus
         # the absolute path for backend logging.

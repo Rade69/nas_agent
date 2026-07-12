@@ -12,6 +12,7 @@ from app.api.events import router as events_router
 from app.api.health import router as health_router
 from app.api.plans import router as plans_router
 from app.api.realtime import router as realtime_router
+from app.api.screenshots import router as screenshots_router
 from app.api.security import router as security_router
 from app.api.settings import router as settings_router
 from app.api.text import router as text_router
@@ -29,6 +30,7 @@ from app.services.notes_service import NotesService
 from app.services.openai_image_client import OpenAIImageClient
 from app.services.plan_service import PlanService
 from app.services.records_service import RecordsService
+from app.services.screenshot_service import ScreenshotService
 from app.services.settings_service import SettingsService
 from app.storage.db import initialize_database
 from app.storage.repositories.agent_repo import AgentConversationRepository
@@ -38,6 +40,7 @@ from app.storage.repositories.event_repo import EventRepository
 from app.storage.repositories.notes_repo import NotesRepository
 from app.storage.repositories.plan_repo import PlanRepository
 from app.storage.repositories.records_repo import RecordsRepository
+from app.storage.repositories.screenshot_repo import ScreenshotRepository
 from app.storage.repositories.settings_repo import SettingsRepository
 from app.storage.repositories.tool_run_repo import ToolRunRepository
 
@@ -86,11 +89,18 @@ def create_app() -> FastAPI:
     app.state.artifact_service = ArtifactService(
         ArtifactRepository(settings.database_path), event_bus=event_bus
     )
+    # Screenshot retention/privacy (agent_reports/2026-07-12_screenshot-privacy.md,
+    # FABLE-5 GUI review finding #3). Cleanup runs once here at startup (files
+    # don't wait for someone to open the "Snimci ekrana" tab) and again lazily
+    # on every GET /screenshots (see ScreenshotService.list()).
+    app.state.screenshot_service = ScreenshotService(ScreenshotRepository(settings.database_path))
+    app.state.screenshot_service.cleanup_expired()
     phase11_services = {
         "notes": app.state.notes_service,
         "records": app.state.records_service,
         "artifact": app.state.artifact_service,
         "screenshots_dir": settings.data_dir / "screenshots",
+        "screenshot_service": app.state.screenshot_service,
         "event_bus": event_bus,
         # FAZA 16: OpenAI/Exa/image integrations now live in the Python backend.
         "exa_client": ExaClient(settings.exa_api_key),
@@ -137,6 +147,7 @@ def create_app() -> FastAPI:
     app.include_router(security_router)
     app.include_router(settings_router)
     app.include_router(text_router)
+    app.include_router(screenshots_router)
     return app
 
 
