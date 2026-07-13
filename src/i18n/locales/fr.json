@@ -248,6 +248,9 @@
     "restoreTitle": "Restaurer la fenêtre principale",
     "restore": "Restaurer",
     "stageAria": "Mode ordinateur {{state}}",
-    "computerMode": "Mode ordinateur"
+    "computerMode": "Mode ordinateur",
+    "confirmNeeded": "Confirmation requise",
+    "reject": "Rejeter",
+    "approve": "Approuver"
   }
 }

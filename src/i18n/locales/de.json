@@ -248,6 +248,9 @@
     "restoreTitle": "Hauptfenster wiederherstellen",
     "restore": "Wiederherstellen",
     "stageAria": "Computermodus {{state}}",
-    "computerMode": "Computermodus"
+    "computerMode": "Computermodus",
+    "confirmNeeded": "Bestätigung erforderlich",
+    "reject": "Ablehnen",
+    "approve": "Bestätigen"
   }
 }

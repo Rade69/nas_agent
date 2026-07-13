@@ -248,6 +248,9 @@
     "restoreTitle": "Vrati glavni prozor",
     "restore": "Vrati",
     "stageAria": "Računarski režim {{state}}",
-    "computerMode": "Računarski režim"
+    "computerMode": "Računarski režim",
+    "confirmNeeded": "Potrebna potvrda",
+    "reject": "Odbij",
+    "approve": "Odobri"
   }
 }

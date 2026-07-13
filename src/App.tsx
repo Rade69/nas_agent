@@ -601,6 +601,10 @@ export default function App() {
         onRestore={() => {
           void switchMode("display");
         }}
+        pendingConfirmation={pendingConfirmation}
+        confirmationBusy={confirmationBusy}
+        onApproveConfirmation={handleApproveConfirmation}
+        onRejectConfirmation={handleRejectConfirmation}
       />
     );
   }

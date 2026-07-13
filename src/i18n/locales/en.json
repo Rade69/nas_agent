@@ -248,6 +248,9 @@
     "restoreTitle": "Restore main window",
     "restore": "Restore",
     "stageAria": "Computer Mode {{state}}",
-    "computerMode": "Computer Mode"
+    "computerMode": "Computer Mode",
+    "confirmNeeded": "Confirmation needed",
+    "reject": "Reject",
+    "approve": "Approve"
   }
 }
