@@ -1,3 +1,8 @@
+/* VoiceTopBar / BottomVoiceBar styling, from the pre-pixel-redesign UI.
+   Neither component is imported in the current App.tsx (superseded by
+   pixel/TopBar.tsx + pixel/IdleScreen.tsx) — kept in the cascade but not
+   applied to the current UI. */
+
 .voice-top-bar {
   display: grid;
   grid-template-columns: auto auto minmax(0, 1fr) 34px;

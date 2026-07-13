@@ -1,3 +1,8 @@
+/* Responsive breakpoints for the pixel dashboard (12-pixel-board.css) —
+   narrower-viewport tweaks beyond the 1024px block already inline at the
+   top of that file. Last import in styles.css so these overrides win the
+   cascade. */
+
 @media (max-width: 1366px) {
   .pixel-mockup-board {
     grid-template-rows: minmax(0, 59fr) minmax(0, 41fr);

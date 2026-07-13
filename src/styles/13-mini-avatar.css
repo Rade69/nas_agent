@@ -1,3 +1,9 @@
+/* MiniComputerWindow styling (src/components/pixel/MiniComputerWindow.tsx)
+   — compact avatar view rendered when App.tsx is loaded with `?window=mini`
+   (RickyMode "computer"), restorable back to the full dashboard. Separate
+   from the CompanionOrb BrowserWindow, which uses `?view=companion`
+   (07-companion-orb.css). */
+
 .mini-computer-window {
   width: 100vw;
   height: 100vh;

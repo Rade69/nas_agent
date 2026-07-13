@@ -1,3 +1,10 @@
+/* FAZA 19+ dark premium voice-first shell — CSS custom properties
+   (--bg-root, --primary, etc.) plus layout for VoiceTopBar/BottomVoiceBar/
+   RickyFace. None of those components are mounted in the current App.tsx
+   (superseded by the pixel/ redesign), and the pixel stylesheets (11, 12)
+   don't reference these custom properties — kept in the cascade but not
+   load-bearing for the current UI. */
+
 .confirmation-icon-svg {
   width: 18px;
   height: 18px;

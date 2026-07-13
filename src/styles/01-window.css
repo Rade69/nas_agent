@@ -1,3 +1,9 @@
+/* Legacy 2-column app-shell layout + window drag strip, from the
+   pre-pixel-redesign UI. `.app-shell`/`.window-drag-strip` are not
+   referenced by any currently-mounted component (App.tsx uses
+   `pixel-app-shell` from 11-pixel-shell.css instead) — kept in the cascade
+   but not applied to the current UI. */
+
 .app-shell {
   display: grid;
   grid-template-columns: 1fr 1fr;

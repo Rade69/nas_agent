@@ -1,4 +1,11 @@
 
+/* Pixel dashboard board — the six always-visible mockup regions (Idle,
+   Dictation, Confirmation, Activity, Plans, Footer) rendered by
+   PixelMockupBoard.tsx, plus dictation/confirmation/activity/plans section
+   styling and dropdown menus. Companion to 11-pixel-shell.css (TopBar/
+   Sidebar/window chrome) — together they're the active current-UI stylesheet
+   pair, unlike 04/08 (dead pre-redesign CSS) further up the cascade. */
+
 @media (max-width: 1024px) {
   .pixel-app-shell {
     padding: 14px;

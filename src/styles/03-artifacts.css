@@ -1,3 +1,7 @@
+/* ArtifactPanel styling (src/components/ArtifactPanel.tsx, mounted in
+   App.tsx) — `.artifact-panel`/`.artifact-header`/`.artifact-tab` etc. are
+   live. `.transcript` below is a leftover overlay style from an earlier
+   design and isn't referenced by any current component. */
 
 .transcript {
   position: absolute;

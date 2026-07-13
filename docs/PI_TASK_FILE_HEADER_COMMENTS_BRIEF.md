@@ -9,6 +9,15 @@ sekcija, "File header komentar" stavka) i važi ubuduće za nove/značajno
 mijenjane fajlove. Ovaj brief je jednokratni retroaktivni prolaz kroz sve
 postojeće fajlove koji header još nemaju.
 
+**Napomena (dodano 2026-07-12, nakon što je pi završio ovaj brief):** ovaj
+brief i CLAUDE.md pravilo su originalno propustili `.css` — korisnik je to
+primijetio nakon commit-a. `CLAUDE.md` je dopunjen da uključi `.css`, a
+preostalih 8 CSS fajlova bez header-a (`src/styles/00-base.css`,
+`01-window.css`, `03-artifacts.css`, `04-voice.css`, `08-redesign-shell.css`,
+`12-pixel-board.css`, `13-mini-avatar.css`, `14-responsive.css`) je Claude
+dopunio direktno (manji obim, nije trebalo novi pi round-trip) — vidi
+`agent_reports/2026-07-12_css-file-headers.md`.
+
 **Čisto aditivan zadatak — dodaješ komentar, ništa drugo ne mijenjaš.** Ne
 diraj logiku, importe, formatiranje koda, ne "popravljaj" stvari na koje
 naiđeš usput. Ako primijetiš pravi bug ili problem dok čitaš neki fajl da bi

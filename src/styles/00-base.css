@@ -1,3 +1,7 @@
+/* Global CSS reset/base layer — root color-scheme, font stack, transparent
+   window background (Electron frameless window), button/input resets.
+   First import in styles.css; every other stylesheet builds on this. */
+
 :root {
   color-scheme: dark;
   font-family:
