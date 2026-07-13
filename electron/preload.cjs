@@ -25,6 +25,9 @@ contextBridge.exposeInMainWorld("ricky", {
   // S-03 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md): opens a native
   // file picker — the only way a thumbnail reference image can be registered.
   addThumbnailReference: () => ipcRenderer.invoke("thumbnails:add-reference"),
+  // User-reported gap (2026-07-13): export a generated thumbnail to a
+  // user-chosen location via a native save dialog.
+  saveThumbnailAs: (payload) => ipcRenderer.invoke("thumbnails:save-as", payload),
   // App
   quitApp: () => ipcRenderer.invoke("app:quit"),
   minimizeApp: () => ipcRenderer.invoke("app:minimize"),

@@ -49,6 +49,11 @@ type ThumbnailBoardData = {
     id?: string;
     number?: number;
     src?: string;
+    // User-reported gap (2026-07-13): the app's internal storage path for
+    // this generated thumbnail, needed by the "Save As..." export button —
+    // Electron already includes it (thumbnailBoardArtifact spreads the
+    // stored image record), just wasn't in this type yet.
+    path?: string;
     prompt?: string;
     type?: string;
     status?: "loading" | string;
@@ -228,6 +233,8 @@ function ThumbnailBoard({
   const { t } = useTranslation();
   const [addingReference, setAddingReference] = useState(false);
   const [addReferenceError, setAddReferenceError] = useState<string | null>(null);
+  const [savingThumbnail, setSavingThumbnail] = useState(false);
+  const [saveThumbnailError, setSaveThumbnailError] = useState<string | null>(null);
   const board = parseThumbnailBoard(content);
   if (!board) return <pre className="text-artifact">{content}</pre>;
 
@@ -250,6 +257,25 @@ function ThumbnailBoard({
     }
   }
 
+  // User-reported gap (2026-07-13): generated thumbnails were only ever
+  // auto-saved into the app's internal data dir with no way to export a
+  // copy elsewhere.
+  async function handleSaveAs(image: { path?: string; number?: number }) {
+    if (!image.path) return;
+    setSavingThumbnail(true);
+    setSaveThumbnailError(null);
+    try {
+      await window.ricky.saveThumbnailAs({
+        path: image.path,
+        suggestedName: `thumbnail-${image.number ?? "export"}.png`,
+      });
+    } catch (error) {
+      setSaveThumbnailError(error instanceof Error ? error.message : t("artifact.saveThumbnailError"));
+    } finally {
+      setSavingThumbnail(false);
+    }
+  }
+
   const images = board.images || [];
   const selected = images.find((image) => image.selected) || images.find((image) => image.id === board.selectedId) || null;
   const page = board.page || {};
@@ -264,6 +290,16 @@ function ThumbnailBoard({
         <div className="thumbnail-selected-copy">
           <span>{selected.type || t("artifact.thumbnailTypeFallback")}</span>
           <p>{selected.prompt || t("artifact.selectedThumbnailFallback")}</p>
+          <div className="thumbnail-save-actions">
+            <button
+              className="thumbnail-save-as"
+              onClick={() => void handleSaveAs(selected)}
+              disabled={savingThumbnail || !selected.path}
+            >
+              {savingThumbnail ? t("artifact.savingThumbnail") : t("artifact.saveThumbnailAs")}
+            </button>
+            {saveThumbnailError ? <span className="thumbnail-save-as-error">{saveThumbnailError}</span> : null}
+          </div>
         </div>
       </section>
     );

@@ -117,7 +117,7 @@ const { handleEventsList } = require("./ipc_handlers/events.cjs");
 const { handleSettingsGet, handleSettingsUpdate } = require("./ipc_handlers/settings.cjs");
 const { handleTextRewrite } = require("./ipc_handlers/text.cjs");
 const { handleScreenshotsList, handleScreenshotsDeleteAll } = require("./ipc_handlers/screenshots.cjs");
-const { handleThumbnailAddReference } = require("./ipc_handlers/thumbnails.cjs");
+const { handleThumbnailAddReference, handleThumbnailSaveAs } = require("./ipc_handlers/thumbnails.cjs");
 const {
   handlePlansList,
   handlePlanCreate,
@@ -641,6 +641,10 @@ registerIpcHandlers({
   // S-03 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md): native file
   // picker is the only way a thumbnail reference image can be registered.
   "thumbnails:add-reference": handleThumbnailAddReference,
+  // User-reported gap (2026-07-13): generated thumbnails were only ever
+  // auto-saved to the app's internal data dir. Native save dialog lets the
+  // user export a copy anywhere.
+  "thumbnails:save-as": handleThumbnailSaveAs,
   // FAZA 9: confirmations + plans IPC channels (allowlist entries).
   "confirmations:list": handleConfirmationsList,
   "confirmations:pending": handleConfirmationsPending,

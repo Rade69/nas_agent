@@ -230,6 +230,9 @@
     "addReferenceTitle": "Wähle ein Foto von deinem Computer — es wird beim Erstellen von Vorschaubildern an OpenAI gesendet",
     "addingReference": "Wird hinzugefügt...",
     "addReferenceError": "Bild konnte nicht hinzugefügt werden. Stelle sicher, dass es sich um eine Bilddatei (PNG/JPG/usw.) in deinem Benutzerordner handelt und sie kleiner als 8 MB ist.",
+    "saveThumbnailAs": "Speichern unter...",
+    "savingThumbnail": "Wird gespeichert...",
+    "saveThumbnailError": "Bild konnte nicht gespeichert werden.",
     "untitledNote": "Notiz ohne Titel",
     "justNow": "gerade eben"
   },

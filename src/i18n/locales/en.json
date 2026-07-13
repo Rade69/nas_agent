@@ -230,6 +230,9 @@
     "addReferenceTitle": "Choose a photo from your computer — it will be uploaded to OpenAI when generating thumbnails",
     "addingReference": "Adding...",
     "addReferenceError": "Couldn't add that image. Make sure it's an image file (PNG/JPG/etc.) inside your user folder and under 8 MB.",
+    "saveThumbnailAs": "Save as...",
+    "savingThumbnail": "Saving...",
+    "saveThumbnailError": "Couldn't save the image.",
     "untitledNote": "Untitled note",
     "justNow": "just now"
   },

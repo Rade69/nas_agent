@@ -169,6 +169,13 @@ declare global {
       addThumbnailReference: () => Promise<
         { ok: true; cancelled: true } | { ok: true; cancelled?: false; artifact: RickyArtifact; message: string }
       >;
+      // User-reported gap (2026-07-13): native save dialog to export a
+      // generated thumbnail. `path` must be one of the app's own internal
+      // thumbnail paths (enforced main-process side); rejects otherwise.
+      saveThumbnailAs: (payload: {
+        path: string;
+        suggestedName?: string;
+      }) => Promise<{ ok: true; cancelled: true } | { ok: true; cancelled: false; path: string }>;
       quitApp: () => Promise<void>;
       minimizeApp: () => Promise<void>;
       toggleMaximizeApp: () => Promise<void>;

@@ -230,6 +230,9 @@
     "addReferenceTitle": "Izaberi fotografiju sa računara — biće poslana OpenAI-ju pri generisanju umanjenih slika",
     "addingReference": "Dodajem...",
     "addReferenceError": "Nije moguće dodati sliku. Provjeri da li je fajl slika (PNG/JPG/itd.) unutar tvog korisničkog foldera i manji od 8 MB.",
+    "saveThumbnailAs": "Sačuvaj kao...",
+    "savingThumbnail": "Čuvam...",
+    "saveThumbnailError": "Nije moguće sačuvati sliku.",
     "untitledNote": "Bilješka bez naslova",
     "justNow": "upravo sada"
   },

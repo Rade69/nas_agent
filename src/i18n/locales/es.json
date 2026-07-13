@@ -230,6 +230,9 @@
     "addReferenceTitle": "Elige una foto de tu computadora — se subirá a OpenAI al generar miniaturas",
     "addingReference": "Añadiendo...",
     "addReferenceError": "No se pudo añadir la imagen. Asegúrate de que sea un archivo de imagen (PNG/JPG/etc.) dentro de tu carpeta de usuario y de menos de 8 MB.",
+    "saveThumbnailAs": "Guardar como...",
+    "savingThumbnail": "Guardando...",
+    "saveThumbnailError": "No se pudo guardar la imagen.",
     "untitledNote": "Nota sin título",
     "justNow": "justo ahora"
   },

@@ -694,6 +694,42 @@ td {
   background: rgba(255, 255, 255, 0.035);
 }
 
+/* User-reported gap (2026-07-13): export a generated thumbnail via native
+   save dialog — reuses the .thumbnail-add-reference visual language. */
+.thumbnail-save-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.thumbnail-save-as {
+  border: 1px solid rgba(125, 223, 255, 0.35);
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: #e9fbff;
+  background: rgba(125, 223, 255, 0.08);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.thumbnail-save-as:hover:not(:disabled) {
+  border-color: rgba(125, 223, 255, 0.6);
+  background: rgba(125, 223, 255, 0.16);
+}
+
+.thumbnail-save-as:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.thumbnail-save-as-error {
+  color: #ff9d9d;
+  font-size: 12px;
+}
+
 .thumbnail-empty {
   display: grid;
   place-items: center;
