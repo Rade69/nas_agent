@@ -750,6 +750,19 @@ app.whenReady().then(async () => {
 
   await createWindow({ beforeShow: prepareWindowData });
 
+  // Orb presence (docs/ORB_PRESENCE_SPEC.md situation #3 "Minimiziran prozor"):
+  // this was a documented gap — minimize/restore of the main window previously
+  // had no effect on the companion orb, so a user minimizing without having
+  // manually toggled the orb on first would see no floating presence at all,
+  // even though the spec calls for the small orb to be the quick-access
+  // surface while the main window is out of the way. Symmetric with the
+  // Computer Mode auto-show/hide already wired to set_mode above.
+  const mainWindowForOrb = getMainWindow();
+  if (mainWindowForOrb) {
+    mainWindowForOrb.on("minimize", () => showCompanion());
+    mainWindowForOrb.on("restore", () => hideCompanion());
+  }
+
   // FAZA S-4 (docs/SECURITY_GAP_ANALYSIS_AND_PLAN.md S33): global kill-switch.
   // Registers the first available hotkey from a fallback chain so it still
   // binds if the preferred key is taken by another app. On trigger it tears

@@ -47,8 +47,8 @@ zahtjev/notu (NE tipka u tvoj trenutni dokument — to je agentski capture, ne W
 | Veliki orb ima Vrati + Stop (računarski mod) | ✅ (Stop nekomitovan, čeka smoke) | isto | commitovati poslije smoke |
 | Mali orb ima Stop | ✅ (nekomitovan) | isto | commitovati poslije smoke |
 | Mali orb "vrati prozor" | ✅ dupli-klik → `companionOpenMain` | isto (bez dugmeta — ne nakrcavati) | ništa |
-| Mali orb se auto-pojavi kad minimiziraš prozor | ⬜ samo ručni toggle | auto-show na minimize glavnog prozora | **implementirati** |
-| Mali orb se sakrije kad vratiš prozor | ⬜ | (odluka: sakriti ili ostaviti?) | **odlučiti + implementirati** |
+| Mali orb se auto-pojavi kad minimiziraš prozor | ✅ **implementirano 2026-07-13** — `mainWindow.on("minimize", showCompanion)` u `electron/main.cjs` | isto | commitovano |
+| Mali orb se sakrije kad vratiš prozor | ✅ **implementirano 2026-07-13** (odluka: sakriti — korisnik potvrdio) — `mainWindow.on("restore", hideCompanion)` | isto | commitovano |
 | Focus mod: sakrij sve orbove, ostави tray | ⬜ ne postoji kao mod | eksplicitan toggle / stanje | **implementirati** |
 | Global brzi-diktat hotkey | ⬜ | push-to-talk global capture | **implementirati** (koristi postojeći dictation + globalShortcut) |
 
