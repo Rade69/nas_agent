@@ -225,7 +225,11 @@
     "pageInfo": "Seite {{page}}/{{totalPages}} · nächste #{{next}}",
     "thumbnailTypeFallback": "Vorschaubild",
     "selectedThumbnailFallback": "Ausgewähltes Vorschaubild",
-    "noReferenceImage": "Riley-Referenzbild geladen. Frag Ricky: „Erstelle ein 16:9-Vorschaubild von mir über Cursor-Agenten.“",
+    "noReferenceImage": "Füge oben ein Referenzfoto hinzu oder bitte Ricky, sofort ein 16:9-Vorschaubild zu erstellen.",
+    "addReference": "+ Referenzfoto hinzufügen",
+    "addReferenceTitle": "Wähle ein Foto von deinem Computer — es wird beim Erstellen von Vorschaubildern an OpenAI gesendet",
+    "addingReference": "Wird hinzugefügt...",
+    "addReferenceError": "Bild konnte nicht hinzugefügt werden. Stelle sicher, dass es sich um eine Bilddatei (PNG/JPG/usw.) in deinem Benutzerordner handelt und sie kleiner als 8 MB ist.",
     "untitledNote": "Notiz ohne Titel",
     "justNow": "gerade eben"
   },

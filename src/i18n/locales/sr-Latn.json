@@ -225,7 +225,11 @@
     "pageInfo": "Strana {{page}}/{{totalPages}} · sljedeći #{{next}}",
     "thumbnailTypeFallback": "umanjena slika",
     "selectedThumbnailFallback": "Izabrana umanjena slika",
-    "noReferenceImage": "Referentna Riley slika učitana. Zamoli Rickyja: „Napravi 16:9 umanjenu sliku o meni na temu Cursor agenata.”",
+    "noReferenceImage": "Dodaj referentnu sliku dugmetom iznad, ili zamoli Rickyja da odmah generiše 16:9 umanjenu sliku.",
+    "addReference": "+ Dodaj referentnu sliku",
+    "addReferenceTitle": "Izaberi fotografiju sa računara — biće poslana OpenAI-ju pri generisanju umanjenih slika",
+    "addingReference": "Dodajem...",
+    "addReferenceError": "Nije moguće dodati sliku. Provjeri da li je fajl slika (PNG/JPG/itd.) unutar tvog korisničkog foldera i manji od 8 MB.",
     "untitledNote": "Bilješka bez naslova",
     "justNow": "upravo sada"
   },

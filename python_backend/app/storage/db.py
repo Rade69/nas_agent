@@ -149,6 +149,22 @@ SCHEMA_STATEMENTS = [
         sent_to_model INTEGER NOT NULL DEFAULT 0
     )
     """,
+    # S-03 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md): thumbnail
+    # reference images, registered only via a native Electron file picker
+    # (never a model tool call — see thumbnail_reference_service.py). `id` is
+    # the opaque token Electron stores instead of the raw path; canonical_path
+    # is only ever returned to Electron itself (GET /thumbnail-references/{id}/resolve),
+    # never to the model or the renderer.
+    """
+    CREATE TABLE IF NOT EXISTS thumbnail_references (
+        id TEXT PRIMARY KEY,
+        canonical_path TEXT NOT NULL,
+        label TEXT,
+        mime_type TEXT,
+        size_bytes INTEGER,
+        created_at TEXT NOT NULL
+    )
+    """,
     # FAZA 11: memory tool storage (notes + records migrated from Electron JSON db).
     """
     CREATE TABLE IF NOT EXISTS notes (

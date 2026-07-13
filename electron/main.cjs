@@ -88,7 +88,6 @@ const {
   buildMenuMarkdown,
   generateImage,
   imageErrorArtifact,
-  thumbnailReferenceAdd,
   thumbnailLoadingPrepare,
   thumbnailGenerate,
   thumbnailEdit,
@@ -118,6 +117,7 @@ const { handleEventsList } = require("./ipc_handlers/events.cjs");
 const { handleSettingsGet, handleSettingsUpdate } = require("./ipc_handlers/settings.cjs");
 const { handleTextRewrite } = require("./ipc_handlers/text.cjs");
 const { handleScreenshotsList, handleScreenshotsDeleteAll } = require("./ipc_handlers/screenshots.cjs");
+const { handleThumbnailAddReference } = require("./ipc_handlers/thumbnails.cjs");
 const {
   handlePlansList,
   handlePlanCreate,
@@ -393,9 +393,12 @@ async function handleToolsExecute(_event, toolCall) {
       return await thumbnailLoadingPrepare(args);
     }
 
-    if (name === "thumbnail_reference_add") {
-      return await thumbnailReferenceAdd(args);
-    }
+    // S-03 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md): no model
+    // tool for adding a reference image anymore — thumbnail_reference_add is
+    // no longer in realtimeToolSpecs.cjs, so the model can never request it
+    // via the Realtime protocol. Registration only happens through the
+    // "thumbnails:add-reference" IPC channel below, triggered by a native
+    // file picker click.
 
     if (name === "thumbnail_generate") {
       return await thumbnailGenerate(args);
@@ -635,6 +638,9 @@ registerIpcHandlers({
   "text:rewrite": handleTextRewrite,
   "screenshots:list": handleScreenshotsList,
   "screenshots:delete-all": handleScreenshotsDeleteAll,
+  // S-03 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md): native file
+  // picker is the only way a thumbnail reference image can be registered.
+  "thumbnails:add-reference": handleThumbnailAddReference,
   // FAZA 9: confirmations + plans IPC channels (allowlist entries).
   "confirmations:list": handleConfirmationsList,
   "confirmations:pending": handleConfirmationsPending,

@@ -223,8 +223,28 @@ async function deleteAllScreenshots(options = {}) {
   });
 }
 
+// S-03 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md): thumbnail
+// reference images. addThumbnailReference is only ever called right after a
+// native file-picker selection (electron/ipc_handlers/thumbnails.cjs), never
+// from a model tool call. resolveThumbnailReference turns the opaque id back
+// into a real path for legacyMedia.cjs's thumbnailGenerate/thumbnailEdit to
+// read — the id is what's stored in the legacy thumbnail board JSON, never
+// the raw path.
+async function addThumbnailReference(payload, options = {}) {
+  return await requestJson("/thumbnail-references", {
+    ...options,
+    method: "POST",
+    body: payload,
+  });
+}
+
+async function resolveThumbnailReference(referenceId, options = {}) {
+  return await requestJson(`/thumbnail-references/${encodeURIComponent(referenceId)}/resolve`, options);
+}
+
 module.exports = {
   DEFAULT_BACKEND_URL,
+  addThumbnailReference,
   approveConfirmation,
   cancelAllExecutions,
   cancelConfirmation,
@@ -245,6 +265,7 @@ module.exports = {
   normalizeBaseUrl,
   rejectConfirmation,
   requestJson,
+  resolveThumbnailReference,
   setLocalToken,
   getSettings,
   rewriteText,

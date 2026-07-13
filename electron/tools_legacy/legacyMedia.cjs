@@ -13,11 +13,18 @@
  * readDb/writeDb/updateDb (from ../core/legacyDb.cjs — R2b).
  * NOT imported: main.cjs (no circular require). Does not touch currentMode/
  * mainWindow/handleToolsExecute.
+ *
+ * S-03 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md): also requires
+ * ../services/pythonClient.cjs for resolveThumbnailReference — thumbnail
+ * board references are now opaque ids validated/stored by the Python
+ * backend (electron/ipc_handlers/thumbnails.cjs registers them via a native
+ * file picker only), not raw paths this file trusts on its own.
  */
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { readDb, writeDb, updateDb } = require("../core/legacyDb.cjs");
+const { resolveThumbnailReference } = require("../services/pythonClient.cjs");
 
 const dataDir = path.join(process.cwd(), "data");
 
@@ -206,19 +213,23 @@ function imageErrorArtifact(error) {
   };
 }
 
-async function thumbnailReferenceAdd(args) {
-  const imagePath = path.resolve(String(args.imagePath || "").replace(/^file:\/\//, ""));
-  try {
-    await fs.access(imagePath);
-  } catch {
-    return imageErrorArtifact(`Reference image not found: ${imagePath}`);
-  }
-
+// S-03 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md): replaces the
+// former thumbnailReferenceAdd(args), which trusted a raw imagePath string
+// straight from a model tool call with only an fs.access() existence check —
+// no allowlist, extension, size, or symlink protection, and no user
+// awareness that the file would later be uploaded to OpenAI. The only
+// caller now is handleThumbnailAddReference (electron/ipc_handlers/
+// thumbnails.cjs), after a native file picker + Python-side path_sandbox
+// validation already succeeded — this function does purely local bookkeeping,
+// no validation of its own. Reference id is Python's opaque token, not a
+// filesystem path; previewDataUrl lets the board UI show what was added
+// without ever exposing the real path to the renderer.
+async function commitThumbnailReference({ id, label, previewDataUrl }) {
   const db = await readDb();
   const reference = {
-    id: crypto.randomUUID(),
-    path: imagePath,
-    label: String(args.label || path.basename(imagePath)),
+    id,
+    label: String(label || "Reference image"),
+    previewDataUrl,
     createdAt: new Date().toISOString(),
   };
   db.thumbnailBoard.references.unshift(reference);
@@ -269,13 +280,32 @@ async function thumbnailLoadingPrepare(args) {
   };
 }
 
+// S-03: references now carry an opaque Python-issued id, not a path — resolve
+// each one just-in-time (re-validated server-side on every call, not just at
+// registration; see ThumbnailReferenceService.resolve()). A reference whose
+// file was moved/deleted since registration is silently skipped rather than
+// failing the whole generate/edit call.
+async function resolveReferencePaths(references) {
+  const resolved = await Promise.all(
+    references.map(async (reference) => {
+      try {
+        const { canonical_path: canonicalPath } = await resolveThumbnailReference(reference.id);
+        return canonicalPath;
+      } catch {
+        return null;
+      }
+    }),
+  );
+  return resolved.filter(Boolean);
+}
+
 async function thumbnailGenerate(args) {
   try {
     const db = await readDb();
     const prompt = thumbnailPrompt(String(args.prompt || ""), db.thumbnailBoard.references.length > 0);
     const size = "1536x1024";
     const count = 1;
-    const referencePaths = db.thumbnailBoard.references.map((reference) => reference.path).slice(0, 4);
+    const referencePaths = await resolveReferencePaths(db.thumbnailBoard.references.slice(0, 4));
 
     const generated = await Promise.all(
       Array.from({ length: count }, async (_unused, index) => {
@@ -321,7 +351,7 @@ async function thumbnailEdit(args) {
 
     const size = "1536x1024";
     const count = 1;
-    const referencePaths = db.thumbnailBoard.references.map((reference) => reference.path).slice(0, 3);
+    const referencePaths = await resolveReferencePaths(db.thumbnailBoard.references.slice(0, 3));
     const inputPaths = [target.path, ...referencePaths].filter(Boolean);
     const editPrompt = editThumbnailPrompt(String(args.prompt || ""), target.prompt || "");
 
@@ -672,7 +702,7 @@ module.exports = {
   buildMenuMarkdown,
   generateImage,
   imageErrorArtifact,
-  thumbnailReferenceAdd,
+  commitThumbnailReference,
   thumbnailLoadingPrepare,
   thumbnailGenerate,
   thumbnailEdit,

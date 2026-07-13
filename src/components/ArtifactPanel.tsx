@@ -14,6 +14,11 @@ type ArtifactPanelProps = {
   fullscreen: boolean;
   onToggleVisible: () => void;
   onToggleFullscreen: () => void;
+  // S-03 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md): ThumbnailBoard's
+  // "+ Add reference photo" button mutates the board directly (native file
+  // picker, not a model tool call) and needs to push the refreshed board
+  // artifact back up to whatever owns `artifact` state (App.tsx).
+  onArtifactUpdate: (artifact: RickyArtifact) => void;
 };
 
 type MermaidState = {
@@ -59,7 +64,7 @@ mermaid.initialize({
   securityLevel: "strict",
 });
 
-export function ArtifactPanel({ artifact, visible, fullscreen, onToggleVisible, onToggleFullscreen }: ArtifactPanelProps) {
+export function ArtifactPanel({ artifact, visible, fullscreen, onToggleVisible, onToggleFullscreen, onArtifactUpdate }: ArtifactPanelProps) {
   const { t } = useTranslation();
   const [mermaidState, setMermaidState] = useState<MermaidState>({ svg: "", error: null, source: "" });
   const rawId = useId();
@@ -116,7 +121,9 @@ export function ArtifactPanel({ artifact, visible, fullscreen, onToggleVisible, 
           <button onClick={onToggleVisible}>{t("artifact.hide")}</button>
         </div>
       </header>
-      <div className="artifact-body">{artifact ? renderArtifact(artifact, mermaidState, t) : <EmptyArtifact />}</div>
+      <div className="artifact-body">
+        {artifact ? renderArtifact(artifact, mermaidState, t, onArtifactUpdate) : <EmptyArtifact />}
+      </div>
     </aside>
   );
 }
@@ -130,7 +137,12 @@ function EmptyArtifact() {
   );
 }
 
-function renderArtifact(artifact: RickyArtifact, mermaidState: MermaidState, t: TFunction) {
+function renderArtifact(
+  artifact: RickyArtifact,
+  mermaidState: MermaidState,
+  t: TFunction,
+  onArtifactUpdate: (artifact: RickyArtifact) => void,
+) {
   if (artifact.kind === "table") {
     return <JsonTable content={artifact.content} />;
   }
@@ -179,7 +191,7 @@ function renderArtifact(artifact: RickyArtifact, mermaidState: MermaidState, t: 
   }
 
   if (artifact.kind === "thumbnailBoard") {
-    return <ThumbnailBoard content={artifact.content} />;
+    return <ThumbnailBoard content={artifact.content} onArtifactUpdate={onArtifactUpdate} />;
   }
 
   if (artifact.kind === "code") {
@@ -206,10 +218,37 @@ function renderArtifact(artifact: RickyArtifact, mermaidState: MermaidState, t: 
   return <pre className="text-artifact">{artifact.content}</pre>;
 }
 
-function ThumbnailBoard({ content }: { content: string }) {
+function ThumbnailBoard({
+  content,
+  onArtifactUpdate,
+}: {
+  content: string;
+  onArtifactUpdate: (artifact: RickyArtifact) => void;
+}) {
   const { t } = useTranslation();
+  const [addingReference, setAddingReference] = useState(false);
+  const [addReferenceError, setAddReferenceError] = useState<string | null>(null);
   const board = parseThumbnailBoard(content);
   if (!board) return <pre className="text-artifact">{content}</pre>;
+
+  // S-03 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md): the native file
+  // picker is the only way to register a reference image — there is no
+  // voice/model path for this anymore. Errors here are Python's path_sandbox
+  // validation failures (wrong location, wrong file type, too large).
+  async function handleAddReference() {
+    setAddingReference(true);
+    setAddReferenceError(null);
+    try {
+      const result = await window.ricky.addThumbnailReference();
+      if (!result.cancelled && "artifact" in result) {
+        onArtifactUpdate(result.artifact);
+      }
+    } catch (error) {
+      setAddReferenceError(error instanceof Error ? error.message : t("artifact.addReferenceError"));
+    } finally {
+      setAddingReference(false);
+    }
+  }
 
   const images = board.images || [];
   const selected = images.find((image) => image.selected) || images.find((image) => image.id === board.selectedId) || null;
@@ -245,6 +284,17 @@ function ThumbnailBoard({ content }: { content: string }) {
           })}
         </small>
       </header>
+      <div className="thumbnail-reference-actions">
+        <button
+          className="thumbnail-add-reference"
+          onClick={() => void handleAddReference()}
+          disabled={addingReference}
+          title={t("artifact.addReferenceTitle")}
+        >
+          {addingReference ? t("artifact.addingReference") : t("artifact.addReference")}
+        </button>
+        {addReferenceError ? <span className="thumbnail-add-reference-error">{addReferenceError}</span> : null}
+      </div>
       {images.length > 0 ? (
         <div className="thumbnail-grid">
           {images.map((image) => (

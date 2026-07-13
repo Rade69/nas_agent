@@ -225,7 +225,11 @@
     "pageInfo": "Página {{page}}/{{totalPages}} · siguiente #{{next}}",
     "thumbnailTypeFallback": "miniatura",
     "selectedThumbnailFallback": "Miniatura seleccionada",
-    "noReferenceImage": "Imagen de referencia de Riley cargada. Pide a Ricky: «Genera una miniatura 16:9 sobre mí y los agentes de Cursor».",
+    "noReferenceImage": "Añade una foto de referencia con el botón de arriba, o pide a Ricky que genere ya una miniatura 16:9.",
+    "addReference": "+ Añadir foto de referencia",
+    "addReferenceTitle": "Elige una foto de tu computadora — se subirá a OpenAI al generar miniaturas",
+    "addingReference": "Añadiendo...",
+    "addReferenceError": "No se pudo añadir la imagen. Asegúrate de que sea un archivo de imagen (PNG/JPG/etc.) dentro de tu carpeta de usuario y de menos de 8 MB.",
     "untitledNote": "Nota sin título",
     "justNow": "justo ahora"
   },

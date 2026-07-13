@@ -701,6 +701,7 @@ export default function App() {
           fullscreen={artifactFullscreen}
           onToggleVisible={() => setArtifactVisible((value) => !value)}
           onToggleFullscreen={() => setArtifactFullscreen((value) => !value)}
+          onArtifactUpdate={setArtifact}
         />
       ) : null}
 

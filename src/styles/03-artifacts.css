@@ -519,6 +519,42 @@ td {
   font-size: 12px;
 }
 
+/* S-03 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md): native file
+   picker button — the only way to register a thumbnail reference image. */
+.thumbnail-reference-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.thumbnail-add-reference {
+  border: 1px solid rgba(125, 223, 255, 0.35);
+  border-radius: 8px;
+  padding: 8px 14px;
+  color: #e9fbff;
+  background: rgba(125, 223, 255, 0.08);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.thumbnail-add-reference:hover:not(:disabled) {
+  border-color: rgba(125, 223, 255, 0.6);
+  background: rgba(125, 223, 255, 0.16);
+}
+
+.thumbnail-add-reference:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.thumbnail-add-reference-error {
+  color: #ff9d9d;
+  font-size: 12px;
+}
+
 .thumbnail-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

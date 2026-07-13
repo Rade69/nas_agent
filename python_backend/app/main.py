@@ -22,6 +22,7 @@ from app.api.screenshots import router as screenshots_router
 from app.api.security import router as security_router
 from app.api.settings import router as settings_router
 from app.api.text import router as text_router
+from app.api.thumbnails import router as thumbnails_router
 from app.api.tools import router as tools_router
 from app.core.auth import require_local_token
 from app.core.config import get_settings
@@ -38,6 +39,7 @@ from app.services.plan_service import PlanService
 from app.services.records_service import RecordsService
 from app.services.screenshot_service import ScreenshotService
 from app.services.settings_service import SettingsService
+from app.services.thumbnail_reference_service import ThumbnailReferenceService
 from app.storage.db import initialize_database
 from app.storage.repositories.agent_repo import AgentConversationRepository
 from app.storage.repositories.artifact_repo import ArtifactRepository
@@ -48,6 +50,7 @@ from app.storage.repositories.plan_repo import PlanRepository
 from app.storage.repositories.records_repo import RecordsRepository
 from app.storage.repositories.screenshot_repo import ScreenshotRepository
 from app.storage.repositories.settings_repo import SettingsRepository
+from app.storage.repositories.thumbnail_reference_repo import ThumbnailReferenceRepository
 from app.storage.repositories.tool_run_repo import ToolRunRepository
 
 
@@ -101,6 +104,14 @@ def create_app() -> FastAPI:
     # on every GET /screenshots (see ScreenshotService.list()).
     app.state.screenshot_service = ScreenshotService(ScreenshotRepository(settings.database_path))
     app.state.screenshot_service.cleanup_expired()
+    # S-03 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md): thumbnail
+    # reference images. Electron-only caller (native file picker -> POST
+    # /thumbnail-references, and .../resolve when thumbnail_generate/edit
+    # need the actual file) — not wired into phase11_services below because
+    # it is not a model-facing tool.
+    app.state.thumbnail_reference_service = ThumbnailReferenceService(
+        ThumbnailReferenceRepository(settings.database_path)
+    )
     phase11_services = {
         "notes": app.state.notes_service,
         "records": app.state.records_service,
@@ -154,6 +165,7 @@ def create_app() -> FastAPI:
     app.include_router(settings_router)
     app.include_router(text_router)
     app.include_router(screenshots_router)
+    app.include_router(thumbnails_router)
     return app
 
 

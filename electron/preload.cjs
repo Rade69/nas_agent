@@ -22,6 +22,9 @@ contextBridge.exposeInMainWorld("ricky", {
   // agent_reports/2026-07-12_screenshot-privacy.md
   listScreenshots: () => ipcRenderer.invoke("screenshots:list"),
   deleteAllScreenshots: () => ipcRenderer.invoke("screenshots:delete-all"),
+  // S-03 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md): opens a native
+  // file picker — the only way a thumbnail reference image can be registered.
+  addThumbnailReference: () => ipcRenderer.invoke("thumbnails:add-reference"),
   // App
   quitApp: () => ipcRenderer.invoke("app:quit"),
   minimizeApp: () => ipcRenderer.invoke("app:minimize"),

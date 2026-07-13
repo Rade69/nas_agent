@@ -162,6 +162,13 @@ declare global {
       rewriteText: (payload: { text: string; operation: TextRewriteOperation }) => Promise<{ text: string }>;
       listScreenshots: () => Promise<{ screenshots: Screenshot[] }>;
       deleteAllScreenshots: () => Promise<{ ok: boolean; deletedCount: number }>;
+      // S-03 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md): opens a
+      // native file picker; resolves with cancelled:true if the user closed
+      // it without picking a file. Rejects (throw) on validation failure
+      // (path outside home, wrong extension, too large) — caller must catch.
+      addThumbnailReference: () => Promise<
+        { ok: true; cancelled: true } | { ok: true; cancelled?: false; artifact: RickyArtifact; message: string }
+      >;
       quitApp: () => Promise<void>;
       minimizeApp: () => Promise<void>;
       toggleMaximizeApp: () => Promise<void>;

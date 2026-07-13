@@ -1,12 +1,12 @@
 """File system sandbox primitives (Security Gate 0 —
 docs/SECURITY_HARDENING_PLAN.md section 10 "File system sandbox").
 
-No tool registers arbitrary file paths yet (screenshots/artifacts write to a
-backend-controlled path, not a user/model-supplied one), so nothing calls
-these functions in production today. They exist so the *first* tool that
-does accept a path (a future Document Engine tool, or FAZA 13's
-computer_open_app) has a single, already-tested place to validate against
-instead of each tool re-implementing path safety ad hoc.
+First real caller: app/services/thumbnail_reference_service.py (S-03, docs/
+SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md) — validating a user-picked
+reference image path before it's persisted and later uploaded to OpenAI.
+Kept as a shared module (not inlined into that one caller) so the next tool
+that accepts a user/model-supplied path has the same tested primitives to
+validate against instead of re-implementing path safety ad hoc.
 """
 from __future__ import annotations
 
@@ -25,6 +25,12 @@ BLOCKED_EXECUTION_EXTENSIONS = {
     ".scr",
     ".reg",
 }
+
+# S-03 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md): first real caller
+# of this module, for thumbnail_reference registration. This is an ALLOWLIST
+# (opposite polarity from BLOCKED_EXECUTION_EXTENSIONS above) — a reference
+# image must match one of these, not merely avoid the executable blocklist.
+ALLOWED_IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
 
 DEFAULT_MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024  # 25 MB, MVP default
 
@@ -78,6 +84,20 @@ def ensure_extension_allowed(path: Path, *, allow_execution: bool = False) -> No
         raise AppError(
             "EXTENSION_BLOCKED",
             f"Files with extension '{path.suffix}' cannot be executed: {path}",
+            status_code=403,
+        )
+
+
+def ensure_image_extension_allowed(path: Path) -> None:
+    """Allowlist check for reference images (S-03) — the inverse of
+    ensure_extension_allowed above. A path must match ALLOWED_IMAGE_EXTENSIONS
+    exactly; anything else is rejected, including extensions that aren't on
+    the dangerous-execution blocklist either (e.g. a .txt or .pdf renamed to
+    look like an image is still not an image)."""
+    if path.suffix.lower() not in ALLOWED_IMAGE_EXTENSIONS:
+        raise AppError(
+            "EXTENSION_NOT_ALLOWED",
+            f"'{path.suffix}' is not an allowed image type: {path}",
             status_code=403,
         )
 

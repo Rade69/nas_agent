@@ -72,24 +72,17 @@ const toolSpecs = [
       additionalProperties: false,
     },
   },
-  {
-    type: "function",
-    name: "thumbnail_reference_add",
-    description: "Add a local image file as a reference image for making thumbnails of Riley. Use when Riley gives a file path to a photo of himself.",
-    parameters: {
-      type: "object",
-      properties: {
-        imagePath: { type: "string" },
-        label: { type: "string" },
-      },
-      required: ["imagePath"],
-      additionalProperties: false,
-    },
-  },
+  // S-03 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md): thumbnail_reference_add
+  // used to be listed here as a model-callable function taking an arbitrary
+  // imagePath string — the model (or prompt-injected content) could name any
+  // local file, which thumbnail_generate/thumbnail_edit would later upload to
+  // OpenAI. Removed entirely, same reasoning as set_mode above: a reference
+  // image can now only be registered via a native file picker click
+  // (electron/ipc_handlers/thumbnails.cjs), never a tool call.
   {
     type: "function",
     name: "thumbnail_generate",
-    description: "Generate exactly one 16:9 YouTube thumbnail into Ricky's persistent paginated thumbnail board. Uses Riley reference images if available. Assigns a new permanent number that never changes. Never generate multiple at once.",
+    description: "Generate exactly one 16:9 YouTube thumbnail into Ricky's persistent paginated thumbnail board. Uses Riley reference images if available (added by the user via the app, not by Ricky). Assigns a new permanent number that never changes. Never generate multiple at once.",
     parameters: {
       type: "object",
       properties: {

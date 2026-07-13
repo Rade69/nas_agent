@@ -225,7 +225,11 @@
     "pageInfo": "Page {{page}}/{{totalPages}} · next #{{next}}",
     "thumbnailTypeFallback": "thumbnail",
     "selectedThumbnailFallback": "Selected thumbnail",
-    "noReferenceImage": "Riley reference image loaded. Ask Ricky: “Generate a 16:9 thumbnail of me about Cursor agents.”",
+    "noReferenceImage": "Add a reference photo with the button above, or ask Ricky to generate a 16:9 thumbnail right away.",
+    "addReference": "+ Add reference photo",
+    "addReferenceTitle": "Choose a photo from your computer — it will be uploaded to OpenAI when generating thumbnails",
+    "addingReference": "Adding...",
+    "addReferenceError": "Couldn't add that image. Make sure it's an image file (PNG/JPG/etc.) inside your user folder and under 8 MB.",
     "untitledNote": "Untitled note",
     "justNow": "just now"
   },
