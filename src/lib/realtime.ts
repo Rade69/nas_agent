@@ -383,6 +383,18 @@ export class RickyRealtimeClient {
         this.callbacks.onMode(result.mode);
       }
       if (result.artifact) this.callbacks.onArtifact(result.artifact);
+      // User-reported gap (2026-07-13): image_generate silently archived the
+      // generated image into the app's internal data folder with no way to
+      // choose the destination. Fire the native save dialog automatically
+      // right when generation finishes — not gated behind a manual button
+      // click, since the whole complaint was "he shouldn't decide the
+      // location himself". Fire-and-forget: the voice/text turn already
+      // completed (result.artifact above already showed the image), so this
+      // doesn't block the conversation waiting on the user's dialog choice.
+      // If they cancel, the internal copy is untouched — nothing is lost.
+      if (name === "image_generate" && result.ok && typeof result.path === "string") {
+        void window.ricky.saveThumbnailAs({ path: result.path, suggestedName: "ricky-image.png" }).catch(() => {});
+      }
       if (result.thumbnailReady === true) this.callbacks.onThumbnailReady();
       if (result.silent !== true) shouldCreateResponse = true;
       await this.returnToolOutput(callId, result);

@@ -6,12 +6,15 @@
  *  validation/storage first; only on success does this commit the opaque id
  *  into the legacy thumbnail board JSON via legacyMedia.cjs's
  *  commitThumbnailReference().
- *  handleThumbnailSaveAs: user-reported gap (2026-07-13) — generated
- *  thumbnails were auto-saved into the app's internal data dir with no way
- *  to export a copy anywhere else. Native save dialog, source path
- *  restricted to the app's own dataDir (defense in depth — a compromised
- *  renderer must not be able to turn this into "copy any local file to a
- *  user-picked destination"). */
+ *  handleThumbnailSaveAs: user-reported gap (2026-07-13) — both plain
+ *  generated images (image_generate) and thumbnails were auto-saved into the
+ *  app's internal data dir with no way to choose the destination. Native
+ *  save dialog, source path restricted to the app's own dataDir (defense in
+ *  depth — a compromised renderer must not be able to turn this into "copy
+ *  any local file to a user-picked destination"). Despite the name, this is
+ *  now the generic "export an app-generated image" handler — image_generate
+ *  triggers it automatically on completion (src/lib/realtime.ts), thumbnails
+ *  trigger it via the manual "Save As..." button (ArtifactPanel.tsx). */
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { dialog } = require("electron");
