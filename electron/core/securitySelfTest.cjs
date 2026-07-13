@@ -1,3 +1,9 @@
+/** Electron-side Production Security Self-Test (Security Gate 0).
+ *  Checks webPreferences (sandbox, webSecurity, devTools), preload path,
+ *  and backend auth token presence. Combines with the backend-side
+ *  self-test (GET /security/self-test) for the full Gate 0 check.
+ *  Context: agent_reports/2026-07-06_gate0-selftest-pathsandbox.md */
+
 const fs = require("node:fs");
 const path = require("node:path");
 const { getSecureWebPreferences } = require("./secureWebPreferences.cjs");

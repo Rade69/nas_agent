@@ -1,3 +1,7 @@
+/** Pixel sidebar navigation — home, activity, plans, memory, screens,
+ *  settings. Indicates the current screen and opens drawers. Localized
+ *  via i18next (Localization PR-1).
+ *  Context: agent_reports/2026-07-11_i18n-foundation.md */
 import { useTranslation } from "react-i18next";
 import IconHome from "../../assets/brending/icons/navigation/icon-home.svg?react";
 import IconActivity from "../../assets/brending/icons/navigation/icon-activity.svg?react";

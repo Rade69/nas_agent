@@ -1,3 +1,4 @@
+"""Pydantic model for screenshot file responses (FAZA 11)."""
 from __future__ import annotations
 
 from pydantic import BaseModel

@@ -1,3 +1,7 @@
+/** Legacy PowerShell computer_press_key handler.
+ *  Sends a keystroke to the active window via PowerShell. Deprecated
+ *  in favor of the Python equivalent (FAZA 13). */
+
 const { runPowerShell, psSingleQuote } = require("./runPowerShell.cjs");
 
 const KEY_TOKENS = {

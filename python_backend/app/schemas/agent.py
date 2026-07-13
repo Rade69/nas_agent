@@ -1,3 +1,7 @@
+"""Pydantic models for the agent runtime REST API (FAZA 15).
+
+Request/response shapes for POST /agent/message and GET /agent/conversations.
+"""
 from __future__ import annotations
 
 from typing import Any, Literal

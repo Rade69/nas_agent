@@ -1,3 +1,7 @@
+"""SQLite repository for records (FAZA 11).
+
+CRUD + collection-scoped search for the RecordsService.
+"""
 from __future__ import annotations
 
 import json

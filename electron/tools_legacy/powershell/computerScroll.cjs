@@ -1,3 +1,7 @@
+/** Legacy PowerShell computer_scroll handler.
+ *  Simulates mouse scroll wheel input via PowerShell. Deprecated in
+ *  favor of the Python equivalent (FAZA 13). */
+
 const { runPowerShell, NATIVE_MOUSE_TYPE } = require("./runPowerShell.cjs");
 
 async function computerScroll(direction, amount) {

@@ -1,3 +1,9 @@
+/** Full confirmation approval/rejection modal (FAZA 9).
+ *  Renders payload fields with localized labels, risk badge, summary,
+ *  plan reference, and approve/reject/cancel buttons. Rate-limited
+ *  (250ms arm delay) to prevent accidental double-clicks (S-4/S30).
+ *  Localized via i18next (Localization PR-2).
+ *  Context: agent_reports/2026-07-11_gui-localization-pr2.md */
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";

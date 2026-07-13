@@ -1,3 +1,9 @@
+"""FastAPI application factory.
+
+Wires up all routers, services, repositories, and middleware into a
+single FastAPI app instance. Also serves as the PyInstaller entry point
+(for frozen builds — see __main__ block at the bottom).
+"""
 from fastapi import Depends, FastAPI
 
 from app.agent.cancellation import CancellationRegistry

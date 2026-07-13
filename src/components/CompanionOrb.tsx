@@ -1,3 +1,7 @@
+/** Companion orb overlay renderer — mounts when the Electron companion
+ *  BrowserWindow loads ?view=companion. Displays RickyOrb with VoiceState
+ *  reactivity and Stop control. Not yet localized (hardcoded Serbian).
+ *  Context: agent_reports/2026-07-05_faza12-companion-orb.md */
 import { useEffect, useState } from "react";
 import type { VoiceState } from "../lib/voiceState";
 import { voiceStateLabel } from "../lib/voiceState";

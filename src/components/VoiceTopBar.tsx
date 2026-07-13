@@ -1,3 +1,5 @@
+/** Deprecated voice top bar from the pre-pixel-redesign UI (FAZA 8).
+ *  Replaced by the pixel TopBar component. Kept for reference. */
 import { Activity, Bot, CircleAlert } from "lucide-react";
 import { voiceStateLabel, type VoiceState } from "../lib/voiceState";
 import type { RickyConnectionState } from "../lib/realtime";

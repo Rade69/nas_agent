@@ -1,3 +1,12 @@
+/** Electron main process entry point.
+ *  Orchestrates: Python backend startup, window creation, IPC handler
+ *  registration, companion orb, kill-switch hotkey, security self-test,
+ *  and app lifecycle (ready/before-quit/window-all-closed/activate).
+ *
+ *  Architecture rule (AGENTS.md): No new business/agent/computer-use/
+ *  storage/AI logic here — this file is shell/IPC wiring only.
+ *  Context: agent_reports/2026-07-05_split-main-cjs-faza3.md */
+
 const { app, BrowserWindow, dialog, globalShortcut } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs/promises");

@@ -1,3 +1,7 @@
+/** Floating artifact viewer panel — renders markdown, code, tables, images,
+ *  Mermaid diagrams, notes, and thumbnail boards. Supports fullscreen toggle
+ *  and hide/show. Not yet localized (hardcoded Serbian, backlog).
+ *  Context: agent_reports/2026-07-05_faza8-voice-first-ui-refactor.md */
 import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import mermaid from "mermaid";
 import type { RickyArtifact } from "../vite-env";

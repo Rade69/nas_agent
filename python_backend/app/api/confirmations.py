@@ -1,3 +1,9 @@
+"""REST endpoints for the confirmation system (FAZA 9).
+
+CRUD + approve/reject/cancel for confirmations stored in SQLite. The
+permission/risk layer that issues confirmations from tool execution is
+FAZA 10 — this module only exposes storage and state-machine transitions.
+"""
 from fastapi import APIRouter, Query, Request
 
 from app.core.errors import AppError

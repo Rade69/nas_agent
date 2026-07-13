@@ -1,3 +1,7 @@
+"""REST endpoints for user-facing preferences (display name, interface
+language). Generic by design — any new field added to UserSettings is
+automatically served without changes here (reads model_fields).
+"""
 from fastapi import APIRouter, Request
 
 from app.core.errors import AppError

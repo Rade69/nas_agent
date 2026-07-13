@@ -1,3 +1,8 @@
+/** Mouth-shape (viseme) animation math for the Ricky orb.
+ *  Pure functions: realtime frequency-band analysis, energy/RMS
+ *  calculation, and exponential smoothing between mouth-shape frames.
+ *  Separated from realtime.ts so the animation logic is testable in
+ *  isolation (agent_reports/2026-07-10_s2-voice-path-fix.md). */
 import type { MouthShape } from "./realtimeTypes";
 
 export function silentMouthShape(): MouthShape {

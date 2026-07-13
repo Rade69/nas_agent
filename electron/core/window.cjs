@@ -1,3 +1,9 @@
+/** Main BrowserWindow factory and lifecycle.
+ *  createWindow, setWindowMode (display/computer mini-window toggle),
+ *  and getMainWindow singleton accessor. Window is frameless with
+ *  -webkit-app-region drag zones for custom title-bar behavior.
+ *  Context: agent_reports/2026-07-11_i18n-foundation.md (rund 3, window drag saga) */
+
 const path = require("node:path");
 const { BrowserWindow, nativeImage, screen } = require("electron");
 const { getSecureWebPreferences } = require("./secureWebPreferences.cjs");

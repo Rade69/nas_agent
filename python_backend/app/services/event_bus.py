@@ -1,3 +1,9 @@
+"""Backend→UI event bridge service (FAZA 11).
+
+Thin wrapper over EventRepository that emits typed events into the
+activity_events SQLite table. The UI polls GET /events?since=<ts> to
+receive new events in order.
+"""
 from __future__ import annotations
 
 import json

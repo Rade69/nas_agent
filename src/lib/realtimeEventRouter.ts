@@ -1,3 +1,8 @@
+/** Realtime event → VoiceState + ActivityEvent mapper.
+ *  Pure function that inspects a server-sent Realtime event and returns
+ *  the corresponding VoiceState transition and/or ActivityEvent to emit.
+ *  Separate from realtime.ts so the routing logic is testable in isolation.
+ *  Context: agent_reports/2026-07-05_faza8-voice-first-ui-refactor.md */
 import { createActivityEvent, type ActivityEvent, type VoiceState } from "./voiceState";
 
 type RealtimeRouterEvent = {

@@ -1,3 +1,7 @@
+/** Full activity timeline list — combines ActivityEvent[] and TranscriptEntry[]
+ *  into a unified chronological feed with categorized icons. Localized via
+ *  i18next (Localization PR-2).
+ *  Context: agent_reports/2026-07-11_gui-localization-pr2.md */
 import { useTranslation } from "react-i18next";
 import type { ActivityEvent } from "../lib/voiceState";
 import type { TranscriptEntry } from "../lib/realtime";

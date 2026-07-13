@@ -1,3 +1,6 @@
+/** React entry point — mounts <App /> into the DOM and initializes i18next.
+ *  The same bundle serves both the main window and the companion orb
+ *  (src/App.tsx checks ?view=companion and renders a different root). */
 import React from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App";

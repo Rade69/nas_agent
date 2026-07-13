@@ -1,3 +1,9 @@
+"""REST endpoint for the UI event bridge (FAZA 11).
+
+GET /events?since=<timestamp> — polled by the renderer every few seconds
+to receive backend-originated events (artifact.created, tool.*,
+backend.ready) in order. Events are stored in SQLite via EventBus.
+"""
 from fastapi import APIRouter, Query, Request
 
 from app.core.errors import AppError

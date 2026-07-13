@@ -1,3 +1,10 @@
+"""Tool execution orchestrator — the single gate every tool call passes through.
+
+Owns the permission engine, cancellation registry, action log, and
+confirmation service. Both POST /tools/execute and the agent runtime
+(LocalDesktopAssistant) route through this same instance — there is no
+parallel path that could bypass permission/cancellation checks.
+"""
 from __future__ import annotations
 
 from time import perf_counter

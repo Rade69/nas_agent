@@ -1,3 +1,8 @@
+/** Legacy PowerShell screen_snapshot handler.
+ *  Captures a screenshot via PowerShell and saves it to the data
+ *  directory. Deprecated in favor of the Python equivalent
+ *  (FAZA 11, ctypes + Win32 API). */
+
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { runPowerShell, psSingleQuote } = require("./runPowerShell.cjs");

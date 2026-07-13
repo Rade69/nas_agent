@@ -1,3 +1,8 @@
+/** Ricky orb overlay with VoiceState-reactive visual states
+ *  (idle/listening/thinking/speaking/muted) and Stop button.
+ *  Used by both the main window (TopBar) and the companion orb
+ *  (CompanionOrb.tsx → ?view=companion BrowserWindow).
+ *  Context: agent_reports/2026-07-05_faza12-companion-orb.md */
 import type { VoiceState } from "../lib/voiceState";
 import rikiAvatar from "../../assets/Riki-avatar.png";
 

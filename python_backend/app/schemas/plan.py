@@ -1,3 +1,7 @@
+"""Pydantic models for the plans/proposals system (FAZA 9).
+
+Request/response shapes for the plans REST API.
+"""
 from __future__ import annotations
 
 from typing import Any, Literal

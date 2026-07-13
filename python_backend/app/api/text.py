@@ -1,3 +1,9 @@
+"""POST /text/rewrite — Dictation Mode "Doradi" menu backend.
+
+Plain text-in/text-out model call for formalize/shorten/proofread/
+translate_en operations. Deliberately NOT routed through the agent
+runtime (which would persist conversation state — wrong semantics).
+"""
 from fastapi import APIRouter, Request
 
 from app.agent.model_client import ModelClient

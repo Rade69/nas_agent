@@ -1,3 +1,8 @@
+"""Conversation state service for the agent runtime (FAZA 15).
+
+Wraps AgentConversationRepository to persist agent_conversations and
+agent_messages in SQLite. Used by LocalDesktopAssistant in runtime.py.
+"""
 from __future__ import annotations
 
 import json

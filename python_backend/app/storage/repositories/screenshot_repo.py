@@ -1,3 +1,9 @@
+"""SQLite repository for screenshot metadata (FAZA 11).
+
+Tracks captured screenshots (path, timestamp) separately from the
+artifact system — screenshots are binary files served directly, not
+wrapped as artifact objects.
+"""
 from __future__ import annotations
 
 import sqlite3

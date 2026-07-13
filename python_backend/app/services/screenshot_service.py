@@ -1,3 +1,9 @@
+"""Screenshot capture and file serving service (FAZA 11).
+
+Takes screenshots via ctypes/Win32 API and stores them in the backend's
+data/screenshots directory. Serves captured files through the screenshot
+REST endpoint.
+"""
 from __future__ import annotations
 
 import os

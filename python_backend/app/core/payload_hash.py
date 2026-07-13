@@ -1,3 +1,9 @@
+"""SHA-256 payload hashing for confirmation binding (FAZA 10).
+
+A single approved confirmation cannot be replayed against a different
+tool/payload/app — the permission engine hashes the arguments and
+compares against the stored payload_hash before allowing execution.
+"""
 from __future__ import annotations
 
 import hashlib

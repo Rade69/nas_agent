@@ -1,3 +1,7 @@
+"""Pydantic models for the Dictation Mode text rewrite endpoint.
+
+Request/response shapes for POST /text/rewrite.
+"""
 from __future__ import annotations
 
 from typing import Literal

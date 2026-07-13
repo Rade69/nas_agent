@@ -1,3 +1,7 @@
+"""SQLite repository for confirmations (FAZA 9).
+
+CRUD + status-filtered queries — used by ConfirmationService.
+"""
 from __future__ import annotations
 
 import json

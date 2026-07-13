@@ -1,3 +1,10 @@
+"""User-facing preferences Pydantic model.
+
+Deliberately named UserSettings to avoid confusion with
+app.core.config.Settings (process/environment config). New preferences
+are added here as new fields with sensible defaults — the underlying
+key/value SQLite table and generic service/API need no changes.
+"""
 from __future__ import annotations
 
 from pydantic import BaseModel

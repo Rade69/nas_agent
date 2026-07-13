@@ -1,3 +1,7 @@
+/** Icon and CSS class resolver for ActivityTimeline entries.
+ *  Maps ActivityEvent kind + TranscriptEntry role to a Lucide icon
+ *  component and CSS modifier class for the activity timeline display.
+ *  Context: agent_reports/2026-07-05_faza8-voice-first-ui-refactor.md */
 import IconSuccess from "../../assets/brending/icons/status/icon-status-success.svg?react";
 import IconError from "../../assets/brending/icons/status/icon-status-error.svg?react";
 import IconRunning from "../../assets/brending/icons/status/icon-status-running.svg?react";

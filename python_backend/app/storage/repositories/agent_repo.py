@@ -1,3 +1,7 @@
+"""SQLite repository for agent_conversations and agent_messages (FAZA 15).
+
+Persists conversation history for LocalDesktopAssistant.
+"""
 from __future__ import annotations
 
 import json

@@ -1,3 +1,8 @@
+"""SQLite repository for activity_events (FAZA 11).
+
+Emit (insert) and list (cursor-based pagination with since= parameter)
+for the EventBus service and GET /events endpoint.
+"""
 from __future__ import annotations
 
 import json

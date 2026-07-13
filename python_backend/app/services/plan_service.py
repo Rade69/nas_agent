@@ -1,3 +1,8 @@
+"""Plan/proposal state-machine service (FAZA 9).
+
+Enforces status transitions (draft→proposed→approved→running→completed/
+rejected/cancelled) and manages step lifecycle within each plan.
+"""
 from __future__ import annotations
 
 import json

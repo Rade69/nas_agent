@@ -1,3 +1,9 @@
+"""Artifact CRUD service (FAZA 11).
+
+Stores/retrieves artifacts in SQLite and emits artifact.created events
+through EventBus so the UI can discover new artifacts without polling
+the artifact list.
+"""
 from __future__ import annotations
 
 import json

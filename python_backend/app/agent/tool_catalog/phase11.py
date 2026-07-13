@@ -1,3 +1,9 @@
+"""Tool definitions for memory/artifact/system/integration tools (FAZA 11 + 16).
+
+Registers notes, records, artifacts, screenshots, ui_inspect, web_search,
+and image_generate handlers into the tool registry. FAZA 13/14 computer-use
+tools are registered in their own catalog modules.
+"""
 from __future__ import annotations
 
 from typing import Any

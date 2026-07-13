@@ -1,3 +1,8 @@
+"""Pydantic models for the tool system (FAZA 4+).
+
+ToolDefinition, ToolExecutionRequest, ToolExecutionResponse — shared
+between GET/POST /tools and the agent runtime.
+"""
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field

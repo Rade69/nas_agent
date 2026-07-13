@@ -1,3 +1,9 @@
+/** Companion orb BrowserWindow manager (FAZA 12).
+ *  Creates and manages a separate transparent always-on-top window that
+ *  hosts the CompanionOrb renderer. Handles drag/position, context menu,
+ *  tray, and VoiceState IPC forwarding.
+ *  Context: agent_reports/2026-07-05_faza12-companion-orb.md */
+
 const path = require("node:path");
 const { BrowserWindow, nativeImage, screen, ipcMain, Tray, Menu, shell } = require("electron");
 const { getSecureWebPreferences } = require("./secureWebPreferences.cjs");

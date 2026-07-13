@@ -1,3 +1,7 @@
+"""REST endpoints for plans/proposals (FAZA 9).
+
+CRUD + status transitions for plans and their steps, stored in SQLite.
+"""
 from fastapi import APIRouter, Path, Request
 
 from app.core.errors import AppError

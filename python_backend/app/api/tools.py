@@ -1,3 +1,11 @@
+"""REST endpoints for the tool system.
+
+GET /tools — list all registered tool definitions.
+POST /tools/execute — execute a single tool through the permission/
+  cancellation gate (same ToolExecutor instance the agent runtime uses).
+POST /tools/executions/cancel-all — flag all in-flight executions for
+  cancellation (Stop button / kill-switch backend half).
+"""
 from fastapi import APIRouter, Request
 
 from app.agent.tool_executor import ToolExecutor

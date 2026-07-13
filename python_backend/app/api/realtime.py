@@ -1,3 +1,9 @@
+"""POST /realtime/session — mints an ephemeral OpenAI Realtime credential.
+
+Electron's handleRealtimeCreateToken forwards the session config here
+instead of calling OpenAI directly, so the standard API key never leaves
+the Python backend (Security Gate 0).
+"""
 import hashlib
 
 import httpx

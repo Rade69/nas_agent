@@ -1,3 +1,8 @@
+/** Legacy PowerShell computer_click handler.
+ *  Calls a PowerShell script to simulate a mouse click at (x, y)
+ *  coordinates on the Windows desktop. Deprecated in favor of the
+ *  Python computer_click handler (FAZA 13, ctypes + Win32 API). */
+
 const { runPowerShell, NATIVE_MOUSE_TYPE } = require("./runPowerShell.cjs");
 
 async function computerClick(x, y) {

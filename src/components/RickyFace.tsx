@@ -1,3 +1,6 @@
+/** Deprecated SVG face component from the pre-pixel-redesign UI.
+ *  Replaced by RickyOrb.tsx (voice-state-reactive orb with animating
+ *  mouth shapes). Kept for reference; not mounted in current shell. */
 import type { CSSProperties } from "react";
 import type { MouthShape, RickyMood } from "../lib/realtime";
 

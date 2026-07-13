@@ -1,3 +1,9 @@
+"""Confirmation state-machine service (FAZA 9).
+
+Enforces the pending→approved/rejected/expired/cancelled transition
+rules. Does NOT decide WHEN to issue a confirmation — the permission
+engine (FAZA 10) owns that decision.
+"""
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta

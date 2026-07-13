@@ -1,3 +1,7 @@
+"""SQLite repository for artifacts (FAZA 11).
+
+CRUD operations for the artifacts table — used by ArtifactService.
+"""
 from __future__ import annotations
 
 import json

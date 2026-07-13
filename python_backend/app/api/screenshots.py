@@ -1,3 +1,7 @@
+"""REST endpoint for serving screenshot files captured by the Python
+screen_snapshot tool. Returns binary image data from the backend's
+screenshots directory (FAZA 11).
+"""
 from fastapi import APIRouter, Request
 
 from app.core.errors import AppError

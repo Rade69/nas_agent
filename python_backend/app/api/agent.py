@@ -1,3 +1,9 @@
+"""REST endpoints for the agent runtime (FAZA 15).
+
+POST /agent/message — send a text message to LocalDesktopAssistant and
+  receive a response (with optional tool calls).
+GET /agent/conversations/{id} — retrieve conversation history.
+"""
 from fastapi import APIRouter, Path, Request
 
 from app.agent.runtime import LocalDesktopAssistant

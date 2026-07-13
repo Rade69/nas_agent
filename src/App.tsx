@@ -1,3 +1,8 @@
+/** Root application component — voice session, dictation state machine,
+ *  confirmation dialog, plans panel, activity timeline, event polling,
+ *  and screen routing (home/dictation/activity/plans/memory/screens/settings).
+ *  All business logic lives here until extracted into custom hooks.
+ *  Context: agent_reports/2026-07-06_ui-redesign.md */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ActivityTimeline } from "./components/ActivityTimeline";
 import { ArtifactPanel } from "./components/ArtifactPanel";

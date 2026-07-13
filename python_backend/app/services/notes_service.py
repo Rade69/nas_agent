@@ -1,3 +1,8 @@
+"""Notes CRUD service (FAZA 11).
+
+Migrated from Electron's JSON database to SQLite. Handles text search
+by tag and full-text content filtering.
+"""
 from __future__ import annotations
 
 import json

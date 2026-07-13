@@ -1,3 +1,8 @@
+"""Tool registry factory (FAZA 11 + later phases).
+
+Builds a ToolRegistry populated from the phase-specific catalog modules.
+Used by app/main.py's create_app() to produce app.state.tool_registry.
+"""
 from __future__ import annotations
 
 from collections.abc import Callable

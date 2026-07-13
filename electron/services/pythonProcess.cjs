@@ -1,3 +1,10 @@
+/** Python backend process manager (FAZA 5 + 19 packaging).
+ *  Spawns the Python backend as a child process (uvicorn in dev,
+ *  PyInstaller-frozen executable in packaged builds), generates and
+ *  injects RICKY_LOCAL_TOKEN, waits for /health before resolving,
+ *  and forwards stdout/stderr to the Electron console.
+ *  Context: agent_reports/2026-07-05_faza5-electron-starts-python-backend.md */
+
 const { randomBytes } = require("node:crypto");
 const { spawn } = require("node:child_process");
 const fs = require("node:fs");

@@ -1,3 +1,7 @@
+"""SQLite repository for plans and plan_steps (FAZA 9).
+
+CRUD + status-filtered queries — used by PlanService.
+"""
 from __future__ import annotations
 
 import json

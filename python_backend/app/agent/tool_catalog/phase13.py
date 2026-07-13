@@ -1,3 +1,9 @@
+"""Tool definitions for computer-use v1 (coordinate-based) tools (FAZA 13).
+
+Registers computer_open_app, computer_type_text, computer_press_key,
+computer_click, and computer_scroll — all implemented via ctypes + Win32 API
+in app/tools/system/computer.py, no external dependencies.
+"""
 from __future__ import annotations
 
 from typing import Any

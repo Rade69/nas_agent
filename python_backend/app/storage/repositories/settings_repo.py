@@ -1,3 +1,8 @@
+"""SQLite repository for the key/value settings store.
+
+Generic get/set/get_all operations — the typed SettingsService layer
+above this decides which keys to expose based on UserSettings.model_fields.
+"""
 from __future__ import annotations
 
 import json

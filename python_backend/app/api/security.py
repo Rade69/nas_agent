@@ -1,3 +1,7 @@
+"""GET /security/self-test — backend half of the Production Security
+Self-Test (Security Gate 0). Returns per-check pass/fail results for
+host binding, auth token, CORS, confirmation gating, and log redaction.
+"""
 from typing import Any
 
 from fastapi import APIRouter, Request

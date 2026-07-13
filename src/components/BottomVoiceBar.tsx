@@ -1,3 +1,6 @@
+/** Deprecated voice control bar from the pre-pixel-redesign UI.
+ *  Replaced by the pixel TopBar / Sidebar / RickyOrb components.
+ *  Kept for reference; not mounted in the current App.tsx shell. */
 import { BrainCircuit, History, Keyboard, Mic, MicOff, MonitorCog, PanelRight, Send } from "lucide-react";
 import { voiceStateLabel, type VoiceState } from "../lib/voiceState";
 import type { RickyConnectionState } from "../lib/realtime";

@@ -1,3 +1,9 @@
+"""Auth dependency enforced on every backend route.
+
+Electron always sets RICKY_LOCAL_TOKEN before spawning this process; the
+dev-without-Electron path auto-generates its own token. Fails open only
+if settings.local_token is unset (never in production).
+"""
 from __future__ import annotations
 
 from fastapi import Header, Request

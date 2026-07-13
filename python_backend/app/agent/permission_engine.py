@@ -1,3 +1,9 @@
+"""Permission/risk layer enforced before every tool execution (FAZA 10).
+
+Active window checks, blocked-apps guard, risk-level escalation, and
+confirmation_id validation all live here. No tool runs without passing
+through this gate — the ToolExecutor calls it unconditionally.
+"""
 from __future__ import annotations
 
 import sys

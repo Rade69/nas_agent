@@ -1,3 +1,8 @@
+"""Records CRUD service (FAZA 11).
+
+Migrated from Electron's JSON database to SQLite. Supports collection-
+scoped search with case-insensitive text matching across title and fields.
+"""
 from __future__ import annotations
 
 import json

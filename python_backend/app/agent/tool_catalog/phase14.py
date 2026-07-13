@@ -1,3 +1,9 @@
+"""Tool definitions for computer-use v2 (UI element targeting) tools (FAZA 14).
+
+Registers computer_find_elements, computer_click_element,
+computer_set_text_element, and computer_get_element_text — all via UIA
+in app/tools/system/element_target.py.
+"""
 from __future__ import annotations
 
 from typing import Any

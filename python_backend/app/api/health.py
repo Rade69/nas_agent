@@ -1,3 +1,8 @@
+"""GET /health — liveness check for the Electron process manager.
+
+Used by electron/services/pythonProcess.cjs to wait for the backend
+before opening the main window.
+"""
 from fastapi import APIRouter
 
 from app.schemas.common import HealthResponse

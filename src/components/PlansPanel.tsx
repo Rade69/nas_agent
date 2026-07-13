@@ -1,3 +1,7 @@
+/** Full plans drawer view (FAZA 9) — tab-filtered plan list with step
+ *  advancement, status badges, and create/approve/run/complete/reject
+ *  actions. Localized via i18next (Localization PR-2).
+ *  Context: agent_reports/2026-07-11_gui-localization-pr2.md */
 import { useState } from "react";
 import { Check } from "lucide-react";
 import { useTranslation } from "react-i18next";

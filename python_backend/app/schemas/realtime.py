@@ -1,3 +1,7 @@
+"""Pydantic models for the Realtime session endpoint (FAZA 6).
+
+Request/response shapes for POST /realtime/session.
+"""
 from typing import Any
 
 from pydantic import BaseModel, Field

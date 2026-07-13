@@ -1,3 +1,9 @@
+"""In-memory execution-id state machine (FAZA 10).
+
+Tracks every tool execution by id so the Stop/cancel-all path can flag them
+for cancellation. Process-lifetime — restarts when the backend restarts.
+The durable audit trail lives in tool_runs via ActionLogService.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass

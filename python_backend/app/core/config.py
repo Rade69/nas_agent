@@ -1,3 +1,9 @@
+"""Backend configuration from environment variables.
+
+Settings model (process/environment config — host, port, API keys) kept
+deliberately separate from UserSettings (user-facing preferences in
+schemas/settings.py) to avoid confusion between the two.
+"""
 import os
 import secrets
 from pathlib import Path

@@ -1,3 +1,9 @@
+"""Structured AppError + FastAPI error handlers.
+
+Every backend error is raised as AppError(code, message, status_code)
+and rendered as a consistent JSON envelope by the registered handlers.
+No route raises bare HTTPException.
+"""
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 

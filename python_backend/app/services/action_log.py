@@ -1,3 +1,9 @@
+"""Durable audit trail for tool executions (FAZA 7).
+
+Wraps ToolRunRepository to persist every tool run (success or failure)
+in the tool_runs SQLite table, including duration, error codes, and
+risk/confirmation metadata.
+"""
 from __future__ import annotations
 
 from typing import Any

@@ -1,3 +1,7 @@
+/** Shared PowerShell execution helper used by legacy computer-use
+ *  tools. Spawns powershell.exe with the provided script, captures
+ *  stdout/stderr, and returns the result. */
+
 const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
 

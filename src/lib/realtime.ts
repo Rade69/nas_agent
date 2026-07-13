@@ -1,3 +1,10 @@
+/** WebRTC Realtime client — manages the OpenAI Realtime voice session
+ *  lifecycle (connect, disconnect, sendText, setDictationMode, tool
+ *  execution loop). Owns the PeerConnection, DataChannel, microphone
+ *  stream, audio output analyser, and mouth-shape animation driver.
+ *  Implements dictation-mode toggle and confirmation-bridge auto-retry.
+ *  Context: agent_reports/2026-07-10_connect-latency-fix.md
+ *  Context: agent_reports/2026-07-06_confirmation-bridge.md */
 import type { RickyToolCall, RickyToolResult, RickyToolSpec } from "../vite-env";
 import { routeRealtimeEvent } from "./realtimeEventRouter";
 import { createActivityEvent } from "./voiceState";

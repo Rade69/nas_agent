@@ -1,3 +1,9 @@
+"""Typed view over the generic key/value settings store (SQLite).
+
+Generic by design — reads UserSettings.model_fields to know which keys
+to return, so adding a new preference only needs a new field on
+UserSettings with a default, nothing else here.
+"""
 from __future__ import annotations
 
 from typing import Any

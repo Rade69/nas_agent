@@ -1,3 +1,9 @@
+"""Logging configuration with secret redaction (Security Gate 0).
+
+SecretRedactionFilter scrubs known secret values (OpenAI key, local
+token, Exa key) from every log line before it reaches stdout/stderr,
+so secrets never appear verbatim in console or redirected log output.
+"""
 from __future__ import annotations
 
 import logging

@@ -1,3 +1,9 @@
+"""SQLite database initialization and schema (FAZA 7+).
+
+CREATE TABLE IF NOT EXISTS statements for all tables + a lightweight
+_add_column migration helper. No full migration framework — columns
+added in later phases are applied idempotently on startup.
+"""
 from __future__ import annotations
 
 import os

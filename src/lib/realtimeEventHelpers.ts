@@ -1,3 +1,8 @@
+/** Safe JSON parsing and data extraction helpers for Realtime events.
+ *  Defensive wrappers that survive malformed/non-JSON data-channel messages
+ *  and extract typed values (transcript text, tool arguments, output
+ *  content) from the various OpenAI Realtime event shapes.
+ *  Context: agent_reports/2026-07-10_s2-voice-path-fix.md */
 import type { RickyToolResult } from "../vite-env";
 import type { ResponseOutputItem, ServerEvent } from "./realtimeTypes";
 

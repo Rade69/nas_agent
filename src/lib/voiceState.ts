@@ -1,3 +1,8 @@
+/** VoiceState type definition and ActivityEvent factory.
+ *  Defines the canonical voice lifecycle states (idle→listening→thinking→
+ *  speaking) and the ActivityEvent shape consumed by ActivityTimeline.
+ *  voiceStateLabel() returns a localized label for each state.
+ *  Context: agent_reports/2026-07-05_faza8-voice-first-ui-refactor.md */
 import i18n from "../i18n";
 
 export type VoiceState =

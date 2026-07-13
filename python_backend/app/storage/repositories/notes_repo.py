@@ -1,3 +1,7 @@
+"""SQLite repository for notes (FAZA 11).
+
+CRUD + tag-search for the NotesService.
+"""
 from __future__ import annotations
 
 import json

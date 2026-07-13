@@ -1,3 +1,7 @@
+/** Legacy PowerShell computer_type_text handler.
+ *  Types text into the active window via PowerShell. Deprecated in
+ *  favor of the Python equivalent (FAZA 13). */
+
 const { runPowerShell, psSingleQuote } = require("./runPowerShell.cjs");
 
 function escapeSendKeys(text) {

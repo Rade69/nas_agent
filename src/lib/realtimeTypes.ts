@@ -1,3 +1,8 @@
+/** Shared TypeScript types for the Realtime client module.
+ *  MouthShape, RealtimeCallbacks, TranscriptEntry, RickyConnectionState,
+ *  RickyMood, and internal event types used by realtime.ts and its helpers.
+ *  Extracted from realtime.ts during R4 refactor
+ *  (agent_reports/2026-07-10_s2-voice-path-fix.md). */
 import type { RickyArtifact, RickyToolCall, RickyToolSpec } from "../vite-env";
 import type { ActivityEvent, VoiceState } from "./voiceState";
 

@@ -1,3 +1,8 @@
+"""SQLite repository for tool_runs audit trail (FAZA 7).
+
+Persists every tool execution (success or failure) with input/output
+snapshots, duration, and error metadata — used by ActionLogService.
+"""
 from __future__ import annotations
 
 import json

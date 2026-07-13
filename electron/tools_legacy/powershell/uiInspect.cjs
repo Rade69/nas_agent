@@ -1,3 +1,8 @@
+/** Legacy PowerShell ui_inspect handler.
+ *  Enumerates visible UI elements and their positions via PowerShell.
+ *  Deprecated in favor of the Python equivalent
+ *  (FAZA 11/14, ctypes + UIA). */
+
 const { runPowerShell, NATIVE_WINDOW_TYPE } = require("./runPowerShell.cjs");
 
 async function uiInspect() {
