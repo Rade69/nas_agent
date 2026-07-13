@@ -113,6 +113,9 @@ export type PlanStep = {
 // panel grows. Context: agent_reports/2026-07-11_settings-panel-foundation.md
 export type UserSettings = {
   user_name: string;
+  // Name the model refers to itself as in the system prompt — defaults to
+  // "Ricky". Context: agent_reports/2026-07-13_agent-name-setting.md
+  agent_name: string;
   interface_language: string;
   // Empty = use the built-in localized defaults (idle.cmd* i18n keys).
   // Context: agent_reports/2026-07-12_custom-quick-commands.md

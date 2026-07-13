@@ -19,6 +19,11 @@ from pydantic import BaseModel
 # database migration is needed since the underlying table is key/value.
 class UserSettings(BaseModel):
     user_name: str = "Riley"
+    # Name the model refers to itself as / is addressed by in the system
+    # prompt (electron/ipc_handlers/realtime.cjs's buildRickyInstructions) —
+    # mirrors user_name's pattern exactly. Context: agent_reports/
+    # 2026-07-13_agent-name-setting.md
+    agent_name: str = "Ricky"
     interface_language: str = "sr-Latn"
     # Empty = use the built-in localized defaults (Napiši email/Napravi
     # screenshot/Otvori Notepad/Planiraj sastanak — see src/i18n/locales/*.json
@@ -32,5 +37,6 @@ class UserSettings(BaseModel):
 
 class UserSettingsUpdateRequest(BaseModel):
     user_name: str | None = None
+    agent_name: str | None = None
     interface_language: str | None = None
     quick_commands: list[str] | None = None

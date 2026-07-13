@@ -26,6 +26,17 @@ def _restore_user_name():
 
 
 @pytest.fixture
+def _restore_agent_name():
+    # Same reasoning as _restore_user_name.
+    settings = get_settings()
+    initialize_database(settings)
+    repo = SettingsRepository(settings.database_path)
+    original = repo.get("agent_name")
+    yield
+    repo.set("agent_name", original if original is not None else "Ricky")
+
+
+@pytest.fixture
 def _restore_interface_language():
     # Same reasoning as _restore_user_name — dijeljena prava SQLite baza,
     # nema test-izolacije za ovaj endpoint. Čuva/vraća interface_language
@@ -70,6 +81,26 @@ def test_patch_settings_updates_user_name(_restore_user_name) -> None:
         assert follow_up.json()["user_name"] == "Radovan"
 
 
+def test_get_settings_default_agent_name(_restore_agent_name) -> None:
+    repo = SettingsRepository(get_settings().database_path)
+    repo.set("agent_name", "Ricky")
+    with TestClient(app) as client:
+        response = client.get("/settings")
+
+    assert response.status_code == 200
+    assert response.json()["agent_name"] == "Ricky"
+
+
+def test_patch_settings_updates_agent_name(_restore_agent_name) -> None:
+    with TestClient(app) as client:
+        response = client.patch("/settings", json={"agent_name": "Jarvis"})
+        assert response.status_code == 200
+        assert response.json()["agent_name"] == "Jarvis"
+
+        follow_up = client.get("/settings")
+        assert follow_up.json()["agent_name"] == "Jarvis"
+
+
 def test_patch_settings_with_unset_field_does_not_overwrite(_restore_user_name) -> None:
     with TestClient(app) as client:
         client.patch("/settings", json={"user_name": "Radovan"})
@@ -90,7 +121,7 @@ def test_unknown_stored_keys_are_ignored(_restore_user_name) -> None:
 
     assert response.status_code == 200
     # Only declared UserSettings fields are ever returned.
-    assert set(response.json().keys()) == {"user_name", "interface_language", "quick_commands"}
+    assert set(response.json().keys()) == {"user_name", "agent_name", "interface_language", "quick_commands"}
 
 
 def test_get_settings_default_interface_language(_restore_interface_language) -> None:

@@ -27,6 +27,8 @@ export function SettingsPanel({
   const [settings, setSettings] = useState<UserSettings | null>(null);
   const [nameInput, setNameInput] = useState("");
   const [nameStatus, setNameStatus] = useState<SaveStatus>("loading");
+  const [agentNameInput, setAgentNameInput] = useState("");
+  const [agentNameStatus, setAgentNameStatus] = useState<SaveStatus>("loading");
   const [languageInput, setLanguageInput] = useState("sr-Latn");
   const [languageStatus, setLanguageStatus] = useState<SaveStatus>("loading");
   const [commandsInput, setCommandsInput] = useState<string[]>([]);
@@ -40,15 +42,18 @@ export function SettingsPanel({
         if (cancelled) return;
         setSettings(result);
         setNameInput(result.user_name);
+        setAgentNameInput(result.agent_name ?? "Ricky");
         setLanguageInput(result.interface_language ?? "sr-Latn");
         setCommandsInput(result.quick_commands ?? []);
         setNameStatus("idle");
+        setAgentNameStatus("idle");
         setLanguageStatus("idle");
         setCommandsStatus("idle");
       })
       .catch(() => {
         if (!cancelled) {
           setNameStatus("error");
+          setAgentNameStatus("error");
           setLanguageStatus("error");
           setCommandsStatus("error");
         }
@@ -69,6 +74,20 @@ export function SettingsPanel({
       window.setTimeout(() => setNameStatus((current) => (current === "saved" ? "idle" : current)), 2000);
     } catch {
       setNameStatus("error");
+    }
+  }
+
+  async function handleSaveAgentName() {
+    const trimmed = agentNameInput.trim();
+    setAgentNameStatus("saving");
+    try {
+      const updated = await window.ricky.updateSettings({ agent_name: trimmed || "Ricky" });
+      setSettings(updated);
+      setAgentNameInput(updated.agent_name ?? "Ricky");
+      setAgentNameStatus("saved");
+      window.setTimeout(() => setAgentNameStatus((current) => (current === "saved" ? "idle" : current)), 2000);
+    } catch {
+      setAgentNameStatus("error");
     }
   }
 
@@ -114,11 +133,18 @@ export function SettingsPanel({
     setCommandsInput((current) => current.filter((_, i) => i !== index));
   }
 
-  if (nameStatus === "loading" || languageStatus === "loading" || commandsStatus === "loading") {
+  if (
+    nameStatus === "loading" ||
+    agentNameStatus === "loading" ||
+    languageStatus === "loading" ||
+    commandsStatus === "loading"
+  ) {
     return <p className="drawer-placeholder-text">{t("settings.loading")}</p>;
   }
 
   const nameDirty = settings !== null && nameInput.trim() !== settings.user_name && nameInput.trim() !== "";
+  const agentNameDirty =
+    settings !== null && agentNameInput.trim() !== (settings.agent_name ?? "Ricky") && agentNameInput.trim() !== "";
   const languageDirty = settings !== null && languageInput !== (settings.interface_language ?? "sr-Latn");
   const commandsDirty =
     settings !== null &&
@@ -137,7 +163,7 @@ export function SettingsPanel({
             onChange={(event) => setNameInput(event.target.value)}
             placeholder="Riley"
           />
-          <span className="pixel-settings-hint">{t("settings.nameHint")}</span>
+          <span className="pixel-settings-hint">{t("settings.nameHint", { agentName: agentNameInput.trim() || "Ricky" })}</span>
         </label>
         <div className="pixel-settings-actions">
           <button className="pixel-primary" onClick={() => void handleSaveName()} disabled={!nameDirty || nameStatus === "saving"}>
@@ -145,6 +171,31 @@ export function SettingsPanel({
           </button>
           {nameStatus === "saved" ? <span className="pixel-settings-feedback pixel-settings-feedback-ok">{t("settings.saved")}</span> : null}
           {nameStatus === "error" ? (
+            <span className="pixel-settings-feedback pixel-settings-feedback-error">{t("settings.error")}</span>
+          ) : null}
+        </div>
+        <label className="pixel-settings-field">
+          <span>{t("settings.agentName")}</span>
+          <input
+            type="text"
+            value={agentNameInput}
+            onChange={(event) => setAgentNameInput(event.target.value)}
+            placeholder="Ricky"
+          />
+          <span className="pixel-settings-hint">{t("settings.agentNameHint")}</span>
+        </label>
+        <div className="pixel-settings-actions">
+          <button
+            className="pixel-primary"
+            onClick={() => void handleSaveAgentName()}
+            disabled={!agentNameDirty || agentNameStatus === "saving"}
+          >
+            {agentNameStatus === "saving" ? t("settings.saving") : t("settings.save")}
+          </button>
+          {agentNameStatus === "saved" ? (
+            <span className="pixel-settings-feedback pixel-settings-feedback-ok">{t("settings.saved")}</span>
+          ) : null}
+          {agentNameStatus === "error" ? (
             <span className="pixel-settings-feedback pixel-settings-feedback-error">{t("settings.error")}</span>
           ) : null}
         </div>

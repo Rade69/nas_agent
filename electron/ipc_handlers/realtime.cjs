@@ -6,6 +6,7 @@ const { readDb } = require("../core/legacyDb.cjs");
 const { toolSpecs } = require("../core/realtimeToolSpecs.cjs");
 
 const DEFAULT_USER_NAME = "Riley";
+const DEFAULT_AGENT_NAME = "Ricky";
 
 // STT jezički hint za Dictation Mode (OpenAI Realtime whisper-1 language
 // param). Mapiranje po docs/RICKY_GUI_LOCALIZATION_PLAN.md — sr-Latn ostaje
@@ -28,9 +29,12 @@ const DEFAULT_LANGUAGE_CONFIG = LANGUAGE_CONFIG["sr-Latn"];
 // (GET /settings, defaults to "Riley" if never set/backend unreachable) so
 // this is a per-user preference, not a fixed value baked into the prompt.
 // Context: agent_reports/2026-07-11_settings-panel-foundation.md
-function buildRickyInstructions(userName, languageName) {
+// The agent's own name ("Ricky") is now the same kind of per-user preference
+// (settings.agent_name, defaults to "Ricky") — mirrors user_name exactly.
+// Context: agent_reports/2026-07-13_agent-name-setting.md
+function buildRickyInstructions(agentName, userName, languageName) {
   return `# Role and Objective
-You are Ricky, ${userName}'s desktop AI operator. You speak through realtime voice and can use local tools.
+You are ${agentName}, ${userName}'s desktop AI operator. You speak through realtime voice and can use local tools.
 
 # Personality and Tone
 Concise, calm, useful. Use a confident man's voice. Talk like a smart operator, not a chatbot.
@@ -46,7 +50,7 @@ Prefer replying in ${languageName} unless ${userName} clearly speaks a different
 # Tool Behavior
 - Use read-only tools when the user's intent is clear.
 - When ${userName} asks you to find, locate, or search for a folder or file (e.g. "where is the thumbnails folder"), call filesystem_search. Never try to locate a folder or file by guessing coordinates and clicking through File Explorer — that requires a fresh confirmation for every single click and will frustrate ${userName}.
-- When ${userName} says "show me the menu", "show me what I can do", or asks what Ricky can do, call show_menu immediately.
+- When ${userName} says "show me the menu", "show me what I can do", or asks what ${agentName} can do, call show_menu immediately.
 - For web search, notes, charts, records, image generation, and artifact display, act directly when the request is clear.
 - For thumbnail creation/editing, always use the thumbnail board tools, never generic image_generate and never artifact_show with imageLoading. Generate exactly one 16:9 image per request. Never generate multiple unless ${userName} separately asks again. Every generate/edit request gets a permanent database number that never changes, like #18 then #19 then #20. Do not renumber visible grid positions. Show paginated 3x3 pages of the permanent numbers. Do not show a standalone fullscreen loading animation for thumbnails. Use ${userName}'s wording literally: do not invent elaborate extra concepts, fake text, or extra thumbnail ideas. For edits, use the exact existing numbered/selected image as input and make only the requested change.
 - The thumbnail board persists across sessions. If ${userName} references thumbnail #N, trust that permanent number and call the matching thumbnail tool. Do not say you cannot see old thumbnails. Use thumbnail_grid to refresh state or change pages if needed.
@@ -67,11 +71,15 @@ Let the user interrupt. If audio is unclear, ask one short clarifying question i
 async function handleRealtimeCreateToken() {
   const db = await readDb();
   let userName = DEFAULT_USER_NAME;
+  let agentName = DEFAULT_AGENT_NAME;
   let languageConfig = DEFAULT_LANGUAGE_CONFIG;
   try {
     const settings = await getSettings();
     if (settings && typeof settings.user_name === "string" && settings.user_name.trim()) {
       userName = settings.user_name.trim();
+    }
+    if (settings && typeof settings.agent_name === "string" && settings.agent_name.trim()) {
+      agentName = settings.agent_name.trim();
     }
     if (settings && typeof settings.interface_language === "string") {
       languageConfig = LANGUAGE_CONFIG[settings.interface_language] ?? DEFAULT_LANGUAGE_CONFIG;
@@ -79,9 +87,9 @@ async function handleRealtimeCreateToken() {
   } catch (error) {
     // Cosmetic preference, not security-critical — fail open to the default
     // name rather than blocking the whole voice session over a settings fetch.
-    console.warn("[settings] Could not load user_name, using default:", error);
+    console.warn("[settings] Could not load user_name/agent_name, using defaults:", error);
   }
-  const instructions = `${buildRickyInstructions(userName, languageConfig.promptName)}\n\n${buildThumbnailBoardInstructions(db)}`;
+  const instructions = `${buildRickyInstructions(agentName, userName, languageConfig.promptName)}\n\n${buildThumbnailBoardInstructions(db)}`;
 
   const session = {
     type: "realtime",
