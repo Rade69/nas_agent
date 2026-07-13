@@ -3,20 +3,19 @@
 // shell/IPC layer. Pure data — consumed read-only by handleToolsList and
 // handleRealtimeCreateToken. Behavior unchanged (verbatim move).
 
+// Security PR A (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md S-01):
+// `set_mode` used to be listed here as a model-callable function, which let
+// the model (or prompt-injected content it read) switch Computer Mode on
+// unilaterally — Computer Mode is supposed to be a deliberate user decision,
+// not something the model grants itself. It is intentionally NOT in this
+// array anymore, which removes it both from the tools advertised to the
+// OpenAI Realtime session (electron/ipc_handlers/realtime.cjs) and from
+// src/lib/realtime.ts's own knownTool gate — the model can no longer request
+// it at all. The trusted UI toggle (App.tsx's switchMode()) is unaffected:
+// it calls window.ricky.executeTool({name: "set_mode", ...}) directly,
+// which reaches electron/main.cjs's handleToolsExecute via a separate code
+// path that never consults this array.
 const toolSpecs = [
-  {
-    type: "function",
-    name: "set_mode",
-    description: "Switch Ricky between display mode and computer use mode.",
-    parameters: {
-      type: "object",
-      properties: {
-        mode: { type: "string", enum: ["display", "computer"] },
-      },
-      required: ["mode"],
-      additionalProperties: false,
-    },
-  },
   {
     type: "function",
     name: "artifact_show",

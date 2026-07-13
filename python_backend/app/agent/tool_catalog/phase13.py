@@ -54,7 +54,7 @@ def register_phase13_tools(registry: ToolRegistry) -> None:
     registry.register(
         _def(
             "computer_open_app",
-            "Open a Windows app by name (must be in PATH or have an App Execution Alias, e.g. notepad, calc, mspaint, chrome). Requires computer mode.",
+            "Open a Windows app by name. Only a fixed set of common apps is allowed: notepad, calc/calculator, mspaint/paint, wordpad, explorer, chrome, edge. Requires computer mode.",
             {
                 "type": "object",
                 "properties": {"appName": {"type": "string"}},

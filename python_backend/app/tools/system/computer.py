@@ -8,7 +8,8 @@ All handlers require computer mode (enforced by the permission engine via
 requires_computer_mode=True on each ToolDefinition).
 
 Risk model (see SECURITY_MODEL.md):
-  - computer_open_app:  medium (launches arbitrary process, but visible to user)
+  - computer_open_app:  medium (launches a fixed, allowlisted app — see _APP_ALIASES
+                                 below; not an arbitrary command, Security PR A / S-02)
   - computer_type_text: high   (injects keystrokes into the active window)
   - computer_press_key: medium (single key injection, limited set)
   - computer_click:     high   (can click dangerous UI elements)
@@ -185,18 +186,40 @@ def _type_unicode_char(ch: str) -> None:
 # stays entirely in stdlib with no .NET dependency. CR/LF → Enter key.
 # For a faster approach, a future phase can batch scancodes.
 
+# Security PR A (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md S-02): the
+# previous implementation passed the model-controlled appName string straight
+# to subprocess.Popen(app_name, shell=True) as an os.startfile() fallback —
+# a shell injection vector (e.g. appName="notepad & del /f /q C:\\important"
+# would run the injected command once os.startfile() rejected the compound
+# string as an invalid path). Only these exact, developer-controlled targets
+# can be launched now; nothing derived from model input ever reaches a shell.
+_APP_ALIASES: dict[str, str] = {
+    "notepad": "notepad.exe",
+    "calc": "calc.exe",
+    "calculator": "calc.exe",
+    "mspaint": "mspaint.exe",
+    "paint": "mspaint.exe",
+    "wordpad": "write.exe",
+    "explorer": "explorer.exe",
+    "chrome": "chrome",
+    "edge": "msedge",
+}
+
+
 def _handle_open_app(arguments: dict[str, Any]) -> dict[str, Any]:
     app_name = str(arguments.get("appName", "")).strip()
     if not app_name:
         raise ValueError("appName is required.")
+    target = _APP_ALIASES.get(app_name.lower())
+    if target is None:
+        raise ValueError(
+            f"'{app_name}' is not an allowed app. Allowed: {', '.join(sorted(_APP_ALIASES))}."
+        )
     _check_win32()
-    try:
-        # os.startfile opens a file/app with its associated program on Windows.
-        # Falls back to subprocess.Popen for executables that need direct launch.
-        os.startfile(app_name)
-    except OSError:
-        # Some apps (especially without file associations) need Popen.
-        subprocess.Popen(app_name, shell=True)
+    # target is always one of the fixed values above (shell=False, list form)
+    # — never the raw appName string — so there is no shell metacharacter
+    # surface regardless of what the model was asked/tricked into requesting.
+    subprocess.Popen([target], shell=False)
     return {"message": f"Opened {app_name}.", "app_name": app_name}
 
 

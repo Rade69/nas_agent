@@ -175,21 +175,48 @@ class TestComputerOpenApp:
         with pytest.raises(ValueError, match="appName"):
             _handle_open_app({"appName": ""})
 
-    def test_opens_with_startfile(self) -> None:
+    def test_opens_allowlisted_app_with_popen_shell_false(self) -> None:
+        # Security PR A / S-02 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md):
+        # only the fixed _APP_ALIASES map may be launched, always shell=False.
         from app.tools.system.computer import _handle_open_app
-        with patch.object(sys, "platform", "win32"), patch("os.startfile") as mock_startfile:
+        with patch.object(sys, "platform", "win32"), patch("subprocess.Popen") as mock_popen:
             result = _handle_open_app({"appName": "notepad"})
-            mock_startfile.assert_called_once_with("notepad")
+            mock_popen.assert_called_once_with(["notepad.exe"], shell=False)
             assert result["app_name"] == "notepad"
             assert "Opened" in result["message"]
 
-    def test_falls_back_to_popen(self) -> None:
+    def test_allowlist_lookup_is_case_insensitive(self) -> None:
         from app.tools.system.computer import _handle_open_app
-        with patch.object(sys, "platform", "win32"), patch("os.startfile", side_effect=OSError), \
-             patch("subprocess.Popen") as mock_popen:
-            result = _handle_open_app({"appName": "chrome"})
-            mock_popen.assert_called_once_with("chrome", shell=True)
-            assert result["app_name"] == "chrome"
+        with patch.object(sys, "platform", "win32"), patch("subprocess.Popen") as mock_popen:
+            _handle_open_app({"appName": "Chrome"})
+            mock_popen.assert_called_once_with(["chrome"], shell=False)
+
+    def test_unlisted_app_is_rejected(self) -> None:
+        from app.tools.system.computer import _handle_open_app
+        with patch.object(sys, "platform", "win32"), patch("subprocess.Popen") as mock_popen:
+            with pytest.raises(ValueError, match="not an allowed app"):
+                _handle_open_app({"appName": "regedit"})
+            mock_popen.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            "notepad & del /f /q C:\\important",
+            "notepad; rm -rf /",
+            "notepad | powershell -c whoami",
+            "cmd /c calc",
+            "chrome.exe -- --evil-flag",
+        ],
+    )
+    def test_shell_metacharacter_payloads_are_rejected(self, payload: str) -> None:
+        # Red-team coverage requested by the S-02 audit finding: none of these
+        # should ever reach subprocess.Popen, regardless of what they contain,
+        # because they don't match any _APP_ALIASES key.
+        from app.tools.system.computer import _handle_open_app
+        with patch.object(sys, "platform", "win32"), patch("subprocess.Popen") as mock_popen:
+            with pytest.raises(ValueError, match="not an allowed app"):
+                _handle_open_app({"appName": payload})
+            mock_popen.assert_not_called()
 
 
 class TestComputerTypeText:

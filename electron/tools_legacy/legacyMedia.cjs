@@ -135,8 +135,8 @@ Here is what you can ask me to do.
 
 ## Computer Use Mode
 
-- "Switch to computer use mode."
-- Open apps, click, type, press Enter/Return, scroll, inspect the UI, and take screen snapshots.
+- Turn on Computer Mode from the app (this is a deliberate action you take, not something you ask Ricky to do — Ricky can't enable it for you).
+- Once it's on: open apps, click, type, press Enter/Return, scroll, inspect the UI, and take screen snapshots.
 - Ricky asks before risky actions like sending, deleting, buying, changing settings, or sharing private info.
 
 ## Good Starter Prompts
@@ -144,8 +144,7 @@ Here is what you can ask me to do.
 - "Show me the menu."
 - "Search the web for the latest AI video tools."
 - "Create a chart of my workflow."
-- "Add a note: follow up on the sponsor."
-- "Switch to computer use mode and open Notes."`;
+- "Add a note: follow up on the sponsor."`;
 }
 
 async function generateImage(args) {

@@ -165,10 +165,13 @@ async function clearStartupLoadingThumbnails() {
 
 function requireComputerMode() {
   if (currentMode !== "computer") {
+    // Security PR A (S-01): the model can no longer call set_mode itself, so
+    // this message must tell it to ask the human — not to "switch" on its own,
+    // which was the exact framing that made S-01 easy to trigger by voice.
     return {
       ok: false,
       needsMode: "computer",
-      message: "Computer control is disabled. Ask Ricky to switch to computer use mode first.",
+      message: "Computer control is disabled. Ask the user to enable Computer Mode from the app.",
     };
   }
   return null;
