@@ -142,9 +142,9 @@ Here is what you can ask me to do.
 
 ## Computer Use Mode
 
-- Turn on Computer Mode from the app (this is a deliberate action you take, not something you ask Ricky to do — Ricky can't enable it for you).
+- Turn it on by clicking the toggle in the app, or just ask Ricky by voice ("uđi u computer mode").
 - Once it's on: open apps, click, type, press Enter/Return, scroll, inspect the UI, and take screen snapshots.
-- Ricky asks before risky actions like sending, deleting, buying, changing settings, or sharing private info.
+- Ricky asks before risky actions like sending, deleting, buying, changing settings, or sharing private info — and also before entering/exiting Computer Mode itself, if Ricky just read something from the web or the screen (a safety check against instructions hidden in that content).
 
 ## Good Starter Prompts
 

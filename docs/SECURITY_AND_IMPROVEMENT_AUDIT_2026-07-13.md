@@ -42,7 +42,7 @@ Zbog toga se trenutni build ne treba nuditi širim beta korisnicima sa uključen
 
 | ID | Nalaz | Rizik | Preporučeni prioritet | Procjena rada |
 |---|---|---:|---:|---:|
-| S-01 | Model može sam uključiti Computer Mode | CRITICAL | P0 | ✅ **Popravljeno 2026-07-13** — vidi `agent_reports/2026-07-13_security-pr-a-set-mode-and-open-app.md` |
+| S-01 | Model može sam uključiti Computer Mode | CRITICAL | P0 | ✅ **Popravljeno 2026-07-13**, revidirano isti dan — vidi `agent_reports/2026-07-13_security-pr-a-set-mode-and-open-app.md` i `agent_reports/2026-07-13_computer-mode-voice-reentry.md` (glasovni `set_mode` vraćen, gated kroz S-2 escalation pravilo umjesto potpunog uklanjanja) |
 | S-02 | `computer_open_app` omogućava shell execution | CRITICAL | P0 | ✅ **Popravljeno 2026-07-13** — vidi `agent_reports/2026-07-13_security-pr-a-set-mode-and-open-app.md` |
 | S-03 | Proizvoljna lokalna slika može biti poslata u cloud kroz thumbnail reference | CRITICAL | P0 | srednja |
 | S-04 | Odobrena confirmation se može ponovo koristiti | HIGH | P0 | ✅ **Popravljeno 2026-07-13** — vidi `agent_reports/2026-07-13_security-s04-one-time-confirmations.md` |
@@ -62,7 +62,17 @@ Zbog toga se trenutni build ne treba nuditi širim beta korisnicima sa uključen
 
 ### S-01 — CRITICAL: model može sam uključiti Computer Mode ✅ Popravljeno 2026-07-13
 
-**Dokaz**
+**Revizija (isti dan):** korisnik je prijavio da je potpuno uklanjanje
+glasovnog `set_mode`-a nepotrebno trenje za genuine zahtjeve. Umjesto
+potpunog uklanjanja, `set_mode` je vraćen modelu ALI gated kroz Python
+`permission_engine`-ov postojeći S-2 escalation mehanizam: genuine zahtjev
+(bez prethodno pročitanog eksternog sadržaja ovu sesiju) izvršava se odmah;
+ako je model već pročitao web/ekran sadržaj, zahtjev eskalira na
+confirmation. UI toggle (direktan klik) ostaje uvijek bez trenja i nezavisan
+od backend statusa. Vidi `agent_reports/2026-07-13_computer-mode-voice-reentry.md`
+za pun dizajn i obrazloženje.
+
+**Dokaz (originalni nalaz, prije revizije)**
 
 - `electron/core/realtimeToolSpecs.cjs` izlaže modelu tool `set_mode` sa vrijednostima `display` i `computer`.
 - `electron/main.cjs:344-346` prihvata taj poziv i direktno postavlja `currentMode = "computer"`.

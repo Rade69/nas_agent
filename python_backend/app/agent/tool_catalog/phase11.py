@@ -1,8 +1,8 @@
 """Tool definitions for memory/artifact/system/integration tools (FAZA 11 + 16).
 
 Registers notes, records, artifacts, screenshots, ui_inspect, web_search,
-and image_generate handlers into the tool registry. FAZA 13/14 computer-use
-tools are registered in their own catalog modules.
+image_generate, and set_mode handlers into the tool registry. FAZA 13/14
+computer-use tools are registered in their own catalog modules.
 """
 from __future__ import annotations
 
@@ -17,6 +17,8 @@ def register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) -> 
     from app.tools.images.generate import make_handlers as make_image_handlers
     from app.tools.memory.notes import make_handlers as make_notes_handlers
     from app.tools.memory.records import make_handlers as make_records_handlers
+    from app.tools.system.filesystem_search import make_handlers as make_filesystem_search_handlers
+    from app.tools.system.mode import make_handlers as make_mode_handlers
     from app.tools.system.screenshot import make_handlers as make_screenshot_handlers
     from app.tools.system.ui_inspect import make_handlers as make_ui_inspect_handlers
     from app.tools.web.search import make_handlers as make_web_handlers
@@ -28,6 +30,8 @@ def register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) -> 
     ui_inspect_handlers = make_ui_inspect_handlers()
     web_handlers = make_web_handlers(services["exa_client"])
     image_handlers = make_image_handlers(services["openai_image_client"], services["images_dir"])
+    mode_handlers = make_mode_handlers()
+    filesystem_search_handlers = make_filesystem_search_handlers(services["data_dir"])
 
     def _def(
         name: str,
@@ -300,4 +304,60 @@ def register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) -> 
             outbound=True,
         ),
         image_handlers["image_generate"],
+    )
+
+    # --- set_mode (permission gate only — no window side effect, see
+    # app/tools/system/mode.py header) ---
+    # Context: agent_reports/2026-07-13_computer-mode-voice-reentry.md
+    # risk="medium" + requires_confirmation=False: a plain "enter computer
+    # mode" request executes immediately. The existing S-2 escalation rule in
+    # permission_engine.check_permission (external_content_seen + risk in
+    # medium/high/critical) forces a confirmation only if the model already
+    # read untrusted external content earlier this turn.
+    registry.register(
+        _def(
+            "set_mode",
+            "Switch Ricky between display mode and Computer Mode (screen automation).",
+            {
+                "type": "object",
+                "properties": {
+                    "mode": {"type": "string", "enum": ["display", "computer"]},
+                },
+                "required": ["mode"],
+                "additionalProperties": False,
+            },
+            risk="medium",
+        ),
+        mode_handlers["set_mode"],
+    )
+
+    # --- filesystem_search (user-reported gap, agent_reports/2026-07-13_
+    # filesystem-search-tool.md): with no way to search the filesystem, the
+    # model's only option for "find the thumbnails folder" was blind
+    # computer_click/computer_type_text navigation through File Explorer —
+    # each one high-risk and confirmation-gated, which the user experienced
+    # as an infinite loop of approval requests. This tool returns matching
+    # folder/file paths directly, read-only (names/paths only, never file
+    # contents), so that chain is never needed for a plain "find X" request. ---
+    registry.register(
+        _def(
+            "filesystem_search",
+            "Search the local filesystem for a folder or file by name (case-insensitive substring match). Searches both folders and files by default. Searches the app's own data folder and the user's home directory first, then falls back to a bounded system-wide search. Use this instead of manually clicking through File Explorer whenever the user asks to find, locate, or search for a folder or file.",
+            {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string"},
+                    "type": {"type": "string", "enum": ["folder", "file", "any"], "description": "Defaults to 'any' (both folders and files). Narrow to 'folder' or 'file' only if the user specifically asked for one."},
+                },
+                "required": ["query"],
+                "additionalProperties": False,
+            },
+            # 20s: a real full-drive BFS pass measured ~8.6s on a modest dev
+            # machine; the occasional singular/plural retry pass (see
+            # filesystem_search.py) needs headroom above a single MAX_SECONDS
+            # (10s) budget without the outer watchdog cutting it off first.
+            timeout_ms=20000,
+            reads_external_content=True,
+        ),
+        filesystem_search_handlers["filesystem_search"],
     )

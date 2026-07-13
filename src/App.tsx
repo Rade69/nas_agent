@@ -454,7 +454,18 @@ export default function App() {
   }
 
   async function switchMode(nextMode: RickyMode) {
-    const result = await window.ricky.executeTool({ name: "set_mode", arguments: { mode: nextMode } });
+    // context.source: "ui" (agent_reports/2026-07-13_computer-mode-voice-reentry.md):
+    // this is the ONLY call site for set_mode outside the model's own
+    // function-calling loop (realtime.ts's executeFunctionCalls calls
+    // executeTool directly, never through here) — a direct human click,
+    // which electron/main.cjs's handleToolsExecute treats as stronger
+    // consent than a confirmation dialog and applies immediately, bypassing
+    // the Python permission_engine gate that model-initiated calls go through.
+    const result = await window.ricky.executeTool({
+      name: "set_mode",
+      arguments: { mode: nextMode },
+      context: { source: "ui" },
+    });
     setMode(nextMode);
     if ((result as Record<string, unknown>).mode === "display") setArtifactVisible(false);
   }

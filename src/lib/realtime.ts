@@ -393,7 +393,13 @@ export class RickyRealtimeClient {
       // doesn't block the conversation waiting on the user's dialog choice.
       // If they cancel, the internal copy is untouched — nothing is lost.
       if (name === "image_generate" && result.ok && typeof result.path === "string") {
-        void window.ricky.saveThumbnailAs({ path: result.path, suggestedName: "ricky-image.png" }).catch(() => {});
+        // Was silently swallowing errors (.catch(() => {})) — a failure here (e.g.
+        // the source path fails saveThumbnailAs's dataDir allowlist check) looked
+        // identical to "nothing happened" from the user's side. Log so a repeat
+        // failure is diagnosable in devtools instead of invisible.
+        void window.ricky
+          .saveThumbnailAs({ path: result.path, suggestedName: "ricky-image.png" })
+          .catch((error) => console.error("[image_generate] auto save-as dialog failed:", error));
       }
       if (result.thumbnailReady === true) this.callbacks.onThumbnailReady();
       if (result.silent !== true) shouldCreateResponse = true;

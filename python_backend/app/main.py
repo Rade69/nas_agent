@@ -123,6 +123,9 @@ def create_app() -> FastAPI:
         "exa_client": ExaClient(settings.exa_api_key),
         "openai_image_client": OpenAIImageClient(settings.openai_api_key),
         "images_dir": settings.data_dir / "images",
+        # filesystem_search (agent_reports/2026-07-13_filesystem-search-tool.md):
+        # searched first, before falling back to the user's home directory.
+        "data_dir": settings.data_dir,
     }
     app.state.tool_registry = create_default_registry(services=phase11_services)
     # Emit backend.ready so the UI knows the event bridge is live.

@@ -37,6 +37,10 @@ export type RickyToolCall = {
     confirmation_id?: string;
     external_content_seen?: boolean;
     computer_mode?: boolean;
+    // "ui": this call came from a direct human click (App.tsx's switchMode()),
+    // not the model's function-calling loop — see electron/main.cjs's
+    // set_mode dispatch (agent_reports/2026-07-13_computer-mode-voice-reentry.md).
+    source?: "ui";
   };
 };
 

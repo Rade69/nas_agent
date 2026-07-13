@@ -165,13 +165,14 @@ async function clearStartupLoadingThumbnails() {
 
 function requireComputerMode() {
   if (currentMode !== "computer") {
-    // Security PR A (S-01): the model can no longer call set_mode itself, so
-    // this message must tell it to ask the human — not to "switch" on its own,
-    // which was the exact framing that made S-01 easy to trigger by voice.
+    // set_mode is model-callable again (agent_reports/2026-07-13_computer-mode-
+    // voice-reentry.md) — gated by permission_engine, not removed from the
+    // model's toolset, so the model should just call it instead of asking
+    // the human to click a button.
     return {
       ok: false,
       needsMode: "computer",
-      message: "Computer control is disabled. Ask the user to enable Computer Mode from the app.",
+      message: "Computer control is disabled. Call set_mode with mode 'computer' first.",
     };
   }
   return null;
@@ -180,6 +181,26 @@ function requireComputerMode() {
 function requiresConfirmation(args) {
   return args.confirmed !== true && (args.risk === "may_send_or_modify" || args.risk === "private_or_sensitive");
 }
+
+// Bug found 2026-07-13 (agent_reports/2026-07-13_python-tool-execute-timeout-fix.md):
+// pythonClient.cjs's requestJson() defaults to a 5000ms HTTP client timeout,
+// but several Python-registered tools have their OWN, much larger timeout_ms
+// (image_generate=90000, web_search=30000, filesystem_search=20000 — see
+// tool_catalog/phase11.py). Any call to executeTool() below that didn't pass
+// an explicit timeoutMs inherited that 5s default, so a tool taking longer
+// than 5s (routine for all three) had this Electron-side timeout fire FIRST,
+// aborting the request and throwing — well before the Python side's own,
+// intentionally larger budget ever got a chance to matter. For tools with a
+// legacy Electron fallback (image_generate, web_search, computer_click...)
+// this silently masked itself: the catch block below falls through to the
+// legacy handler, which makes its own unbounded fetch call, so it usually
+// still worked. filesystem_search has no legacy equivalent, so the same
+// premature timeout fell all the way through to "Unknown tool:
+// filesystem_search" — the "backend error, can't search" the user saw.
+// Set comfortably above the largest currently-registered Python timeout_ms
+// (90000 for image_generate) so the Python side's own timeout is always what
+// governs a genuinely slow call, not this HTTP layer preempting it.
+const PYTHON_TOOL_EXECUTE_TIMEOUT_MS = 100000;
 
 // FAZA 11: tool names whose execution is delegated to the Python backend.
 // Low-risk memory tools (notes/records/artifacts) + system tools that require
@@ -202,6 +223,9 @@ const PHASE11_DELEGATED_TOOLS = new Set([
   // FAZA 16: OpenAI/Exa/image integrations now live in the Python backend.
   "web_search",
   "image_generate",
+  // filesystem_search (agent_reports/2026-07-13_filesystem-search-tool.md):
+  // read-only folder/file discovery, replaces blind Explorer clicking.
+  "filesystem_search",
   // FAZA 13: computer-use tools now have Python equivalents (ctypes + Win32 API).
   "computer_open_app",
   "computer_type_text",
@@ -287,6 +311,77 @@ async function handleToolsExecute(_event, toolCall) {
   const name = String(toolCall?.name || "");
   const args = asObject(toolCall?.arguments);
 
+  // set_mode (S-01 follow-up, agent_reports/2026-07-13_computer-mode-voice-reentry.md):
+  // the in-app toggle (App.tsx's switchMode()) and the model's voice/text
+  // function-calling path both land here with the same tool name, and
+  // Electron cannot otherwise tell them apart. The toggle marks its calls
+  // with context.source === "ui" — a direct human click, which is already
+  // stronger consent than a confirmation dialog, so it applies the mode
+  // switch immediately without touching the backend (must keep working even
+  // if the Python backend is down). A model-initiated call has no "ui"
+  // source marker, so it is routed through Python's permission_engine first:
+  // set_mode is registered there as a medium-risk tool with no baseline
+  // confirmation requirement, so a genuine "enter computer mode" request
+  // still executes immediately — but the existing S-2 escalation rule
+  // (external_content_seen + risk >= medium) forces a confirmation if the
+  // model read untrusted content earlier this turn, closing the
+  // prompt-injection path S-01 was written to block.
+  if (name === "set_mode") {
+    const applyModeSwitch = () => {
+      currentMode = args.mode === "computer" ? "computer" : "display";
+      setWindowMode(currentMode);
+      // Orb presence (docs/ORB_PRESENCE_SPEC.md): the floating companion orb carries
+      // the Stop control, so it must be on screen whenever the agent can act on the
+      // computer. Auto-show it entering Computer Mode; hide it going back to display.
+      if (currentMode === "computer") {
+        showCompanion();
+      } else {
+        hideCompanion();
+      }
+      return {
+        ok: true,
+        mode: currentMode,
+        artifact: {
+          title: "Ricky Mode",
+          kind: "progress",
+          content: `Mode switched to ${currentMode === "computer" ? "computer use" : "display"} mode.`,
+        },
+      };
+    };
+    const toolContext = toolCall?.context || {};
+    if (toolContext.source === "ui") {
+      return applyModeSwitch();
+    }
+    try {
+      const response = await executeTool(
+        {
+          tool_name: name,
+          arguments: args,
+          context: {
+            computer_mode: currentMode === "computer",
+            ...(toolContext.confirmation_id ? { confirmation_id: String(toolContext.confirmation_id) } : {}),
+            ...(toolContext.external_content_seen === true ? { external_content_seen: true } : {}),
+          },
+        },
+        { timeoutMs: PYTHON_TOOL_EXECUTE_TIMEOUT_MS },
+      );
+      const adapted = adaptPythonToolResponse(response, name);
+      if (!adapted.ok) return adapted;
+      return applyModeSwitch();
+    } catch (error) {
+      // FAZA S-4 fail-closed precedent (same rationale as LEGACY_FAIL_CLOSED_TOOLS):
+      // without the backend there is no way to check whether this session's
+      // external_content_seen flag should force a confirmation, so a backend
+      // outage must not silently reopen the S-01 gap. Voice/text set_mode
+      // fails closed; the UI toggle above is unaffected.
+      return {
+        ok: false,
+        error: `set_mode requires the Python backend to check for a pending confirmation escalation, and it is unavailable: ${error instanceof Error ? error.message : error}`,
+        errorCode: "HIGH_RISK_LEGACY_BLOCKED",
+      };
+    }
+  }
+
   // FAZA 11: delegate memory/artifact/system tools to the Python backend.
   // Context: agent_reports/2026-07-05_faza11-tool-registry-local-tools.md
   // Legacy handlers below remain as fallback if the backend is unavailable
@@ -296,20 +391,23 @@ async function handleToolsExecute(_event, toolCall) {
   if (PHASE11_DELEGATED_TOOLS.has(name)) {
     try {
       const toolContext = toolCall?.context || {};
-      const response = await executeTool({
-        tool_name: name,
-        arguments: args,
-        context: {
-          computer_mode: currentMode === "computer",
-          ...(toolContext.confirmation_id ? { confirmation_id: String(toolContext.confirmation_id) } : {}),
-          // S-2 prompt-injection escalation for the voice path (agent_reports/
-          // 2026-07-10_s2-voice-path-fix.md): the renderer tracks whether a
-          // reads_external_content tool has succeeded this voice session and
-          // forwards the flag here so permission_engine's escalation can see it.
-          // Previously always omitted, so the voice path could never escalate.
-          ...(toolContext.external_content_seen === true ? { external_content_seen: true } : {}),
+      const response = await executeTool(
+        {
+          tool_name: name,
+          arguments: args,
+          context: {
+            computer_mode: currentMode === "computer",
+            ...(toolContext.confirmation_id ? { confirmation_id: String(toolContext.confirmation_id) } : {}),
+            // S-2 prompt-injection escalation for the voice path (agent_reports/
+            // 2026-07-10_s2-voice-path-fix.md): the renderer tracks whether a
+            // reads_external_content tool has succeeded this voice session and
+            // forwards the flag here so permission_engine's escalation can see it.
+            // Previously always omitted, so the voice path could never escalate.
+            ...(toolContext.external_content_seen === true ? { external_content_seen: true } : {}),
+          },
         },
-      });
+        { timeoutMs: PYTHON_TOOL_EXECUTE_TIMEOUT_MS },
+      );
       return adaptPythonToolResponse(response, name);
     } catch (error) {
       // FAZA 17: if legacy tools are disabled, don't fall through to the
@@ -344,28 +442,6 @@ async function handleToolsExecute(_event, toolCall) {
   }
 
   try {
-    if (name === "set_mode") {
-      currentMode = args.mode === "computer" ? "computer" : "display";
-      setWindowMode(currentMode);
-      // Orb presence (docs/ORB_PRESENCE_SPEC.md): the floating companion orb carries
-      // the Stop control, so it must be on screen whenever the agent can act on the
-      // computer. Auto-show it entering Computer Mode; hide it going back to display.
-      if (currentMode === "computer") {
-        showCompanion();
-      } else {
-        hideCompanion();
-      }
-      return {
-        ok: true,
-        mode: currentMode,
-        artifact: {
-          title: "Ricky Mode",
-          kind: "progress",
-          content: `Mode switched to ${currentMode === "computer" ? "computer use" : "display"} mode.`,
-        },
-      };
-    }
-
     if (name === "artifact_show") {
       return { ok: true, artifact: args };
     }

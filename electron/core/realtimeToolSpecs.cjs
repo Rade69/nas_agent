@@ -3,19 +3,37 @@
 // shell/IPC layer. Pure data — consumed read-only by handleToolsList and
 // handleRealtimeCreateToken. Behavior unchanged (verbatim move).
 
-// Security PR A (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md S-01):
-// `set_mode` used to be listed here as a model-callable function, which let
-// the model (or prompt-injected content it read) switch Computer Mode on
-// unilaterally — Computer Mode is supposed to be a deliberate user decision,
-// not something the model grants itself. It is intentionally NOT in this
-// array anymore, which removes it both from the tools advertised to the
-// OpenAI Realtime session (electron/ipc_handlers/realtime.cjs) and from
-// src/lib/realtime.ts's own knownTool gate — the model can no longer request
-// it at all. The trusted UI toggle (App.tsx's switchMode()) is unaffected:
-// it calls window.ricky.executeTool({name: "set_mode", ...}) directly,
-// which reaches electron/main.cjs's handleToolsExecute via a separate code
-// path that never consults this array.
+// Security PR A (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md S-01)
+// removed `set_mode` from here entirely so the model could never switch
+// Computer Mode on unilaterally (e.g. after reading prompt-injected content).
+// User feedback (2026-07-13, agent_reports/2026-07-13_computer-mode-voice-reentry.md):
+// that also blocked genuine voice requests ("uđi u computer mode") while the
+// user was doing something else nearby — an unwanted UX regression for a
+// low-value extra click. `set_mode` is back below with risk: "medium" so a
+// plain voice/text request still executes immediately, but
+// electron/main.cjs's handleToolsExecute now routes model-initiated calls
+// (no context.source === "ui" marker) through the Python permission_engine
+// first — its existing S-2 escalation rule forces a confirmation if the
+// model already read untrusted external content this turn, closing the
+// original prompt-injection path without reintroducing the UX friction. The
+// trusted UI toggle (App.tsx's switchMode()) marks its calls with
+// context: { source: "ui" } and bypasses this check entirely — a direct
+// human click is already stronger consent than a confirmation dialog.
 const toolSpecs = [
+  {
+    type: "function",
+    name: "set_mode",
+    risk: "medium",
+    description: "Switch Ricky between display mode and Computer Mode (screen automation). Use when the user asks to enter or exit computer/computer-use mode.",
+    parameters: {
+      type: "object",
+      properties: {
+        mode: { type: "string", enum: ["display", "computer"] },
+      },
+      required: ["mode"],
+      additionalProperties: false,
+    },
+  },
   {
     type: "function",
     name: "artifact_show",
@@ -53,6 +71,21 @@ const toolSpecs = [
       properties: {
         query: { type: "string" },
         numResults: { type: "number", minimum: 1, maximum: 10 },
+      },
+      required: ["query"],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: "function",
+    name: "filesystem_search",
+    reads_external_content: true,
+    description: "Search the local filesystem for a folder or file by name (case-insensitive substring match). Searches both folders and files by default. Use this instead of manually clicking through File Explorer whenever the user asks to find, locate, or search for a folder or file — e.g. 'find the thumbnails folder'.",
+    parameters: {
+      type: "object",
+      properties: {
+        query: { type: "string" },
+        type: { type: "string", enum: ["folder", "file", "any"], description: "Defaults to 'any' (both folders and files). Narrow to 'folder' or 'file' only if the user specifically asked for one." },
       },
       required: ["query"],
       additionalProperties: false,
