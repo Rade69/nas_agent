@@ -99,6 +99,91 @@ def test_approved_confirmation_matching_payload_allows_execution(tmp_path) -> No
     assert error is None
 
 
+# =============================================================================
+#  S-04 fix: one-time-use confirmations
+#  Context: docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md
+# =============================================================================
+
+
+def test_approved_confirmation_is_consumed_after_first_use(tmp_path) -> None:
+    """The core acceptance test: check_permission() doesn't just validate the
+    confirmation, it burns it — status flips to 'consumed' as a side effect
+    of the first successful check."""
+    confirmations = make_confirmations(tmp_path)
+    tool = low_risk_tool(requires_confirmation=True, risk="high")
+    confirmation = confirmations.propose(
+        action_name="test_tool", payload={"a": 1}, risk_level="high", tool_name="test_tool"
+    )
+    confirmations.approve(confirmation["id"])
+
+    error = check_permission(tool, make_request(confirmation_id=confirmation["id"]), confirmations)
+    assert error is None
+
+    stored = confirmations.get(confirmation["id"])
+    assert stored is not None
+    assert stored["status"] == "consumed"
+
+
+def test_replaying_a_consumed_confirmation_is_rejected(tmp_path) -> None:
+    """A second execution attempt with the exact same confirmation_id — a
+    retry, a duplicate request, or an attacker replaying a captured ID —
+    must not be authorized by the confirmation a first attempt already used.
+    In the sequential case (this test) the second call's own status re-read
+    already sees 'consumed' and is rejected by the earlier not-approved
+    check — CONFIRMATION_ALREADY_CONSUMED (asserted separately below at the
+    repository level) only fires for a true concurrent race, where both
+    calls read 'approved' before either write lands."""
+    confirmations = make_confirmations(tmp_path)
+    tool = low_risk_tool(requires_confirmation=True, risk="high")
+    confirmation = confirmations.propose(
+        action_name="test_tool", payload={"a": 1}, risk_level="high", tool_name="test_tool"
+    )
+    confirmations.approve(confirmation["id"])
+
+    first = check_permission(tool, make_request(confirmation_id=confirmation["id"]), confirmations)
+    assert first is None
+
+    second = check_permission(tool, make_request(confirmation_id=confirmation["id"]), confirmations)
+    assert second is not None
+    assert second.code == "CONFIRMATION_NOT_APPROVED"
+    assert "consumed" in second.message
+
+
+def test_consume_is_atomic_a_second_direct_call_is_rejected(tmp_path) -> None:
+    """Repository-level guard test, independent of check_permission's earlier
+    status check: calling ConfirmationService.consume() itself a second time
+    for the same id returns None — this is the actual compare-and-swap that
+    protects the true concurrent-race window."""
+    confirmations = make_confirmations(tmp_path)
+    confirmation = confirmations.propose(
+        action_name="test_tool", payload={"a": 1}, risk_level="high", tool_name="test_tool"
+    )
+    confirmations.approve(confirmation["id"])
+
+    first = confirmations.consume(confirmation["id"])
+    assert first is not None
+    assert first["status"] == "consumed"
+
+    second = confirmations.consume(confirmation["id"])
+    assert second is None
+
+
+def test_confirmation_without_tool_name_cannot_gate_a_tool_call(tmp_path) -> None:
+    """A confirmation created without tool_name (still valid for non-tool
+    actions, e.g. plan proposals) must not be usable as a 'blank check' to
+    authorize an arbitrary tool call just because payload happens to match."""
+    confirmations = make_confirmations(tmp_path)
+    tool = low_risk_tool(requires_confirmation=True, risk="high")
+    confirmation = confirmations.propose(
+        action_name="some_action", payload={"a": 1}, risk_level="high"
+    )
+    confirmations.approve(confirmation["id"])
+
+    error = check_permission(tool, make_request(confirmation_id=confirmation["id"]), confirmations)
+    assert error is not None
+    assert error.code == "CONFIRMATION_MISMATCH"
+
+
 def test_approved_confirmation_wrong_payload_is_rejected(tmp_path) -> None:
     confirmations = make_confirmations(tmp_path)
     tool = low_risk_tool(requires_confirmation=True, risk="high")

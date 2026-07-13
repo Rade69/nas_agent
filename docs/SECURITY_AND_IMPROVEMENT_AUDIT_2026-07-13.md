@@ -45,7 +45,7 @@ Zbog toga se trenutni build ne treba nuditi širim beta korisnicima sa uključen
 | S-01 | Model može sam uključiti Computer Mode | CRITICAL | P0 | ✅ **Popravljeno 2026-07-13** — vidi `agent_reports/2026-07-13_security-pr-a-set-mode-and-open-app.md` |
 | S-02 | `computer_open_app` omogućava shell execution | CRITICAL | P0 | ✅ **Popravljeno 2026-07-13** — vidi `agent_reports/2026-07-13_security-pr-a-set-mode-and-open-app.md` |
 | S-03 | Proizvoljna lokalna slika može biti poslata u cloud kroz thumbnail reference | CRITICAL | P0 | srednja |
-| S-04 | Odobrena confirmation se može ponovo koristiti | HIGH | P0 | mala–srednja |
+| S-04 | Odobrena confirmation se može ponovo koristiti | HIGH | P0 | ✅ **Popravljeno 2026-07-13** — vidi `agent_reports/2026-07-13_security-s04-one-time-confirmations.md` |
 | S-05 | „Stop sve“ ne prekida handler nakon početka commit faze | HIGH | P1 | srednja |
 | S-06 | UIA read alati mogu čitati osjetljive aplikacije | HIGH | P1 | srednja |
 | S-07 | UIA active-window provjera nije vezana za stvarni target | HIGH | P1 | srednja |
@@ -133,7 +133,7 @@ Model ili prompt injection može registrovati privatnu lokalnu sliku kao referen
 - dodati `privacy_mode` i action receipt `sent_to_cloud=true`;
 - migrirati thumbnail logiku iz legacy Electron sloja u Python backend permission/file sandbox sloj.
 
-### S-04 — HIGH: confirmation nije jednokratna
+### S-04 — HIGH: confirmation nije jednokratna ✅ Popravljeno 2026-07-13
 
 **Dokaz**
 

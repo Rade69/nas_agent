@@ -95,6 +95,43 @@ def test_execute_with_approved_confirmation_succeeds(tmp_path) -> None:
     assert cancellations.get(response.execution_id).state == "completed"
 
 
+def test_replaying_the_same_confirmation_id_is_blocked_end_to_end(tmp_path) -> None:
+    """S-04 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md), full stack
+    through the real ToolExecutor: a second executor.execute() call reusing
+    the confirmation_id from a completed first call must not succeed."""
+    executor, confirmations, _cancellations = make_env(tmp_path)
+    confirmation = confirmations.propose(
+        action_name="risky_tool",
+        payload={"x": 1},
+        risk_level="high",
+        tool_name="risky_tool",
+    )
+    confirmations.approve(confirmation["id"])
+
+    def run():
+        return executor.execute(
+            ToolExecutionRequest(
+                tool_name="risky_tool",
+                arguments={"x": 1},
+                context=ToolExecutionContext(computer_mode=True, confirmation_id=confirmation["id"]),
+            )
+        )
+
+    first = run()
+    assert first.ok is True
+
+    second = run()
+    assert second.ok is False
+    # The second call's own confirmation_service.get() already sees
+    # status='consumed' from the first call and is rejected by the
+    # not-approved check before ever reaching the consume() call itself —
+    # see test_permission_engine.py's test_consume_is_atomic_a_second_direct_call_is_rejected
+    # for direct coverage of the atomic compare-and-swap that protects the
+    # true concurrent-race window.
+    assert second.error.code == "CONFIRMATION_NOT_APPROVED"
+    assert second.tool_state == "failed"
+
+
 def test_cancel_requested_before_execution_stops_the_tool(tmp_path) -> None:
     executor, confirmations, cancellations = make_env(tmp_path)
     confirmation = confirmations.propose(

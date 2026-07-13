@@ -50,12 +50,16 @@ export type RickyToolResult = {
 };
 
 // --- FAZA 9: confirmations + plans types ---
+// "consumed" added for S-04 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md)
+// — the confirmation authorized exactly one tool execution attempt and the
+// backend has already spent it; it can never be used again.
 export type ConfirmationStatus =
   | "pending"
   | "approved"
   | "rejected"
   | "expired"
-  | "cancelled";
+  | "cancelled"
+  | "consumed";
 
 export type RiskLevel = "low" | "medium" | "high" | "critical";
 

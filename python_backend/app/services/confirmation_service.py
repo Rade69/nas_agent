@@ -83,6 +83,17 @@ class ConfirmationService:
     def cancel(self, confirmation_id: str) -> dict[str, Any] | None:
         return self._resolve(confirmation_id, "cancelled")
 
+    def consume(self, confirmation_id: str) -> dict[str, Any] | None:
+        """One-time-use gate (S-04, docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md)
+        — called by permission_engine.check_permission() right before the
+        commit phase of a gated tool execution. Returns None if the
+        confirmation wasn't in 'approved' state (already consumed by a prior
+        attempt, or never approved), which the caller must treat as a hard
+        denial, not silently retry.
+        """
+        row = self._repository.consume(confirmation_id)
+        return self._to_dict(row) if row else None
+
     def _resolve(self, confirmation_id: str, status: str) -> dict[str, Any] | None:
         row = self._repository.resolve(confirmation_id, status)
         return self._to_dict(row) if row else None

@@ -111,6 +111,27 @@ class ConfirmationRepository:
     def list_pending(self, limit: int = 20) -> list[sqlite3.Row]:
         return self.list(status="pending", limit=limit)
 
+    def consume(self, confirmation_id: str) -> sqlite3.Row | None:
+        """Atomically transition approved -> consumed (S-04, docs/
+        SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md). The WHERE clause makes
+        this a compare-and-swap: only the first caller to reach this for a
+        given confirmation_id sees status change and gets a non-None row back
+        (rowcount == 1) — a retried, duplicated, or racing second attempt
+        with the same confirmation_id loses and gets None, same as if the
+        confirmation had never been approved. There is no 'unconsume': once
+        burned, a confirmation can never authorize another execution attempt,
+        even if that first attempt's tool handler later fails.
+        """
+        with connect(self._database_path) as connection:
+            cursor = connection.execute(
+                "UPDATE confirmations SET status = 'consumed' WHERE id = ? AND status = 'approved'",
+                (confirmation_id,),
+            )
+            connection.commit()
+            if cursor.rowcount == 0:
+                return None
+            return self._get(connection, confirmation_id)
+
     def _get(self, connection: sqlite3.Connection, confirmation_id: str) -> sqlite3.Row | None:
         return connection.execute(
             "SELECT * FROM confirmations WHERE id = ?",

@@ -191,11 +191,20 @@ def check_permission(
             status_code=403,
         )
 
+    # S-04 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md): a confirmation
+    # with no tool_name bound used to skip this check entirely (only rejected
+    # on an actual mismatch, not on absence) — meaning a tool-name-less
+    # confirmation could gate literally any tool call that also happened to
+    # match its payload_hash, or any call at all if payload_hash was also
+    # unset. Confirmations used to gate a tool execution must now have been
+    # created with tool_name explicitly bound; confirmations without one
+    # (still valid for non-tool actions, e.g. plan proposals) simply cannot
+    # authorize a tool call.
     bound_tool_name = confirmation.get("tool_name")
-    if bound_tool_name and bound_tool_name != tool.name:
+    if not bound_tool_name or bound_tool_name != tool.name:
         return AppError(
             "CONFIRMATION_MISMATCH",
-            f"Confirmation '{confirmation_id}' was approved for tool '{bound_tool_name}', not '{tool.name}'.",
+            f"Confirmation '{confirmation_id}' is not bound to tool '{tool.name}'.",
             status_code=403,
         )
 
@@ -204,6 +213,18 @@ def check_permission(
         return AppError(
             "CONFIRMATION_MISMATCH",
             f"Confirmation '{confirmation_id}' does not match the submitted arguments.",
+            status_code=403,
+        )
+
+    # S-04: atomically consume the confirmation now, before the commit phase
+    # (ToolExecutor calls tool.handler() only after check_permission returns
+    # None) — this is the single-use gate. A second call with the same
+    # confirmation_id (retry, duplicate, or concurrent race) loses here and
+    # is rejected, even if the first attempt's handler later fails.
+    if confirmation_service.consume(confirmation_id) is None:
+        return AppError(
+            "CONFIRMATION_ALREADY_CONSUMED",
+            f"Confirmation '{confirmation_id}' was already used for a previous execution.",
             status_code=403,
         )
 

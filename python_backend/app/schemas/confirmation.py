@@ -10,7 +10,11 @@ from pydantic import BaseModel, Field
 
 from app.schemas.tool import RiskLevel
 
-ConfirmationStatus = Literal["pending", "approved", "rejected", "expired", "cancelled"]
+# "consumed" added for S-04 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md) —
+# a terminal state distinct from "approved": the confirmation authorized
+# exactly one tool execution attempt and permission_engine.check_permission()
+# has already spent it, so it can never authorize another.
+ConfirmationStatus = Literal["pending", "approved", "rejected", "expired", "cancelled", "consumed"]
 
 
 class ConfirmationCreateRequest(BaseModel):
