@@ -387,6 +387,56 @@ Acceptance:
 - Redirect na private IP se blokira.
 - OpenAI/Exa i lokalni backend rade.
 
+### Dopuna PR 9 (2026-07-13): zašto app-level allowlist ovdje nije dovoljan, i SNI-proxy dizajn
+
+Kontekst: diskusija sa korisnikom o sandboxing opcijama (AppContainer, Low
+Integrity Level) za Python backend proces otvorila je pitanje "kako
+zatvoriti eksfiltraciju preko VEĆ legitimnog mrežnog kanala ka OpenAI/Exa,
+ako je sam backend proces kompromitovan (npr. ranjiv pip paket)".
+
+**Bitno ograničenje gornjeg PR 9 opisa kako je napisan:** allowlist
+implementiran u Python kodu (npr. wrapper oko `httpx` klijenta koji provjerava
+domain prije slanja) **ne drži pod threat modelom "proces kompromitovan"** —
+napadač sa proizvoljnim izvršenjem koda unutar tog istog procesa jednostavno
+zaobiđe wrapper i pozove `socket`/`http.client` direktno. Da bi granica
+stvarno držala i kad je sama aplikacija kompromitovana, mora je forsirati
+nešto VAN tog procesa (OS/mreža), ne Python kod unutar njega.
+
+**Preporučeni dizajn (jači od plain app-level allowlist-a):**
+
+1. Mali lokalni forward proxy (novi proces, npr. `python_backend`-u susjedan
+   helper ili poseban lightweight servis) koji sluša samo na loopback-u.
+2. Proxy ne radi MITM/dešifrovanje — samo čita TLS `ClientHello`-ov SNI
+   (Server Name Indication) polje na `CONNECT` zahtjevu i propušta samo ako
+   je hostname na allowlist-i (`api.openai.com`, Exa endpoint, ...) — ne
+   dira sertifikate, pa TLS validacija ka stvarnom serveru ostaje netaknuta.
+3. Python backend proces se konfiguriše (`HTTPS_PROXY`/`HTTP_PROXY` env var
+   ili eksplicitan `httpx` proxy parametar) da SVA odlazna mreža ide kroz
+   ovaj proxy.
+4. **Ključni korak koji ovo čini stvarno robusnim:** Windows Firewall
+   pravilo vezano za `python.exe` (ili PyInstaller sidecar binarni put u
+   packaged buildu) koje blokira SVAKI direktan izlaz osim ka loopback
+   adresi proxy-ja. Ovo je OS-level enforcement — čak i potpuno
+   kompromitovan Python proces ne može zaobići firewall pravilo koje živi
+   van njegovog procesa, jer mu je direktan izlaz na mrežu fizički blokiran.
+
+**Trade-off vs. IP-range allowlist (jeftinija alternativa spomenuta u istoj
+diskusiji):** direktno Windows Firewall pravilo sa IP/CIDR opsegom za
+OpenAI/Exa je jednostavnije za implementirati (par `netsh`/PowerShell
+komandi, bez novog proxy komponenta), ali krhko — CDN IP-ovi rotiraju, i
+ne razlikuje "IP je u dozvoljenom opsegu" od "IP je u dozvoljenom opsegu ALI
+pripada napadaču koji je slučajno tu". SNI-proxy pristup je precizniji
+(hostname-based, ne IP-based) ali je nova komponenta za izgradnju i
+održavanje — nije triviality, ali se ozbiljno razmatra prije bilo kakvog
+network egress rada iz PR 9.
+
+**Status:** nije implementirano, dokumentovano za buduću odluku/prioritizaciju.
+Vjerovatni dodatni fajlovi ako se radi: `electron/services/pythonProcess.cjs`
+(pokretanje proxy procesa uz Python backend, firewall pravilo pri prvom
+pokretanju/instalaciji), novi `python_backend`-u susjedan proxy helper (ili
+zaseban skript van `app/` paketa), `docs/SECURITY_MODEL.md` (dokumentovati
+novu granicu).
+
 ## PR 10: Supply Chain Hardening
 
 Problem: Electron + npm + Python znače više dependency ekosistema i visok supply-chain rizik.
