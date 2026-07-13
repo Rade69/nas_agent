@@ -7,6 +7,78 @@
 const path = require("node:path");
 const { BrowserWindow, nativeImage, screen, ipcMain, Tray, Menu, shell } = require("electron");
 const { getSecureWebPreferences } = require("./secureWebPreferences.cjs");
+const { getSettings } = require("../services/pythonClient.cjs");
+
+// Native Electron Menu labels (tray + orb right-click) can't use react-i18next
+// (main process, no React tree) — same reasoning as electron/ipc_handlers/
+// realtime.cjs's LANGUAGE_CONFIG. de/es/fr are best-effort, not native-speaker
+// confirmed, same disclaimer as every other locale in this project.
+// Context: agent_reports/2026-07-13_companion-orb-menu-localization.md
+const MENU_LABELS = {
+  "sr-Latn": {
+    trayShow: "Prikaži Ricky orb",
+    trayHide: "Sakrij Ricky orb",
+    trayOpenMain: "Otvori glavni prozor",
+    trayQuit: "Zatvori Ricky",
+    orbOpen: "Otvori Ricky",
+    orbToggleVoice: "Uključi/isključi glas",
+    orbLockPosition: "Zaključaj poziciju",
+    orbQuit: "Zatvori Ricky",
+  },
+  en: {
+    trayShow: "Show companion orb",
+    trayHide: "Hide companion orb",
+    trayOpenMain: "Open main window",
+    trayQuit: "Quit Ricky",
+    orbOpen: "Open Ricky",
+    orbToggleVoice: "Toggle voice",
+    orbLockPosition: "Lock position",
+    orbQuit: "Close Ricky",
+  },
+  de: {
+    trayShow: "Ricky-Orb anzeigen",
+    trayHide: "Ricky-Orb ausblenden",
+    trayOpenMain: "Hauptfenster öffnen",
+    trayQuit: "Ricky beenden",
+    orbOpen: "Ricky öffnen",
+    orbToggleVoice: "Sprache umschalten",
+    orbLockPosition: "Position sperren",
+    orbQuit: "Ricky schließen",
+  },
+  es: {
+    trayShow: "Mostrar orbe de Ricky",
+    trayHide: "Ocultar orbe de Ricky",
+    trayOpenMain: "Abrir ventana principal",
+    trayQuit: "Salir de Ricky",
+    orbOpen: "Abrir Ricky",
+    orbToggleVoice: "Alternar voz",
+    orbLockPosition: "Bloquear posición",
+    orbQuit: "Cerrar Ricky",
+  },
+  fr: {
+    trayShow: "Afficher l'orbe Ricky",
+    trayHide: "Masquer l'orbe Ricky",
+    trayOpenMain: "Ouvrir la fenêtre principale",
+    trayQuit: "Quitter Ricky",
+    orbOpen: "Ouvrir Ricky",
+    orbToggleVoice: "Activer/désactiver la voix",
+    orbLockPosition: "Verrouiller la position",
+    orbQuit: "Fermer Ricky",
+  },
+};
+const DEFAULT_MENU_LABELS = MENU_LABELS["sr-Latn"];
+
+// Best-effort — falls back to the default language if settings can't be
+// fetched (e.g. Python backend not up yet), same fail-open-to-default
+// philosophy as realtime.cjs's LANGUAGE_CONFIG lookup. Never throws.
+async function resolveMenuLabels() {
+  try {
+    const settings = await getSettings();
+    return MENU_LABELS[settings?.interface_language] ?? DEFAULT_MENU_LABELS;
+  } catch {
+    return DEFAULT_MENU_LABELS;
+  }
+}
 
 // Context: agent_reports/2026-07-05_faza12-companion-orb.md
 // FAZA 12: Companion orb — a separate always-on-top transparent BrowserWindow
@@ -152,20 +224,21 @@ function setLockedPosition(locked) {
 
 // Optional tray icon: gives users a persistent way to bring Ricky back even
 // if the orb is hidden. Tray is created lazily on first companion creation.
-function ensureTray() {
+async function ensureTray() {
   if (tray) return tray;
   try {
     const icon = nativeImage.createEmpty();
     tray = new Tray(icon);
     tray.setToolTip("Ricky");
+    const labels = await resolveMenuLabels();
     tray.setContextMenu(
       Menu.buildFromTemplate([
-        { label: "Show companion orb", click: () => showCompanion() },
-        { label: "Hide companion orb", click: () => hideCompanion() },
+        { label: labels.trayShow, click: () => showCompanion() },
+        { label: labels.trayHide, click: () => hideCompanion() },
         { type: "separator" },
-        { label: "Open main window", click: () => focusMainWindow() },
+        { label: labels.trayOpenMain, click: () => focusMainWindow() },
         { type: "separator" },
-        { label: "Quit Ricky", click: () => quitApp() },
+        { label: labels.trayQuit, click: () => quitApp() },
       ]),
     );
   } catch {
@@ -201,20 +274,21 @@ function quitApp() {
 // Native context menu for the orb. Replaces the HTML menu, which overflowed the
 // small orb window and got clipped — a native Menu.popup is not bounded by the
 // window size. Reuses the same actions as the tray + companion IPC handlers.
-function showOrbContextMenu() {
+async function showOrbContextMenu() {
   const win = companionWindow && !companionWindow.isDestroyed() ? companionWindow : null;
+  const labels = await resolveMenuLabels();
   const menu = Menu.buildFromTemplate([
-    { label: "Otvori Ricky", click: () => focusMainWindow() },
-    { label: "Uključi/isključi glas", click: () => toggleVoiceCallback && toggleVoiceCallback() },
+    { label: labels.orbOpen, click: () => focusMainWindow() },
+    { label: labels.orbToggleVoice, click: () => toggleVoiceCallback && toggleVoiceCallback() },
     { type: "separator" },
     {
-      label: "Zaključaj poziciju",
+      label: labels.orbLockPosition,
       type: "checkbox",
       checked: lockedPosition,
       click: () => setLockedPosition(!lockedPosition),
     },
     { type: "separator" },
-    { label: "Zatvori Ricky", click: () => quitApp() },
+    { label: labels.orbQuit, click: () => quitApp() },
   ]);
   menu.popup(win ? { window: win } : {});
 }

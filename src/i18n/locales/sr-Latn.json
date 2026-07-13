@@ -206,5 +206,41 @@
     "retentionNote": "Snimci se automatski brišu nakon 30 dana.",
     "sentToModel": "Poslano modelu",
     "localOnly": "Lokalno"
+  },
+  "artifact": {
+    "show": "Prikaži artefakte",
+    "title": "Artefakti",
+    "readyTitle": "Spremno",
+    "window": "Prozor",
+    "fullscreen": "Cijeli ekran",
+    "hide": "Sakrij",
+    "emptyState": "Zamoli Rickyja da ovdje prikaže rezultate pretrage, grafikone, bilješke, zapise, kod, slike ili napredak.",
+    "mermaidRepairedSummary": "Ricky je popravio ovaj grafikon da bi se ipak prikazao.",
+    "mermaidRepairedDetail": "Originalna Mermaid sintaksa nije mogla da se parsira, pa je prikazan bezbjedan rezervni grafikon.",
+    "generatingImage": "Generišem sliku",
+    "thumbnailCount_one": "{{count}} umanjena slika",
+    "thumbnailCount_other": "{{count}} umanjenih slika",
+    "referenceCount_one": "{{count}} referentna Riley slika učitana",
+    "referenceCount_other": "{{count}} referentnih Riley slika učitano",
+    "pageInfo": "Strana {{page}}/{{totalPages}} · sljedeći #{{next}}",
+    "thumbnailTypeFallback": "umanjena slika",
+    "selectedThumbnailFallback": "Izabrana umanjena slika",
+    "noReferenceImage": "Referentna Riley slika učitana. Zamoli Rickyja: „Napravi 16:9 umanjenu sliku o meni na temu Cursor agenata.”",
+    "untitledNote": "Bilješka bez naslova",
+    "justNow": "upravo sada"
+  },
+  "companion": {
+    "ariaLabel": "Ricky companion — {{state}}",
+    "orbTitle": "{{state}} — povuci za pomjeranje, desni klik za meni",
+    "stopTitle": "Zaustavi sve — glas i sve radnje (isto kao Ctrl+Alt+K)",
+    "stopAria": "Zaustavi sve",
+    "stop": "Stop"
+  },
+  "mini": {
+    "on": "UKLJUČEN",
+    "restoreTitle": "Vrati glavni prozor",
+    "restore": "Vrati",
+    "stageAria": "Računarski režim {{state}}",
+    "computerMode": "Računarski režim"
   }
 }

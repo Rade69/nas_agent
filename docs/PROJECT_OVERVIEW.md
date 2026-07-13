@@ -1,7 +1,7 @@
 # RileyJarvis Windows Hybrid ("Nas-agent") — pregled projekta
 
-**Datum:** 2026-07-12
-**Izradio:** Claude Code (Anthropic, model Sonnet 5) — direktnim čitanjem izvornog koda ovog repozitorija (`python_backend/`, `electron/`, `src/`, `docs/`), ne na osnovu sažetaka ili tuđih opisa. Gdje god je moguće, tvrdnje niže su potkrijepljene tačnim putanjama fajlova; nesigurne/neprovjerene stvari su eksplicitno tako označene.
+**Datum:** 2026-07-13 (ažurirano nakon provjere promjena zaključno sa commitom `13b2a8c`)
+**Izradio:** Claude Code (Anthropic, model Sonnet 5); **reviziju 2026-07-13 uradio:** Codex — oba direktnim čitanjem izvornog koda ovog repozitorija (`python_backend/`, `electron/`, `src/`, `docs/`), ne na osnovu sažetaka ili tuđih opisa. Gdje god je moguće, tvrdnje niže su potkrijepljene tačnim putanjama fajlova; nesigurne/neprovjerene stvari su eksplicitno tako označene.
 
 > Ovaj dokument je pisan kao odgovor na potrebu za jasnim, provjerljivim pregledom projekta — ne kao marketinški materijal. Sadrži i ono što nije završeno.
 
@@ -11,7 +11,7 @@
 
 RileyJarvis Windows Hybrid je desktop AI companion aplikacija za Windows — glasom vođen asistent koji radi kroz Electron prozor, sa Python backend-om koji nosi poslovnu logiku, i OpenAI Realtime API-jem kao primarnim glasovnim pipeline-om. Cilj migracije (u toku od 2026-07-04) je premjestiti sve što je originalno bilo u `electron/main.cjs` (PowerShell automatizacija, storage, AI integracije) u odvojeni Python backend, uz zadržavanje Electron/React sloja isključivo kao UI + IPC most.
 
-Projekat prati fazni migracioni plan (`docs/MIGRATION_PLAN.md`, jedini izvor istine za status faza) — **sve numerisane faze 0-19 su završene**, ostatak rada je van numerisanog plana: Security Gate 1/2 (produkcijski hardening), GUI lokalizacija (u toku), i backlog stavke identifikovane kroz kontinuiran rad i preglede.
+Projekat prati fazni migracioni plan (`docs/MIGRATION_PLAN.md`, jedini izvor istine za status faza) — **sve numerisane faze 0-19 su završene**, ostatak rada je van numerisanog plana: Security Gate 1/2 (produkcijski hardening) i backlog stavke identifikovane kroz kontinuiran rad i preglede. GUI lokalizacija (PR-1/2/3) je završena 2026-07-13 — vidi sekciju 6.
 
 ---
 
@@ -48,12 +48,15 @@ React UI  →  Electron (tanak shell/IPC)  →  Python backend (FastAPI)  →  S
 - Realtime glasovni razgovor (WebRTC, OpenAI Realtime API), sa transkriptom, VoiceState mašinom (idle/listening/transcribing/thinking/speaking/waiting_confirmation/interrupted/muted/error).
 - **Companion orb** — zaseban, uvijek-na-vrhu transparentan prozor (`electron/core/companionWindow.cjs`) koji prikazuje VoiceState i služi kao brz ulaz u glasovnu sesiju bez otvaranja glavnog prozora.
 - **Kill-switch** — globalni prečac (Escape) i "Stop sve" dugme koji odmah prekidaju glas i sve tool izvršavanja (`POST /tools/executions/cancel-all`).
+- **Glas dugme u TopBar-u je funkcionalno** — više nije vizuelno dugme bez akcije; koristi isti connect/disconnect/stop tok kao glavno mikrofonsko dugme (`src/components/pixel/TopBar.tsx`, `PixelMockupBoard.tsx`).
+- **Početni hero prati stvarni VoiceState** — veliki naslov i pomoćni tekst više ne ostaju statično na "Ricky je spreman", nego lokalizovano prikazuju slušanje, obradu, razmišljanje, govor, čekanje potvrde, prekid, utišavanje i grešku (`src/components/pixel/IdleScreen.tsx`).
 
 ### 3.2 Diktiranje (Dictation Mode)
 - Glasovni okidač ("dikt" supstring, jezički-svjestan od 2026-07-11) i eksplicitno dugme za ulazak.
 - Live transkripcija u editor, sa Cyrillic→Latin transliteracijom (Whisper povremeno vraća ćirilicu usred sesije čak i za srpski-latinica projekat).
 - **"Doradi" AI meni** — Formalizuj/Skrati/Provjeri pravopis/Prevedi na engleski, preko namjenskog `POST /text/rewrite` endpointa (plain text-in/text-out, ne prolazi kroz agent/tool-calling petlju).
 - Undo, kopiraj, preuzmi kao `.txt`, obriši sve.
+- Dugme **"Otkaži diktiranje"** sada ima jasno vidljiv danger/outline affordance umjesto da izgleda kao neaktivna sekundarna kontrola (`src/styles/11-pixel-shell.css`).
 
 ### 3.3 Planovi i potvrde (Plans & Confirmations)
 - Rizik-svjestan permission model — svaka tool akcija ima `risk` (low/medium/high/critical); high/critical zahtijevaju eksplicitnu korisničku potvrdu prije izvršenja.
@@ -64,12 +67,14 @@ React UI  →  Electron (tanak shell/IPC)  →  Python backend (FastAPI)  →  S
 Tool registry sa jedinstvenim contract-om (`docs/TOOL_CONTRACTS.md`) — bez obzira da li je tool implementiran u Python-u ili (legacy) PowerShell-u, ima isti schema: `risk`, `requires_confirmation`, `requires_computer_mode`, `requires_active_window_match`, `allowed_apps`/`blocked_apps`, `timeout_ms`. Kategorije: beleške/zapisi (notes/records), artifacts (prikaz sadržaja u UI panelu), web pretraga (Exa), generisanje slika (OpenAI Images), screenshot/UI inspect, i **computer-use** (klik/tip/scroll preko koordinata ili UI element targeting-a preko Windows UI Automation).
 
 ### 3.5 Postavke i lokalizacija
-- Settings panel (`SettingsPanel.tsx`) — korisničko ime (koje agent koristi u razgovoru), jezik diktiranja/interfejsa.
-- **i18n infrastruktura** (i18next + react-i18next) — 5 jezika (sr-Latn/en/de/es/fr), pokriva **12 od ~20 komponenti** koje imaju user-facing tekst (vidi sekciju 6 za tačan status).
+- Settings panel (`SettingsPanel.tsx`) — korisničko ime (koje agent koristi u razgovoru), jezik diktiranja/interfejsa i korisnički definisane brze komande. Brze komande se perzistiraju kroz postojeću SQLite key/value settings infrastrukturu; prazna lista znači da UI koristi ugrađene lokalizovane komande, a neprazna lista se prikazuje i šalje agentu doslovno kako ju je korisnik unio.
+- **i18n infrastruktura** (i18next + react-i18next) — 5 jezika (sr-Latn/en/de/es/fr), pokriva približno **16 komponenti** sa user-facing tekstom, uključujući novije screenshot i quick-command ekrane (vidi sekciju 6 za preostale izuzetke).
 - Jezik diktiranja pokreće i STT jezički hint (OpenAI Whisper `language` parametar) i agentov preferirani jezik odgovora u sistem promptu.
+- Ranijih pet odvojenih jezičkih mapa je konsolidovano u **dva izvora istine**: renderer koristi `src/shared/languages.ts`, a Electron Realtime handler jednu `LANGUAGE_CONFIG` mapu u `electron/ipc_handlers/realtime.cjs`. Dva izvora ostaju namjerno odvojena zbog renderer ESM / Electron CJS granice.
 
 ### 3.6 Ostalo
 - Notepad-style beleške i "records" (strukturirani zapisi), artifact panel (prikaz markdown/koda/tabela/mermaid dijagrama/slika), thumbnail board (generisanje/editovanje slika preko OpenAI Images, i dalje na legacy JSON storage-u, ne SQLite — vidi sekciju 6).
+- **Screenshot galerija i privatnost** — svaki novi screenshot dobija SQLite evidenciju (`screenshots` tabela) i prikazuje se u stvarnoj galeriji umjesto statičnog placeholdera. Galerija razlikuje lokalne snimke od onih poslatih modelu, nudi "Obriši sve", a backend briše i DB redove i PNG fajlove. Podrazumijevana retencija je 30 dana; cleanup se pokreće pri startu backend-a i pri listanju galerije (`ScreenshotService`, `ScreenshotsGallery.tsx`).
 
 ---
 
@@ -143,12 +148,12 @@ Namjerno uključeno, ne izostavljeno — dokument bi bio nepošten bez ovoga.
 
 | Stavka | Status | Napomena |
 |---|---|---|
-| GUI lokalizacija | PR-1 + PR-2 završeni (12 komponenti), PR-3 nije počet | `DictationScreen`, `PlansPanel`, `ActivityTimeline`, `ConfirmationDialog` sad prevedeni; `MiniComputerWindow`, `CompanionOrb` context meni, `ArtifactPanel`, error/tool labele van onoga što je konvertovano — i dalje hardkodiran srpski. |
+| GUI lokalizacija | ✅ PR-1 + PR-2 + PR-3 završeni (2026-07-13) | Svi ranije poznati preostali fajlovi (`ArtifactPanel`, `CompanionOrb` — uklj. native Electron tray/context meni u `electron/core/companionWindow.cjs`, `MiniComputerWindow`) sad prevedeni. Runtime nije testiran (agent nema browser-automation pristup) — vidi `agent_reports/2026-07-13_companion-orb-menu-localization.md`. Preostalo: dio error/tool labela van GUI-ja, `formatDate` u `ArtifactPanel.tsx` koristi browser default locale umjesto `interface_language`. |
 | de/es/fr prevodi | Best-effort, **nisu native-speaker potvrđeni** | Eksplicitno označeno u kodu i agent reportovima svaki put — nije prikriveno. |
-| JS/TS testovi | **Ne postoje** | `npm run test` pokreće samo `pytest` (236 testova, samo backend). Nema Vitest-a ni bilo kakvog frontend test frameworka. Dva stvarna buga (confirmation bridge petlja, retry provjera) su ranije nađena ručnim pregledom, ne testovima — dokaz da nedostatak testova nije samo teoretski rizik. |
-| `electron/main.cjs` veličina | 772 linije | Dio je legacy tool fallback (namjerno zadržan dok se ne dokaže Python zamjena), dio je IPC wiring. Čišćenje mrtvog/dupliranog koda je identifikovan, još ne urađen zadatak. |
-| `App.tsx` veličina | 778 linija, ~40 handler funkcija | Kandidat za razdvajanje u custom hooks (`useVoiceSession`, `useDictation`, `useConfirmations` itd.) — nije urađeno, procijenjen kao srednji prioritet, ne hitno. |
-| Duplirane jezičke mape | 5 mjesta u kodu | `STT_LANGUAGE_HINTS`, `LANGUAGE_NAMES`, `DICTATION_TRIGGER_WORDS`, `DICTATION_EXIT_PHRASES`, `LANGUAGE_OPTIONS` + 5 JSON locale fajlova — dodavanje 6. jezika trenutno zahtijeva izmjenu na 6 mjesta. Konsolidacija u jedan shared config nije urađena. |
+| JS/TS testovi | **Ne postoje** | `npm run test` pokreće samo `pytest`; `pytest --collect-only` je 2026-07-13 prikupio **251 backend test**. Nema Vitest-a ni bilo kakvog frontend test frameworka. Dva stvarna buga (confirmation bridge petlja, retry provjera) su ranije nađena ručnim pregledom, ne testovima — dokaz da nedostatak testova nije samo teoretski rizik. |
+| `electron/main.cjs` veličina | 784 linije | Dio je legacy tool fallback (namjerno zadržan dok se ne dokaže Python zamjena), dio je IPC wiring. Čišćenje mrtvog/dupliranog koda je identifikovan, još ne urađen zadatak. |
+| `App.tsx` veličina | 735 linija, i dalje sa mnogo handler funkcija | Kandidat za razdvajanje u custom hooks (`useVoiceSession`, `useDictation`, `useConfirmations` itd.) — nije urađeno, procijenjen kao srednji prioritet, ne hitno. |
+| Jezička konfiguracija | ✅ Konsolidovana 2026-07-12 | Ranijih pet mapa svedeno je na dva namjerna izvora istine: `src/shared/languages.ts` za renderer i `LANGUAGE_CONFIG` u Electron Realtime handleru. Potpuno dijeljenje jednog fajla nije uvedeno jer bi CJS/ESM most zahtijevao dodatni build korak. |
 | Cloud-only STT | Lokalni STT (faster-whisper) nije implementiran | Arhitektura isplanirana (`docs/LOCALIZATION_AND_STT_ENGINE_PLAN.md`), namjerno odloženo — dva paralelna STT koda znače duplo održavanje, ne raditi dok ne postoji jasan razlog (offline rad, trošak). |
 | Dev-mode auth fail-open | ✅ Popravljeno 2026-07-12 | Vidi sekciju 4.3 — bio je "jeftin fix" po procjeni, ispalo je veći zahvat jer je skoro cijeli backend test suite (245 testova) implicitno zavisio od fail-open ponašanja; svih 12+ dotaknutih test fajlova prošlo je kroz eksplicitan auth-bypass override, ne kroz oslanjanje na staro ponašanje. |
 | S-2 eskalacija: outbound low-risk alati (`image_generate`, `web_search`) | ✅ Popravljeno 2026-07-12 | Vidi sekciju 4.7 — pronađeno eksternim pregledom (FABLE-5, 2026-07-12), potvrđeno u kodu, i zatim popravljeno (`outbound: bool` polje + eskalacija u `permission_engine.py`). |
@@ -172,10 +177,23 @@ Ovaj dokument je pregledao FABLE-5 (drugi AI model, eksterna recenzija). Sve tvr
 
 **Ažurirano 2026-07-12 (naknadno, isti dan):** dev auth fail-closed i outbound taint eskalacija su implementirani i testirani — vidi sekciju 4.3 i 4.7. Vitest za confirmation flow ostaje neimplementiran.
 
+### 7.1 Naknadno potvrđene dorade (2026-07-13)
+
+Nakon prvobitnog pregleda direktno su provjereni commitovi i trenutni kod za sljedeće promjene:
+
+- screenshot evidencija, 30-dnevna retencija, brisanje svih snimaka i stvarna galerija (`59eaa1e`);
+- povezivanje ranije neaktivnog TopBar "Glas" dugmeta na postojeći voice toggle/stop tok (`58d983f`);
+- konsolidacija jezičkih mapa sa pet mjesta na dva namjerna izvora istine (`3533fb2`);
+- state-aware hero naslov i pomoćni tekst na početnom ekranu (`948d785`);
+- korisnički podesive, perzistentne brze komande u Settings panelu (`7b0f51f`);
+- vidljiviji affordance za otkazivanje diktiranja (`e1d8c3f`).
+
+Naknadni commitovi `8c021f6`, `c52eb6f` i `13b2a8c` dodaju i standardizuju obavezne file-header komentare kroz glavne `.py`, `.ts`, `.tsx`, `.cjs` i relevantne `.css` fajlove. To poboljšava održavanje i trag odluka, ali ne mijenja ponašanje aplikacije.
+
 ---
 
 ## 8. Zaključak
 
 Projekat ima stvarnu arhitektonsku disciplinu koja se **provjerava, ne samo deklariše** — jasna podjela slojeva, permission/risk model koji je testovima dokazan da nema zaobilaznih puteva, fail-closed dizajn na više nivoa (legacy tools, kill-switch, security self-test). Multi-agent radni tok (Claude Code + pi) funkcioniše uz eksplicitnu, ponovljivu disciplinu provjere — dokazano više puta, uključujući i na sopstvenom dokumentu (sekcija 7), da se tvrdnje ne uzimaju zdravo za gotovo bez provjere u stvarnom kodu, bez obzira da li dolaze od pi-ja, od eksterne AI recenzije, ili od mene samog.
 
-Istovremeno, projekat ima realne, imenovane praznine — GUI lokalizacija je na pola puta, frontend nema testove, i produkcijski gates (Security Gate 1/2) nisu zatvoreni. Dev-mode auth fail-open i S-2 outbound eskalacija su bili na ovoj listi do 2026-07-12, kad su oba popravljena (vidi sekciju 4.3, 4.7, 7). Nijedna od ovih stavki nije skrivena ili uljepšana u ovom dokumentu.
+Istovremeno, projekat ima realne, imenovane praznine — GUI lokalizacija je znatno odmakla ali nije završena, frontend nema testove, i produkcijski gates (Security Gate 1/2) nisu zatvoreni. Dev-mode auth fail-open i S-2 outbound eskalacija su bili na ovoj listi do 2026-07-12, kad su oba popravljena (vidi sekciju 4.3, 4.7, 7). Nijedna od ovih stavki nije skrivena ili uljepšana u ovom dokumentu.

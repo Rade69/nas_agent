@@ -206,5 +206,41 @@
     "retentionNote": "Bildschirmaufnahmen werden nach 30 Tagen automatisch gelöscht.",
     "sentToModel": "An Modell gesendet",
     "localOnly": "Nur lokal"
+  },
+  "artifact": {
+    "show": "Artefakte anzeigen",
+    "title": "Artefakte",
+    "readyTitle": "Bereit",
+    "window": "Fenster",
+    "fullscreen": "Vollbild",
+    "hide": "Ausblenden",
+    "emptyState": "Bitte Ricky, hier Suchergebnisse, Diagramme, Notizen, Datensätze, Code, Bilder oder Fortschritt anzuzeigen.",
+    "mermaidRepairedSummary": "Ricky hat dieses Diagramm repariert, damit es weiterhin angezeigt wird.",
+    "mermaidRepairedDetail": "Die ursprüngliche Mermaid-Syntax konnte nicht verarbeitet werden, daher wurde ein sicheres Ersatzdiagramm angezeigt.",
+    "generatingImage": "Bild wird erstellt",
+    "thumbnailCount_one": "{{count}} Vorschaubild",
+    "thumbnailCount_other": "{{count}} Vorschaubilder",
+    "referenceCount_one": "{{count}} Riley-Referenzbild geladen",
+    "referenceCount_other": "{{count}} Riley-Referenzbilder geladen",
+    "pageInfo": "Seite {{page}}/{{totalPages}} · nächste #{{next}}",
+    "thumbnailTypeFallback": "Vorschaubild",
+    "selectedThumbnailFallback": "Ausgewähltes Vorschaubild",
+    "noReferenceImage": "Riley-Referenzbild geladen. Frag Ricky: „Erstelle ein 16:9-Vorschaubild von mir über Cursor-Agenten.“",
+    "untitledNote": "Notiz ohne Titel",
+    "justNow": "gerade eben"
+  },
+  "companion": {
+    "ariaLabel": "Ricky-Begleiter — {{state}}",
+    "orbTitle": "{{state}} — ziehen zum Verschieben, Rechtsklick für Menü",
+    "stopTitle": "Alles stoppen — Sprache und alle Aktionen (wie Strg+Alt+K)",
+    "stopAria": "Alles stoppen",
+    "stop": "Stopp"
+  },
+  "mini": {
+    "on": "EIN",
+    "restoreTitle": "Hauptfenster wiederherstellen",
+    "restore": "Wiederherstellen",
+    "stageAria": "Computermodus {{state}}",
+    "computerMode": "Computermodus"
   }
 }

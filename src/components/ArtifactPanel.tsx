@@ -1,8 +1,10 @@
 /** Floating artifact viewer panel — renders markdown, code, tables, images,
  *  Mermaid diagrams, notes, and thumbnail boards. Supports fullscreen toggle
- *  and hide/show. Not yet localized (hardcoded Serbian, backlog).
+ *  and hide/show. Localized via i18next (GUI Localization PR-3).
  *  Context: agent_reports/2026-07-05_faza8-voice-first-ui-refactor.md */
 import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import mermaid from "mermaid";
 import type { RickyArtifact } from "../vite-env";
 
@@ -58,6 +60,7 @@ mermaid.initialize({
 });
 
 export function ArtifactPanel({ artifact, visible, fullscreen, onToggleVisible, onToggleFullscreen }: ArtifactPanelProps) {
+  const { t } = useTranslation();
   const [mermaidState, setMermaidState] = useState<MermaidState>({ svg: "", error: null, source: "" });
   const rawId = useId();
   const mermaidId = useMemo(() => `mermaid-${rawId.replace(/[^a-zA-Z0-9_-]/g, "")}`, [rawId]);
@@ -96,7 +99,7 @@ export function ArtifactPanel({ artifact, visible, fullscreen, onToggleVisible, 
   if (!visible) {
     return (
       <button className="artifact-tab" onClick={onToggleVisible}>
-        Show Artifacts
+        {t("artifact.show")}
       </button>
     );
   }
@@ -105,28 +108,29 @@ export function ArtifactPanel({ artifact, visible, fullscreen, onToggleVisible, 
     <aside className={`artifact-panel ${fullscreen ? "artifact-fullscreen" : ""}`}>
       <header className="artifact-header">
         <div>
-          <span className="eyebrow">Artifacts</span>
-          <h2>{artifact?.title || "Ready"}</h2>
+          <span className="eyebrow">{t("artifact.title")}</span>
+          <h2>{artifact?.title || t("artifact.readyTitle")}</h2>
         </div>
         <div className="artifact-actions">
-          <button onClick={onToggleFullscreen}>{fullscreen ? "Window" : "Fullscreen"}</button>
-          <button onClick={onToggleVisible}>Hide</button>
+          <button onClick={onToggleFullscreen}>{fullscreen ? t("artifact.window") : t("artifact.fullscreen")}</button>
+          <button onClick={onToggleVisible}>{t("artifact.hide")}</button>
         </div>
       </header>
-      <div className="artifact-body">{artifact ? renderArtifact(artifact, mermaidState) : <EmptyArtifact />}</div>
+      <div className="artifact-body">{artifact ? renderArtifact(artifact, mermaidState, t) : <EmptyArtifact />}</div>
     </aside>
   );
 }
 
 function EmptyArtifact() {
+  const { t } = useTranslation();
   return (
     <div className="empty-artifact">
-      <p>Ask Ricky to show web results, charts, notes, records, code, images, or progress here.</p>
+      <p>{t("artifact.emptyState")}</p>
     </div>
   );
 }
 
-function renderArtifact(artifact: RickyArtifact, mermaidState: MermaidState) {
+function renderArtifact(artifact: RickyArtifact, mermaidState: MermaidState, t: TFunction) {
   if (artifact.kind === "table") {
     return <JsonTable content={artifact.content} />;
   }
@@ -141,8 +145,8 @@ function renderArtifact(artifact: RickyArtifact, mermaidState: MermaidState) {
         <div className="mermaid-output" dangerouslySetInnerHTML={{ __html: mermaidState.svg }} />
         {mermaidState.error ? (
           <details className="mermaid-repair">
-            <summary>Ricky repaired this chart so it would still display.</summary>
-            <p>The original Mermaid syntax did not parse, so a safe fallback chart was shown.</p>
+            <summary>{t("artifact.mermaidRepairedSummary")}</summary>
+            <p>{t("artifact.mermaidRepairedDetail")}</p>
             <pre>{mermaidState.source}</pre>
           </details>
         ) : null}
@@ -167,7 +171,7 @@ function renderArtifact(artifact: RickyArtifact, mermaidState: MermaidState) {
           <div className="image-loading-scan" />
         </div>
         <div className="image-loading-copy">
-          <span>Generating image</span>
+          <span>{t("artifact.generatingImage")}</span>
           <p>{artifact.content}</p>
         </div>
       </div>
@@ -203,6 +207,7 @@ function renderArtifact(artifact: RickyArtifact, mermaidState: MermaidState) {
 }
 
 function ThumbnailBoard({ content }: { content: string }) {
+  const { t } = useTranslation();
   const board = parseThumbnailBoard(content);
   if (!board) return <pre className="text-artifact">{content}</pre>;
 
@@ -218,8 +223,8 @@ function ThumbnailBoard({ content }: { content: string }) {
           <span className="thumbnail-number-large">{selected.number}</span>
         </div>
         <div className="thumbnail-selected-copy">
-          <span>{selected.type || "thumbnail"}</span>
-          <p>{selected.prompt || "Selected thumbnail"}</p>
+          <span>{selected.type || t("artifact.thumbnailTypeFallback")}</span>
+          <p>{selected.prompt || t("artifact.selectedThumbnailFallback")}</p>
         </div>
       </section>
     );
@@ -229,10 +234,16 @@ function ThumbnailBoard({ content }: { content: string }) {
     <section className="thumbnail-board">
       <header className="thumbnail-board-meta">
         <div>
-          <span>{page.totalImages ?? images.length} thumbnails</span>
-          <p>{(board.references || []).length} Riley reference image{(board.references || []).length === 1 ? "" : "s"} loaded</p>
+          <span>{t("artifact.thumbnailCount", { count: page.totalImages ?? images.length })}</span>
+          <p>{t("artifact.referenceCount", { count: (board.references || []).length })}</p>
         </div>
-        <small>Page {page.page || 1}/{page.totalPages || 1} · next #{page.nextNumber || "?"}</small>
+        <small>
+          {t("artifact.pageInfo", {
+            page: page.page || 1,
+            totalPages: page.totalPages || 1,
+            next: page.nextNumber || "?",
+          })}
+        </small>
       </header>
       {images.length > 0 ? (
         <div className="thumbnail-grid">
@@ -255,7 +266,7 @@ function ThumbnailBoard({ content }: { content: string }) {
         </div>
       ) : (
         <div className="thumbnail-empty">
-          <p>Riley reference image loaded. Ask Ricky: “Generate a 16:9 thumbnail of me about Cursor agents.”</p>
+          <p>{t("artifact.noReferenceImage")}</p>
         </div>
       )}
     </section>
@@ -338,6 +349,7 @@ function renderInline(text: string) {
 }
 
 function NotesGrid({ content }: { content: string }) {
+  const { t } = useTranslation();
   const notes = parseNotes(content);
   if (notes.length === 0) return <pre className="text-artifact">{content}</pre>;
 
@@ -345,9 +357,9 @@ function NotesGrid({ content }: { content: string }) {
     <div className="notes-grid">
       {notes.map((note, index) => (
         <article className="note-card" key={note.id || index}>
-          <p>{note.text || "Untitled note"}</p>
+          <p>{note.text || t("artifact.untitledNote")}</p>
           <footer>
-            <span>{formatDate(note.createdAt)}</span>
+            <span>{formatDate(note.createdAt, t)}</span>
             {note.tags && note.tags.length > 0 ? <small>{note.tags.map((tag) => `#${tag}`).join(" ")}</small> : null}
           </footer>
         </article>
@@ -366,8 +378,8 @@ function parseNotes(content: string): NoteCard[] {
   }
 }
 
-function formatDate(value: string | undefined): string {
-  if (!value) return "just now";
+function formatDate(value: string | undefined, t: TFunction): string {
+  if (!value) return t("artifact.justNow");
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleDateString([], { month: "short", day: "numeric" });

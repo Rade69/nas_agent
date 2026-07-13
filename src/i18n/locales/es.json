@@ -206,5 +206,41 @@
     "retentionNote": "Las capturas de pantalla se eliminan automáticamente después de 30 días.",
     "sentToModel": "Enviado al modelo",
     "localOnly": "Solo local"
+  },
+  "artifact": {
+    "show": "Mostrar artefactos",
+    "title": "Artefactos",
+    "readyTitle": "Listo",
+    "window": "Ventana",
+    "fullscreen": "Pantalla completa",
+    "hide": "Ocultar",
+    "emptyState": "Pide a Ricky que muestre aquí resultados de búsqueda, gráficos, notas, registros, código, imágenes o progreso.",
+    "mermaidRepairedSummary": "Ricky reparó este gráfico para que se pudiera mostrar.",
+    "mermaidRepairedDetail": "La sintaxis Mermaid original no se pudo procesar, así que se mostró un gráfico de respaldo seguro.",
+    "generatingImage": "Generando imagen",
+    "thumbnailCount_one": "{{count}} miniatura",
+    "thumbnailCount_other": "{{count}} miniaturas",
+    "referenceCount_one": "{{count}} imagen de referencia de Riley cargada",
+    "referenceCount_other": "{{count}} imágenes de referencia de Riley cargadas",
+    "pageInfo": "Página {{page}}/{{totalPages}} · siguiente #{{next}}",
+    "thumbnailTypeFallback": "miniatura",
+    "selectedThumbnailFallback": "Miniatura seleccionada",
+    "noReferenceImage": "Imagen de referencia de Riley cargada. Pide a Ricky: «Genera una miniatura 16:9 sobre mí y los agentes de Cursor».",
+    "untitledNote": "Nota sin título",
+    "justNow": "justo ahora"
+  },
+  "companion": {
+    "ariaLabel": "Compañero Ricky — {{state}}",
+    "orbTitle": "{{state}} — arrastra para mover, clic derecho para el menú",
+    "stopTitle": "Detener todo — voz y todas las acciones (igual que Ctrl+Alt+K)",
+    "stopAria": "Detener todo",
+    "stop": "Detener"
+  },
+  "mini": {
+    "on": "ACTIVADO",
+    "restoreTitle": "Restaurar ventana principal",
+    "restore": "Restaurar",
+    "stageAria": "Modo computadora {{state}}",
+    "computerMode": "Modo computadora"
   }
 }

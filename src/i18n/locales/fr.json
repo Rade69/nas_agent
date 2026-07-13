@@ -206,5 +206,41 @@
     "retentionNote": "Les captures d'écran sont automatiquement supprimées après 30 jours.",
     "sentToModel": "Envoyé au modèle",
     "localOnly": "Local uniquement"
+  },
+  "artifact": {
+    "show": "Afficher les artefacts",
+    "title": "Artefacts",
+    "readyTitle": "Prêt",
+    "window": "Fenêtre",
+    "fullscreen": "Plein écran",
+    "hide": "Masquer",
+    "emptyState": "Demande à Ricky d'afficher ici des résultats de recherche, graphiques, notes, enregistrements, code, images ou une progression.",
+    "mermaidRepairedSummary": "Ricky a réparé ce graphique pour qu'il puisse quand même s'afficher.",
+    "mermaidRepairedDetail": "La syntaxe Mermaid d'origine n'a pas pu être analysée, un graphique de secours a donc été affiché.",
+    "generatingImage": "Génération de l'image",
+    "thumbnailCount_one": "{{count}} miniature",
+    "thumbnailCount_other": "{{count}} miniatures",
+    "referenceCount_one": "{{count}} image de référence Riley chargée",
+    "referenceCount_other": "{{count}} images de référence Riley chargées",
+    "pageInfo": "Page {{page}}/{{totalPages}} · suivant #{{next}}",
+    "thumbnailTypeFallback": "miniature",
+    "selectedThumbnailFallback": "Miniature sélectionnée",
+    "noReferenceImage": "Image de référence Riley chargée. Demande à Ricky : « Génère une miniature 16:9 de moi sur le thème des agents Cursor ».",
+    "untitledNote": "Note sans titre",
+    "justNow": "à l'instant"
+  },
+  "companion": {
+    "ariaLabel": "Compagnon Ricky — {{state}}",
+    "orbTitle": "{{state}} — glisser pour déplacer, clic droit pour le menu",
+    "stopTitle": "Tout arrêter — voix et toutes les actions (comme Ctrl+Alt+K)",
+    "stopAria": "Tout arrêter",
+    "stop": "Arrêter"
+  },
+  "mini": {
+    "on": "ACTIVÉ",
+    "restoreTitle": "Restaurer la fenêtre principale",
+    "restore": "Restaurer",
+    "stageAria": "Mode ordinateur {{state}}",
+    "computerMode": "Mode ordinateur"
   }
 }

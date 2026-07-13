@@ -206,5 +206,41 @@
     "retentionNote": "Screenshots are automatically deleted after 30 days.",
     "sentToModel": "Sent to model",
     "localOnly": "Local only"
+  },
+  "artifact": {
+    "show": "Show Artifacts",
+    "title": "Artifacts",
+    "readyTitle": "Ready",
+    "window": "Window",
+    "fullscreen": "Fullscreen",
+    "hide": "Hide",
+    "emptyState": "Ask Ricky to show web results, charts, notes, records, code, images, or progress here.",
+    "mermaidRepairedSummary": "Ricky repaired this chart so it would still display.",
+    "mermaidRepairedDetail": "The original Mermaid syntax did not parse, so a safe fallback chart was shown.",
+    "generatingImage": "Generating image",
+    "thumbnailCount_one": "{{count}} thumbnail",
+    "thumbnailCount_other": "{{count}} thumbnails",
+    "referenceCount_one": "{{count}} Riley reference image loaded",
+    "referenceCount_other": "{{count}} Riley reference images loaded",
+    "pageInfo": "Page {{page}}/{{totalPages}} · next #{{next}}",
+    "thumbnailTypeFallback": "thumbnail",
+    "selectedThumbnailFallback": "Selected thumbnail",
+    "noReferenceImage": "Riley reference image loaded. Ask Ricky: “Generate a 16:9 thumbnail of me about Cursor agents.”",
+    "untitledNote": "Untitled note",
+    "justNow": "just now"
+  },
+  "companion": {
+    "ariaLabel": "Ricky companion — {{state}}",
+    "orbTitle": "{{state}} — drag to move, right-click for menu",
+    "stopTitle": "Stop everything — voice and all actions (same as Ctrl+Alt+K)",
+    "stopAria": "Stop everything",
+    "stop": "Stop"
+  },
+  "mini": {
+    "on": "ON",
+    "restoreTitle": "Restore main window",
+    "restore": "Restore",
+    "stageAria": "Computer Mode {{state}}",
+    "computerMode": "Computer Mode"
   }
 }
