@@ -11,6 +11,7 @@
     "check": "node --check electron/main.cjs && node --check electron/preload.cjs && node --check electron/services/pythonClient.cjs && node --check electron/core/env.cjs && node --check electron/core/ipc.cjs && node --check electron/core/legacyTools.cjs && node --check electron/core/window.cjs && node --check electron/core/companionWindow.cjs && node --check electron/core/secureWebPreferences.cjs && node --check electron/core/securitySelfTest.cjs",
     "smoke": "node scripts/smoke-test.cjs",
     "test": "cd python_backend && python -m pytest -q",
+    "test:voice": "vitest run --config vitest.config.ts",
     "quality": "npm run typecheck && npm run check && npm run build && npm run test && npm run smoke",
     "package:dir": "npm run build && electron-builder --win --dir",
     "package:win": "npm run build && electron-builder --win",
@@ -47,6 +48,7 @@
     "typescript": "^6.0.3",
     "vite": "^8.1.0",
     "vite-plugin-svgr": "^5.2.0",
+    "vitest": "^4.1.10",
     "wait-on": "^9.0.10"
   }
 }

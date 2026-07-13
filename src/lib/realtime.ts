@@ -17,6 +17,38 @@ export { createActivityEvent };
 export type { ActivityEvent, VoiceState };
 export type { RickyConnectionState, RickyMood, MouthShape, TranscriptEntry, RealtimeCallbacks } from "./realtimeTypes";
 
+// ---------- DI seam (R0 — test harness) ----------
+// Injected dependencies so tests can swap real browser APIs for fakes.
+// Production: omit deps → browser defaults are used (unchanged behavior).
+// Context: docs/VOICE_COMMUNICATION_RELIABILITY_IMPLEMENTATION_PLAN_FOR_PI.md
+
+export type RealtimeClientDeps = {
+  createPeerConnection: () => RTCPeerConnection;
+  getUserMedia: (constraints?: MediaStreamConstraints) => Promise<MediaStream>;
+  fetch: typeof fetch;
+  createAudioElement: () => HTMLAudioElement;
+  createAudioContext: () => AudioContext;
+  setTimeout: (handler: (...args: unknown[]) => void, timeout?: number) => number;
+  clearTimeout: (id: number | undefined) => void;
+  requestAnimationFrame: (callback: FrameRequestCallback) => number;
+  cancelAnimationFrame: (handle: number) => void;
+};
+
+/** Default dependencies that match the live browser environment. */
+export const defaultRealtimeDeps: RealtimeClientDeps = {
+  createPeerConnection: () => new RTCPeerConnection(),
+  getUserMedia: (constraints) => navigator.mediaDevices.getUserMedia(constraints),
+  fetch: (...args) => fetch(...args),
+  createAudioElement: () => document.createElement("audio"),
+  createAudioContext: () => new AudioContext(),
+  setTimeout: (handler: (...args: unknown[]) => void, timeout?: number) =>
+    setTimeout(handler, timeout as number) as unknown as number,
+  clearTimeout: (id: number | undefined) => clearTimeout(id as unknown as number),
+  requestAnimationFrame: (callback) => requestAnimationFrame(callback),
+  cancelAnimationFrame: (handle) => cancelAnimationFrame(handle),
+};
+// ---------- end DI seam ----------
+
 const realtimeUrl = "https://api.openai.com/v1/realtime/calls";
 
 // FAZA S-4 (docs/SECURITY_GAP_ANALYSIS_AND_PLAN.md S29): fail-closed mic idle
@@ -29,6 +61,7 @@ export class RickyRealtimeClient {
   private pc: RTCPeerConnection | null = null;
   private dc: RTCDataChannel | null = null;
   private micStream: MediaStream | null = null;
+  private deps: RealtimeClientDeps;
   private callbacks: RealtimeCallbacks;
   private currentAssistantText = "";
   private toolSpecs: RickyToolSpec[] = [];
@@ -37,7 +70,7 @@ export class RickyRealtimeClient {
   private outputAnalyser: AnalyserNode | null = null;
   private outputMeterFrame = 0;
   private smoothedMouthShape: MouthShape = silentMouthShape();
-  private idleTimer: ReturnType<typeof setTimeout> | null = null;
+  private idleTimer: ReturnType<RealtimeClientDeps["setTimeout"]> | null = null;
   // FAZA S-2 voice-path fix (agent_reports/2026-07-10_s2-voice-path-fix.md):
   // tracks whether a reads_external_content tool has succeeded this voice
   // session, so acting-tool calls can be forwarded with external_content_seen
@@ -48,15 +81,16 @@ export class RickyRealtimeClient {
   private externalContentSeen = false;
   private sttLanguageHint = "sr";
 
-  constructor(callbacks: RealtimeCallbacks) {
+  constructor(callbacks: RealtimeCallbacks, deps?: Partial<RealtimeClientDeps>) {
     this.callbacks = callbacks;
+    this.deps = { ...defaultRealtimeDeps, ...deps };
   }
 
   // Reset the fail-closed idle timer; called on connect + any voice/text
   // activity. On expiry the mic session is torn down.
   private bumpIdleTimer(): void {
-    if (this.idleTimer) clearTimeout(this.idleTimer);
-    this.idleTimer = setTimeout(() => {
+    if (this.idleTimer) this.deps.clearTimeout(this.idleTimer);
+    this.idleTimer = this.deps.setTimeout(() => {
       this.callbacks.onStatus("Mikrofon ugašen zbog neaktivnosti.");
       this.callbacks.onActivity(createActivityEvent("status", "Mikrofon ugašen (idle timeout)"));
       this.disconnect();
@@ -73,8 +107,8 @@ export class RickyRealtimeClient {
     this.callbacks.onActivity(createActivityEvent("status", "Realtime sesija zatražena"));
 
     try {
-      const pc = new RTCPeerConnection();
-      const audio = document.createElement("audio");
+      const pc = this.deps.createPeerConnection();
+      const audio = this.deps.createAudioElement();
       audio.autoplay = true;
 
       pc.ontrack = (event) => {
@@ -92,7 +126,7 @@ export class RickyRealtimeClient {
       const [toolSpecs, token, micStream] = await Promise.all([
         window.ricky.getToolSpecs(),
         window.ricky.createRealtimeToken(),
-        navigator.mediaDevices.getUserMedia({
+        this.deps.getUserMedia({
           audio: {
             echoCancellation: true,
             noiseSuppression: true,
@@ -122,7 +156,7 @@ export class RickyRealtimeClient {
       const offer = await pc.createOffer();
       await pc.setLocalDescription(offer);
 
-      const sdpResponse = await fetch(realtimeUrl, {
+      const sdpResponse = await this.deps.fetch(realtimeUrl, {
         method: "POST",
         body: offer.sdp,
         headers: {
@@ -153,7 +187,7 @@ export class RickyRealtimeClient {
 
   disconnect(): void {
     if (this.idleTimer) {
-      clearTimeout(this.idleTimer);
+      this.deps.clearTimeout(this.idleTimer);
       this.idleTimer = null;
     }
     this.dc?.close();
@@ -435,7 +469,7 @@ export class RickyRealtimeClient {
   private startOutputMeter(stream: MediaStream): void {
     this.stopOutputMeter();
 
-    const audioContext = new AudioContext();
+    const audioContext = this.deps.createAudioContext();
     const source = audioContext.createMediaStreamSource(stream);
     const analyser = audioContext.createAnalyser();
     analyser.fftSize = 1024;
@@ -470,14 +504,14 @@ export class RickyRealtimeClient {
 
       this.smoothedMouthShape = smoothMouthShape(this.smoothedMouthShape, target, 0.36);
       this.callbacks.onMouthShape(this.smoothedMouthShape);
-      this.outputMeterFrame = window.requestAnimationFrame(tick);
+      this.outputMeterFrame = this.deps.requestAnimationFrame(tick);
     };
     tick();
   }
 
   private stopOutputMeter(): void {
     if (this.outputMeterFrame) {
-      window.cancelAnimationFrame(this.outputMeterFrame);
+      this.deps.cancelAnimationFrame(this.outputMeterFrame);
       this.outputMeterFrame = 0;
     }
     void this.audioContext?.close();
