@@ -91,7 +91,7 @@ export default function App() {
   const [activityEvents, setActivityEvents] = useState<ActivityEvent[]>([
     createActivityEvent("status", "Renderer spreman", "GUI je učitan."),
   ]);
-  const [, setStatus] = useState("Idle");
+  const [status, setStatus] = useState("Idle");
   const [textPrompt, setTextPrompt] = useState("");
   const [pendingConfirmation, setPendingConfirmation] = useState<Confirmation | null>(null);
   const [confirmationBusy, setConfirmationBusy] = useState(false);
@@ -629,6 +629,7 @@ export default function App() {
         mode={mode}
         screen={screen}
         voiceState={voiceState}
+        status={status}
         isActive={isActive}
         isConnected={isConnected}
         textPrompt={textPrompt}
@@ -748,4 +749,3 @@ export default function App() {
     </main>
   );
 }
-

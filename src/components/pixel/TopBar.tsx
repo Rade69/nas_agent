@@ -16,6 +16,7 @@ export function TopBar({
   mode,
   screen,
   voiceState,
+  status,
   isActive,
   isConnected,
   onToggleMode,
@@ -28,6 +29,7 @@ export function TopBar({
   mode: RickyMode;
   screen: ScreenState;
   voiceState: VoiceState;
+  status?: string;
   isActive?: boolean;
   isConnected?: boolean;
   onToggleMode: () => void;
@@ -58,6 +60,9 @@ export function TopBar({
             </>
           )}
         </span>
+        {voiceState === "error" && status ? (
+          <span className="pixel-state-detail" title={status}>{status}</span>
+        ) : null}
       </div>
       {onStopAll ? (
         <div className="pixel-top-actions">

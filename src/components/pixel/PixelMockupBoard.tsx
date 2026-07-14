@@ -21,6 +21,7 @@ export function PixelMockupBoard({
   mode,
   screen,
   voiceState,
+  status,
   isActive,
   isConnected,
   textPrompt,
@@ -66,6 +67,7 @@ export function PixelMockupBoard({
   mode: RickyMode;
   screen: ScreenState;
   voiceState: VoiceState;
+  status: string;
   isActive: boolean;
   isConnected: boolean;
   textPrompt: string;
@@ -123,7 +125,7 @@ export function PixelMockupBoard({
           description={t("dashboard.dictationDescription")}
         >
           <section className="pixel-window pixel-window-dictation" aria-label={t("topBar.dictation")}>
-            <TopBar mode={mode} screen="dictation" voiceState={voiceState} onToggleMode={onToggleMode} onOpenPlans={onOpenPlans} />
+            <TopBar mode={mode} screen="dictation" voiceState={voiceState} status={status} onToggleMode={onToggleMode} onOpenPlans={onOpenPlans} />
             <section className="pixel-main pixel-main-full">
               <DictationScreen
                 text={dictationText}
@@ -154,6 +156,7 @@ export function PixelMockupBoard({
               mode={mode}
               screen={screen}
               voiceState={voiceState}
+              status={status}
               isActive={isActive}
               isConnected={isConnected}
               onToggleMode={onToggleMode}
@@ -167,6 +170,7 @@ export function PixelMockupBoard({
             <section className="pixel-main">
               <IdleScreen
                 voiceState={voiceState}
+                status={status}
                 isActive={isActive}
                 isConnected={isConnected}
                 textPrompt={textPrompt}

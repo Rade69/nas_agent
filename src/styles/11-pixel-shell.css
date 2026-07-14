@@ -172,6 +172,16 @@
   color: var(--pixel-danger);
 }
 
+.pixel-state-detail {
+  max-width: min(420px, 38vw);
+  overflow: hidden;
+  color: #ff9a9a;
+  font-size: 12px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .pixel-top-actions {
   gap: 8px;
   flex: 0 0 auto;
@@ -377,6 +387,19 @@
   margin: 0 0 14px;
   color: #9dadbf;
   font-size: 14px;
+}
+
+.pixel-hero .pixel-voice-error {
+  width: min(520px, 88%);
+  margin: 0 0 14px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 99, 99, 0.34);
+  border-radius: 8px;
+  color: #ffc2c2;
+  background: rgba(104, 24, 34, 0.24);
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
 }
 
 .pixel-mic-button {

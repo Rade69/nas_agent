@@ -265,7 +265,10 @@ describe("RickyRealtimeClient — fake connect", () => {
     expect(cbs.onConnectionState).toHaveBeenCalledWith("error");
     expect(cbs.onMood).toHaveBeenCalledWith("error");
     expect(cbs.onVoiceState).toHaveBeenCalledWith("error");
-    expect(cbs.onStatus).toHaveBeenCalledWith("Network down");
+    expect(cbs.onStatus).toHaveBeenCalledWith("Realtime greška: Network down");
+    expect(cbs.onConnectionState).toHaveBeenLastCalledWith("error");
+    expect(cbs.onMood).toHaveBeenLastCalledWith("error");
+    expect(cbs.onVoiceState).toHaveBeenLastCalledWith("error");
   });
 
   it("connect reports error when SDP response is not ok", async () => {
@@ -284,8 +287,10 @@ describe("RickyRealtimeClient — fake connect", () => {
 
     expect(cbs.onConnectionState).toHaveBeenCalledWith("error");
     expect(cbs.onStatus).toHaveBeenCalledWith(
-      expect.stringContaining("401"),
+      "Autentikacija nije uspjela. Provjeri API pristup.",
     );
+    expect(cbs.onConnectionState).toHaveBeenLastCalledWith("error");
+    expect(cbs.onVoiceState).toHaveBeenLastCalledWith("error");
   });
 });
 
@@ -323,5 +328,401 @@ describe("RickyRealtimeClient — callback contract", () => {
     expect(cbs.onConnectionState).toHaveBeenCalledWith("idle");
     expect(cbs.onMood).toHaveBeenCalledWith("idle");
     expect(cbs.onVoiceState).toHaveBeenCalledWith("idle");
+  });
+});
+
+// ---------- R1 tests — single-flight, timeout, abort, generation guard, transport health, error classification ----------
+
+describe("RickyRealtimeClient — R1 single-flight connect", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("second concurrent connect shares the same underlying connection attempt", async () => {
+    mockWindowRicky();
+
+    let resolveFetch: (v: unknown) => void = () => {};
+    const fetchSpy = vi.fn().mockReturnValue(
+      new Promise((resolve) => { resolveFetch = resolve; }),
+    );
+
+    const createPeerSpy = vi.fn().mockReturnValue(new FakePeerConnection() as unknown as RTCPeerConnection);
+    const deps = fakeDeps({
+      fetch: fetchSpy as unknown as typeof fetch,
+      createPeerConnection: createPeerSpy,
+    });
+    const client = new RickyRealtimeClient(noopCallbacks(), deps);
+
+    const p1 = client.connect();
+    const p2 = client.connect();
+
+    // Resolve fetch to unblock both
+    resolveFetch({
+      ok: true,
+      text: vi.fn().mockResolvedValue("fake-sdp-answer"),
+    } as unknown as Response);
+
+    await p1;
+    await p2;
+
+    // Only one PeerConnection should be created
+    expect(createPeerSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("connect when already connected is a no-op", async () => {
+    mockWindowRicky();
+    const createPeerSpy = vi.fn().mockReturnValue(new FakePeerConnection() as unknown as RTCPeerConnection);
+    const deps = fakeDeps({ createPeerConnection: createPeerSpy });
+    const client = new RickyRealtimeClient(noopCallbacks(), deps);
+
+    // First connect
+    await client.connect();
+    expect(createPeerSpy).toHaveBeenCalledTimes(1);
+
+    // Second connect — should be no-op
+    await client.connect();
+    expect(createPeerSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("RickyRealtimeClient — R1 connect timeout", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("connect timeout emits error with timeout message", async () => {
+    mockWindowRicky();
+    const cbs = noopCallbacks();
+
+    // fetch never resolves → timeout wins
+    const neverFetch = vi.fn().mockReturnValue(new Promise(() => {}));
+
+    // setTimeout fires immediately to simulate timeout
+    const immediateSetTimeout = ((fn: () => void, _ms?: number) => {
+      // Don't fire here — let the Promise.race set up first.
+      // We need to fire async so the race is ready.
+      const id = setTimeout(fn, 0);
+      return id as unknown as number;
+    }) as unknown as RealtimeClientDeps["setTimeout"];
+
+    const deps = fakeDeps({
+      fetch: neverFetch as unknown as typeof fetch,
+      setTimeout: immediateSetTimeout,
+    });
+
+    const client = new RickyRealtimeClient(cbs, deps);
+    await client.connect();
+
+    expect(cbs.onConnectionState).toHaveBeenCalledWith("error");
+    expect(cbs.onStatus).toHaveBeenCalledWith(
+      expect.stringContaining("isteklo"),
+    );
+    expect(cbs.onConnectionState).toHaveBeenLastCalledWith("error");
+  });
+});
+
+describe("RickyRealtimeClient — R1 abort / cancel during connect", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("disconnect during connect aborts and does not emit connected", async () => {
+    mockWindowRicky();
+    const cbs = noopCallbacks();
+
+    // Fetch that can be rejected from outside to simulate abort
+    let rejectFetch: (err: Error) => void = () => {};
+    const abortableFetch = vi.fn().mockReturnValue(
+      new Promise((_resolve, reject) => { rejectFetch = reject; }),
+    );
+
+    const deps = fakeDeps({ fetch: abortableFetch as unknown as typeof fetch });
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    const connectPromise = client.connect();
+
+    // Let microtasks flush so _doWebrtcConnect enters the fetch await
+    await new Promise((r) => setTimeout(r, 10));
+
+    // disconnect while connect is in-flight
+    client.disconnect();
+
+    // Now reject the pending fetch (simulating abort)
+    rejectFetch(new Error("AbortError"));
+
+    // The connect promise should resolve (not throw to caller)
+    await expect(connectPromise).resolves.toBeUndefined();
+
+    // connected should never have been emitted
+    expect(cbs.onConnectionState).not.toHaveBeenCalledWith("connected");
+  });
+
+  it("disconnect resolves an in-flight connect even when setup promises do not settle", async () => {
+    const w = mockWindowRicky();
+    w.createRealtimeToken.mockReturnValue(new Promise(() => {}));
+    const cbs = noopCallbacks();
+
+    const deps = fakeDeps({
+      getUserMedia: vi.fn().mockReturnValue(new Promise(() => {})),
+    });
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    const connectPromise = client.connect();
+    await Promise.resolve();
+
+    client.disconnect();
+
+    await expect(Promise.race([
+      connectPromise.then(() => "resolved"),
+      new Promise((resolve) => setTimeout(() => resolve("timed-out"), 50)),
+    ])).resolves.toBe("resolved");
+    expect(cbs.onConnectionState).not.toHaveBeenCalledWith("connected");
+  });
+
+  it("stale connect completion after disconnect does not set connected", async () => {
+    mockWindowRicky();
+    const cbs = noopCallbacks();
+
+    let resolveFetch: (v: unknown) => void = () => {};
+    const fetchSpy = vi.fn().mockReturnValue(
+      new Promise((resolve) => { resolveFetch = resolve; }),
+    );
+
+    const deps = fakeDeps({ fetch: fetchSpy as unknown as typeof fetch });
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    // start connect
+    void client.connect();
+
+    // Let microtasks flush
+    await new Promise((r) => setTimeout(r, 10));
+
+    // disconnect
+    client.disconnect();
+    vi.clearAllMocks();
+
+    // Now the old connect resolves
+    resolveFetch({
+      ok: true,
+      text: vi.fn().mockResolvedValue("fake-sdp-answer"),
+    } as unknown as Response);
+
+    // Wait for async completion
+    await new Promise((r) => setTimeout(r, 20));
+
+    // connected should not have been emitted after disconnect
+    expect(cbs.onConnectionState).not.toHaveBeenCalledWith("connected");
+  });
+});
+
+describe("RickyRealtimeClient — R1 generation guard", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("stale DataChannel message after disconnect is ignored", async () => {
+    mockWindowRicky();
+    const cbs = noopCallbacks();
+
+    // We need to intercept the dc event listener to fire a message after disconnect
+    let dcInstance: FakeDataChannel | null = null;
+    const originalCreatePeer = fakeDeps().createPeerConnection;
+    const wrappedCreatePeer = () => {
+      const pc = originalCreatePeer() as unknown as FakePeerConnection;
+      const origCreateDc = pc.createDataChannel.bind(pc);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (pc as any).createDataChannel = (label: string) => {
+        const dc = origCreateDc(label) as unknown as FakeDataChannel;
+        dcInstance = dc;
+        return dc as unknown as RTCDataChannel;
+      };
+      return pc as unknown as RTCPeerConnection;
+    };
+
+    const deps = fakeDeps({ createPeerConnection: vi.fn().mockImplementation(wrappedCreatePeer) });
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    await client.connect();
+    client.disconnect();
+
+    // Clear mocks from disconnect to isolate stale-event test
+    vi.clearAllMocks();
+
+    // Fire a stale DataChannel message
+    if (dcInstance) {
+      const listeners = (dcInstance as FakeDataChannel)._listeners.get("message");
+      if (listeners) {
+        for (const listener of listeners) {
+          listener({ data: '{"type":"response.done"}' } as unknown as Event);
+        }
+      }
+    }
+
+    // No new callbacks should fire from the stale message
+    expect(cbs.onVoiceState).not.toHaveBeenCalled();
+    expect(cbs.onActivity).not.toHaveBeenCalled();
+  });
+});
+
+describe("RickyRealtimeClient — R1 transport health", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("DataChannel close after connected emits error", async () => {
+    mockWindowRicky();
+    const cbs = noopCallbacks();
+
+    let dcInstance: FakeDataChannel | null = null;
+    const originalCreatePeer = fakeDeps().createPeerConnection;
+    const wrappedCreatePeer = () => {
+      const pc = originalCreatePeer() as unknown as FakePeerConnection;
+      const origCreateDc = pc.createDataChannel.bind(pc);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (pc as any).createDataChannel = (label: string) => {
+        const dc = origCreateDc(label) as unknown as FakeDataChannel;
+        dcInstance = dc;
+        return dc as unknown as RTCDataChannel;
+      };
+      return pc as unknown as RTCPeerConnection;
+    };
+
+    const deps = fakeDeps({ createPeerConnection: vi.fn().mockImplementation(wrappedCreatePeer) });
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    await client.connect();
+    vi.clearAllMocks();
+
+    // Simulate DataChannel close
+    if (dcInstance) {
+      const listeners = (dcInstance as FakeDataChannel)._listeners.get("close");
+      if (listeners) {
+        for (const listener of listeners) {
+          listener({} as Event);
+        }
+      }
+    }
+
+    // Should emit error, not idle
+    expect(cbs.onConnectionState).toHaveBeenCalledWith("error");
+    expect(cbs.onMood).toHaveBeenCalledWith("error");
+    expect(cbs.onVoiceState).toHaveBeenCalledWith("error");
+  });
+
+  it("DataChannel error after connected emits error", async () => {
+    mockWindowRicky();
+    const cbs = noopCallbacks();
+
+    let dcInstance: FakeDataChannel | null = null;
+    const originalCreatePeer = fakeDeps().createPeerConnection;
+    const wrappedCreatePeer = () => {
+      const pc = originalCreatePeer() as unknown as FakePeerConnection;
+      const origCreateDc = pc.createDataChannel.bind(pc);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (pc as any).createDataChannel = (label: string) => {
+        const dc = origCreateDc(label) as unknown as FakeDataChannel;
+        dcInstance = dc;
+        return dc as unknown as RTCDataChannel;
+      };
+      return pc as unknown as RTCPeerConnection;
+    };
+
+    const deps = fakeDeps({ createPeerConnection: vi.fn().mockImplementation(wrappedCreatePeer) });
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    await client.connect();
+    vi.clearAllMocks();
+
+    if (dcInstance) {
+      const listeners = (dcInstance as FakeDataChannel)._listeners.get("error");
+      if (listeners) {
+        for (const listener of listeners) {
+          listener({} as Event);
+        }
+      }
+    }
+
+    expect(cbs.onConnectionState).toHaveBeenCalledWith("error");
+  });
+});
+
+describe("RickyRealtimeClient — R1 error classification", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("classifies insufficient_quota as billing error", async () => {
+    mockWindowRicky();
+    const cbs = noopCallbacks();
+    const deps = fakeDeps({
+      fetch: vi.fn().mockRejectedValue(new Error("insufficient_quota: you have exceeded your quota")),
+    });
+
+    const client = new RickyRealtimeClient(cbs, deps);
+    await client.connect();
+
+    expect(cbs.onStatus).toHaveBeenCalledWith(
+      expect.stringContaining("kvota"),
+    );
+  });
+
+  it("classifies NotAllowedError as microphone error", async () => {
+    mockWindowRicky();
+    const cbs = noopCallbacks();
+    const deps = fakeDeps({
+      getUserMedia: vi.fn().mockRejectedValue(new Error("NotAllowedError: Permission denied")),
+    });
+
+    const client = new RickyRealtimeClient(cbs, deps);
+    await client.connect();
+
+    expect(cbs.onStatus).toHaveBeenCalledWith(
+      expect.stringContaining("Mikrofon"),
+    );
+  });
+
+  it("classifies NotFoundError as microphone not found", async () => {
+    mockWindowRicky();
+    const cbs = noopCallbacks();
+    const deps = fakeDeps({
+      getUserMedia: vi.fn().mockRejectedValue(new Error("NotFoundError: Requested device not found")),
+    });
+
+    const client = new RickyRealtimeClient(cbs, deps);
+    await client.connect();
+
+    expect(cbs.onStatus).toHaveBeenCalledWith(
+      expect.stringContaining("nije pronađen"),
+    );
+  });
+
+  it("classifies billing error", async () => {
+    mockWindowRicky();
+    const cbs = noopCallbacks();
+    const deps = fakeDeps({
+      fetch: vi.fn().mockRejectedValue(new Error("billing account is past due")),
+    });
+
+    const client = new RickyRealtimeClient(cbs, deps);
+    await client.connect();
+
+    expect(cbs.onStatus).toHaveBeenCalledWith(
+      expect.stringContaining("billing"),
+    );
+  });
+
+  it("falls back to truncated generic message for unknown errors", async () => {
+    mockWindowRicky();
+    const cbs = noopCallbacks();
+    const deps = fakeDeps({
+      fetch: vi.fn().mockRejectedValue(new Error("Some unknown network glitch")),
+    });
+
+    const client = new RickyRealtimeClient(cbs, deps);
+    await client.connect();
+
+    expect(cbs.onStatus).toHaveBeenCalledWith(
+      expect.stringContaining("Realtime greška"),
+    );
   });
 });

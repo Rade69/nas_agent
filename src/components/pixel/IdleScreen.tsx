@@ -20,6 +20,7 @@ import type { ActivityEvent, VoiceState } from "../../lib/realtime";
 
 export function IdleScreen({
   voiceState,
+  status,
   isActive,
   isConnected,
   textPrompt,
@@ -33,6 +34,7 @@ export function IdleScreen({
   onQuickCommand,
 }: {
   voiceState: VoiceState;
+  status: string;
   isActive: boolean;
   isConnected: boolean;
   textPrompt: string;
@@ -64,6 +66,9 @@ export function IdleScreen({
         <RickyOrb voiceState={voiceState} />
         <h1>{heroTitle}</h1>
         {heroHint ? <p>{heroHint}</p> : null}
+        {voiceState === "error" && status ? (
+          <p className="pixel-voice-error" title={status}>{status}</p>
+        ) : null}
         <button
           className={`pixel-mic-button ${isActive ? "stop" : ""}`}
           onClick={isActive ? onStop : onVoiceToggle}

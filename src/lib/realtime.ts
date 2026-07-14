@@ -56,6 +56,7 @@ const realtimeUrl = "https://api.openai.com/v1/realtime/calls";
 // the Realtime session auto-disconnects after this much inactivity (reset on
 // every server event and text send).
 const MIC_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
+const DEFAULT_CONNECT_TIMEOUT_MS = 30000;
 
 export class RickyRealtimeClient {
   private pc: RTCPeerConnection | null = null;
@@ -81,6 +82,14 @@ export class RickyRealtimeClient {
   private externalContentSeen = false;
   private sttLanguageHint = "sr";
 
+  // R1 — single-flight, timeout, generation guard
+  private connectPromise: Promise<void> | null = null;
+  private connectionGeneration = 0;
+  private connectAbortController: AbortController | null = null;
+  private connectTimeoutTimer: ReturnType<RealtimeClientDeps["setTimeout"]> | null = null;
+  private connectTimeoutSignal: AbortSignal | null = null;
+  private connectTimeoutAbortListener: (() => void) | null = null;
+
   constructor(callbacks: RealtimeCallbacks, deps?: Partial<RealtimeClientDeps>) {
     this.callbacks = callbacks;
     this.deps = { ...defaultRealtimeDeps, ...deps };
@@ -97,95 +106,91 @@ export class RickyRealtimeClient {
     }, MIC_IDLE_TIMEOUT_MS);
   }
 
+  // R1 — single-flight connect with timeout, abort, and generation guard.
+  // If connect is already in progress, returns the same pending promise.
+  // If already connected, does nothing.
+  // Context: docs/VOICE_COMMUNICATION_R1_BRIEF_FOR_PI.md
   async connect(): Promise<void> {
-    if (this.pc) return;
+    if (this.connectPromise) return this.connectPromise;
+    if (this.dc?.readyState === "open") return;
+
+    this.connectAbortController?.abort();
+    this.connectAbortController = new AbortController();
+    const generation = ++this.connectionGeneration;
+    const signal = this.connectAbortController.signal;
+
     this.externalContentSeen = false;
+
+    this.connectPromise = this._connectInternal(generation, signal);
+    try {
+      await this.connectPromise;
+    } finally {
+      if (this.connectionGeneration === generation) {
+        this.connectPromise = null;
+        this.connectAbortController = null;
+      }
+    }
+  }
+
+  private async _connectInternal(generation: number, signal: AbortSignal): Promise<void> {
     this.callbacks.onConnectionState("connecting");
     this.callbacks.onMood("thinking");
     this.callbacks.onVoiceState("thinking");
     this.callbacks.onStatus("Pripremam Realtime sesiju.");
     this.callbacks.onActivity(createActivityEvent("status", "Realtime sesija zatražena"));
 
+    const deadline = this._timeoutPromise(DEFAULT_CONNECT_TIMEOUT_MS, signal, generation);
+
     try {
-      const pc = this.deps.createPeerConnection();
-      const audio = this.deps.createAudioElement();
-      audio.autoplay = true;
-
-      pc.ontrack = (event) => {
-        audio.srcObject = event.streams[0];
-        this.startOutputMeter(event.streams[0]);
-      };
-
-      // These three were previously awaited one after another even though none
-      // depends on another's result — createRealtimeToken() alone is a network
-      // round trip (Electron -> Python backend -> OpenAI), so serializing it
-      // behind getToolSpecs() and in front of getUserMedia() added avoidable
-      // latency to every connect(). Running them concurrently cuts the wait to
-      // roughly the slowest one instead of the sum of all three.
-      // Context: agent_reports/2026-07-10_connect-latency-fix.md
-      const [toolSpecs, token, micStream] = await Promise.all([
-        window.ricky.getToolSpecs(),
-        window.ricky.createRealtimeToken(),
-        this.deps.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-          },
-        }),
+      const result = await Promise.race([
+        this._doWebrtcConnect(signal, generation),
+        deadline,
       ]);
-      this.toolSpecs = toolSpecs;
-      this.sttLanguageHint = token.sttLanguageHint ?? "sr";
-      this.micStream = micStream;
-      pc.addTrack(this.micStream.getAudioTracks()[0], this.micStream);
 
-      const dc = pc.createDataChannel("oai-events");
-      dc.addEventListener("open", () => {
+      // Generation guard — stale if disconnect/abort happened during setup
+      if (generation !== this.connectionGeneration) return;
+
+      // Success path: DataChannel open will fire after setRemoteDescription.
+      // If the promise resolved but we're still connecting (dc not open yet),
+      // let the dc "open" handler take over.
+      const connected = result as boolean;
+      if (connected) {
         this.callbacks.onConnectionState("connected");
         this.callbacks.onMood("idle");
         this.callbacks.onVoiceState("idle");
         this.callbacks.onStatus("Ricky je uživo. Govori prirodno.");
         this.callbacks.onActivity(createActivityEvent("status", "WebRTC povezan"));
         this.bumpIdleTimer();
-      });
-      dc.addEventListener("message", (event) => {
-        this.bumpIdleTimer();
-        void this.handleServerEvent(event.data);
-      });
-
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      const sdpResponse = await this.deps.fetch(realtimeUrl, {
-        method: "POST",
-        body: offer.sdp,
-        headers: {
-          Authorization: `Bearer ${token.value}`,
-          "Content-Type": "application/sdp",
-        },
-      });
-
-      if (!sdpResponse.ok) {
-        throw new Error(`Realtime WebRTC call failed: ${sdpResponse.status} ${await sdpResponse.text()}`);
       }
-
-      await pc.setRemoteDescription({
-        type: "answer",
-        sdp: await sdpResponse.text(),
-      });
-
-      this.pc = pc;
-      this.dc = dc;
     } catch (error) {
+      if (generation !== this.connectionGeneration) return;
+      this.cleanupConnectionResources();
+      const message = this._classifyError(error);
       this.callbacks.onConnectionState("error");
       this.callbacks.onMood("error");
       this.callbacks.onVoiceState("error");
-      this.callbacks.onStatus(error instanceof Error ? error.message : String(error));
-      this.disconnect();
+      this.callbacks.onStatus(message);
+      this.callbacks.onActivity(createActivityEvent("error", "Realtime povezivanje nije uspjelo", message));
+    } finally {
+      this.clearConnectTimeout();
     }
   }
 
+  // R1 — abort active connect attempt and invalidate generation
+  // so stale async continuations cannot emit connected/error.
   disconnect(): void {
+    this.connectAbortController?.abort();
+    this.connectionGeneration++;
+    this.connectPromise = null;
+    this.connectAbortController = null;
+    this.cleanupConnectionResources();
+    this.callbacks.onConnectionState("idle");
+    this.callbacks.onMood("idle");
+    this.callbacks.onVoiceState("idle");
+    this.callbacks.onMouthShape(silentMouthShape());
+  }
+
+  private cleanupConnectionResources(): void {
     if (this.idleTimer) {
       this.deps.clearTimeout(this.idleTimer);
       this.idleTimer = null;
@@ -199,10 +204,198 @@ export class RickyRealtimeClient {
     this.micStream = null;
     this.currentAssistantText = "";
     this.externalContentSeen = false;
-    this.callbacks.onConnectionState("idle");
-    this.callbacks.onMood("idle");
-    this.callbacks.onVoiceState("idle");
     this.callbacks.onMouthShape(silentMouthShape());
+  }
+
+  private clearConnectTimeout(): void {
+    if (this.connectTimeoutTimer) {
+      this.deps.clearTimeout(this.connectTimeoutTimer);
+      this.connectTimeoutTimer = null;
+    }
+    if (this.connectTimeoutSignal && this.connectTimeoutAbortListener) {
+      this.connectTimeoutSignal.removeEventListener("abort", this.connectTimeoutAbortListener);
+    }
+    this.connectTimeoutSignal = null;
+    this.connectTimeoutAbortListener = null;
+  }
+
+  // R1 — timeout promise that rejects with Serbian message.
+  // Rejects on abort (disconnect during connect) so connect() callers do not
+  // wait forever if the underlying browser/Electron operation is not abortable.
+  private _timeoutPromise(ms: number, signal: AbortSignal, generation: number): Promise<never> {
+    return new Promise<never>((_, reject) => {
+      let settled = false;
+      const rejectOnce = (error: Error) => {
+        if (settled) return;
+        settled = true;
+        this.clearConnectTimeout();
+        reject(error);
+      };
+      const onAbort = () => {
+        rejectOnce(new Error("Povezivanje je prekinuto"));
+      };
+      this.connectTimeoutSignal = signal;
+      this.connectTimeoutAbortListener = onAbort;
+      signal.addEventListener("abort", onAbort, { once: true });
+      this.connectTimeoutTimer = this.deps.setTimeout(() => {
+        if (generation === this.connectionGeneration) {
+          rejectOnce(new Error("Realtime povezivanje je isteklo"));
+        } else {
+          rejectOnce(new Error("Povezivanje je prekinuto"));
+        }
+      }, ms);
+    });
+  }
+
+  // R1 — core WebRTC setup extracted from the old connect() body.
+  // Returns true when setup completes successfully.
+  private async _doWebrtcConnect(signal: AbortSignal, generation: number): Promise<boolean> {
+    if (signal.aborted) throw new Error("Povezivanje je prekinuto");
+
+    const pc = this.deps.createPeerConnection();
+    this.pc = pc;
+    const audio = this.deps.createAudioElement();
+    audio.autoplay = true;
+
+    // R1 — transport health: detect PeerConnection failures
+    pc.onconnectionstatechange = () => {
+      if (generation !== this.connectionGeneration) return;
+      const state = pc.connectionState;
+      if (state === "failed" || state === "disconnected" || state === "closed") {
+        this.cleanupConnectionResources();
+        const msg = state === "failed" ? "WebRTC konekcija je pukla" : "WebRTC konekcija je prekinuta";
+        this.callbacks.onConnectionState("error");
+        this.callbacks.onMood("error");
+        this.callbacks.onVoiceState("error");
+        this.callbacks.onStatus(msg);
+        this.callbacks.onActivity(createActivityEvent("error", msg));
+        this.callbacks.onMouthShape(silentMouthShape());
+      }
+    };
+
+    pc.ontrack = (event) => {
+      audio.srcObject = event.streams[0];
+      this.startOutputMeter(event.streams[0]);
+    };
+
+    const [toolSpecs, token, micStream] = await Promise.all([
+      window.ricky.getToolSpecs(),
+      window.ricky.createRealtimeToken(),
+      this.deps.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      }),
+    ]);
+    if (signal.aborted || generation !== this.connectionGeneration) throw new Error("Povezivanje je prekinuto");
+
+    this.toolSpecs = toolSpecs;
+    this.sttLanguageHint = token.sttLanguageHint ?? "sr";
+    this.micStream = micStream;
+    pc.addTrack(this.micStream.getAudioTracks()[0], this.micStream);
+
+    const dc = pc.createDataChannel("oai-events");
+    this.dc = dc;
+
+    dc.addEventListener("open", () => {
+      if (generation !== this.connectionGeneration) return;
+      this.callbacks.onConnectionState("connected");
+      this.callbacks.onMood("idle");
+      this.callbacks.onVoiceState("idle");
+      this.callbacks.onStatus("Ricky je uživo. Govori prirodno.");
+      this.callbacks.onActivity(createActivityEvent("status", "WebRTC povezan"));
+      this.bumpIdleTimer();
+    });
+
+    // R1 — transport health: DataChannel close/error
+    const onDcClose = () => {
+      if (generation !== this.connectionGeneration) return;
+      this.cleanupConnectionResources();
+      this.callbacks.onConnectionState("error");
+      this.callbacks.onMood("error");
+      this.callbacks.onVoiceState("error");
+      this.callbacks.onStatus("Glasovni kanal je neočekivano zatvoren");
+      this.callbacks.onActivity(createActivityEvent("error", "DataChannel zatvoren"));
+      this.callbacks.onMouthShape(silentMouthShape());
+    };
+    dc.addEventListener("close", onDcClose);
+    dc.addEventListener("error", () => {
+      if (generation !== this.connectionGeneration) return;
+      onDcClose();
+    });
+
+    dc.addEventListener("message", (event) => {
+      this.bumpIdleTimer();
+      void this.handleServerEvent(event.data, generation);
+    });
+
+    if (signal.aborted || generation !== this.connectionGeneration) throw new Error("Povezivanje je prekinuto");
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    if (signal.aborted || generation !== this.connectionGeneration) throw new Error("Povezivanje je prekinuto");
+
+    const sdpResponse = await this.deps.fetch(realtimeUrl, {
+      method: "POST",
+      body: offer.sdp,
+      headers: {
+        Authorization: `Bearer ${token.value}`,
+        "Content-Type": "application/sdp",
+      },
+      signal,
+    });
+
+    if (!sdpResponse.ok) {
+      const body = await sdpResponse.text();
+      throw new Error(`Realtime WebRTC call failed: ${sdpResponse.status} ${body}`);
+    }
+
+    if (signal.aborted || generation !== this.connectionGeneration) throw new Error("Povezivanje je prekinuto");
+
+    await pc.setRemoteDescription({
+      type: "answer",
+      sdp: await sdpResponse.text(),
+    });
+
+    return true;
+  }
+
+  // R1 — classify errors into user-friendly Serbian messages.
+  // Does NOT log API keys, tokens, SDP blobs, or auth headers.
+  private _classifyError(error: unknown): string {
+    const raw = error instanceof Error ? error.message : String(error ?? "Nepoznata greška");
+    const lower = raw.toLowerCase();
+
+    if (lower.includes("isteklo") || lower.includes("timeout")) {
+      return "Realtime povezivanje je isteklo. Provjeri internet konekciju i pokušaj ponovo.";
+    }
+    if (lower.includes("prekinuto") || lower.includes("abort")) {
+      return "Povezivanje je prekinuto.";
+    }
+    if (lower.includes("insufficient_quota") || lower.includes("quota")) {
+      return "OpenAI kvota je potrošena. Provjeri stanje naloga i billing.";
+    }
+    if (lower.includes("billing") || lower.includes("payment")) {
+      return "OpenAI billing problem. Provjeri stanje naloga.";
+    }
+    if (lower.includes("microphone") || lower.includes("notallowed") || lower.includes("permission denied")) {
+      return "Mikrofon nije dostupan. Dozvoli pristup mikrofonu u sistemskim postavkama.";
+    }
+    if (lower.includes("notfound") || lower.includes("not found")) {
+      return "Mikrofon nije pronađen. Poveži mikrofon i pokušaj ponovo.";
+    }
+    if (lower.includes("permission")) {
+      return "Pristup mikrofonu je odbijen. Dozvoli pristup u postavkama.";
+    }
+    if (lower.includes("unauthorized") || (error instanceof Error && raw.includes("401"))) {
+      return "Autentikacija nije uspjela. Provjeri API pristup.";
+    }
+    // Fallback: sanitize — strip overly long messages that may contain tokens/SDP
+    if (raw.length > 200) return `Realtime greška: ${raw.slice(0, 200)}…`;
+    return `Realtime greška: ${raw}`;
   }
 
   sendText(text: string): void {
@@ -263,7 +456,11 @@ export class RickyRealtimeClient {
     });
   }
 
-  private async handleServerEvent(raw: string): Promise<void> {
+  // R1 — generation guard at the entry of every server event handler.
+  // Stale DataChannel events from a previous connection are silently dropped.
+  private async handleServerEvent(raw: string, generation: number): Promise<void> {
+    if (generation !== this.connectionGeneration) return;
+
     const event = safeParseEvent(raw);
     if (!event.type) return;
 
@@ -320,7 +517,7 @@ export class RickyRealtimeClient {
 
       const functionCalls = output.filter((item) => item.type === "function_call" && item.name && item.call_id);
       if (functionCalls.length > 0) {
-        await this.executeFunctionCalls(functionCalls);
+        await this.executeFunctionCalls(functionCalls, generation);
       } else if (!this.toolRunning) {
         this.callbacks.onMood("idle");
         this.callbacks.onVoiceState("idle");
@@ -328,7 +525,9 @@ export class RickyRealtimeClient {
     }
   }
 
-  private async executeFunctionCalls(items: ResponseOutputItem[]): Promise<void> {
+  private async executeFunctionCalls(items: ResponseOutputItem[], generation: number): Promise<void> {
+    if (generation !== this.connectionGeneration) return;
+
     this.toolRunning = true;
     this.callbacks.onMood("working");
     this.callbacks.onVoiceState("thinking");
@@ -441,6 +640,10 @@ export class RickyRealtimeClient {
     }
 
     if (shouldCreateResponse) {
+      if (generation !== this.connectionGeneration) {
+        this.toolRunning = false;
+        return;
+      }
       this.callbacks.onVoiceState("thinking");
       this.sendEvent({ type: "response.create" });
     } else {

@@ -93,10 +93,9 @@ async function handleRealtimeCreateToken() {
 
   const session = {
     type: "realtime",
-    model: "gpt-realtime-2",
+    model: "gpt-realtime",
     instructions,
     output_modalities: ["audio"],
-    reasoning: { effort: "low" },
     tool_choice: "auto",
     tools: toolSpecs.map(({ risk: _omitRisk, reads_external_content: _omitRxc, ...rest }) => rest),
     audio: {
