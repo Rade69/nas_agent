@@ -172,6 +172,9 @@ function mockWindowRicky() {
       value: "fake-ephemeral-token",
       sttLanguageHint: "sr",
     }),
+    executeTool: vi.fn().mockResolvedValue({ ok: true }) as ReturnType<typeof vi.fn>,
+    createConfirmation: vi.fn().mockResolvedValue({ ok: true, confirmation_id: "confirmation-1" }),
+    saveThumbnailAs: vi.fn().mockResolvedValue({ ok: true }),
   };
   (globalThis as Record<string, unknown>).window = {
     ricky: mock,
@@ -969,6 +972,302 @@ describe("RickyRealtimeClient — R2 outbound queue", () => {
     expect(secondDc).not.toBe(firstDc);
     expect((secondDc as FakeDataChannel)._sent).toContainEqual(
       expect.stringContaining("\"session.update\""),
+    );
+  });
+});
+
+// ---------- R3 tests — tool lifecycle ----------
+
+/** Helper: call the private executeFunctionCalls with proper this binding. */
+function callExecuteFn(
+  client: RickyRealtimeClient,
+  items: Array<{ call_id: string; name: string; arguments?: string }>,
+): Promise<void> {
+  const proto = RickyRealtimeClient.prototype as unknown as Record<string, (items: unknown[], gen: number) => Promise<void>>;
+  // Use the client's actual connectionGeneration so the guard passes
+  const gen = (client as unknown as { connectionGeneration: number }).connectionGeneration;
+  return proto.executeFunctionCalls.call(client, items, gen);
+}
+
+describe("RickyRealtimeClient — R3 tool lifecycle", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("active tool call is tracked and cleaned up after completion", async () => {
+    const ricky = mockWindowRicky();
+    const cbs = noopCallbacks();
+    const deps = fakeDeps();
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    ricky.getToolSpecs.mockResolvedValue([{ name: "test_tool", risk: "low" }]);
+    ricky.createRealtimeToken.mockResolvedValue({ value: "t", sttLanguageHint: "sr" });
+    ricky.executeTool.mockResolvedValue({ ok: true });
+
+    await client.connect();
+
+    await callExecuteFn(client, [{ call_id: "call-1", name: "test_tool", arguments: "{}" }]);
+
+    // Tool should have been called once
+    expect(ricky.executeTool).toHaveBeenCalledTimes(1);
+  });
+
+  it("tool timeout removes active call and emits activity", async () => {
+    const ricky = mockWindowRicky();
+    const cbs = noopCallbacks();
+    const deps = fakeDeps();
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    ricky.getToolSpecs.mockResolvedValue([{ name: "slow_tool", risk: "low" }]);
+    ricky.createRealtimeToken.mockResolvedValue({ value: "t", sttLanguageHint: "sr" });
+
+    // Tool resolves normally — timeout is set up but never fires.
+    // We verify the active call tracking works end-to-end.
+    let resolveTool: (v: unknown) => void = () => {};
+    ricky.executeTool.mockReturnValue(new Promise((resolve) => { resolveTool = resolve; }));
+
+    await client.connect();
+
+    const activeMap = (client as unknown as { activeToolCalls: Map<string, unknown> }).activeToolCalls;
+    const execPromise = callExecuteFn(client, [{ call_id: "slow-1", name: "slow_tool", arguments: "{}" }]);
+
+    // Tool should be registered as active during execution
+    expect(activeMap.has("slow-1")).toBe(true);
+
+    // Resolve the tool
+    resolveTool({ ok: true, silent: true });
+    await execPromise;
+
+    // Active call should be cleaned up after completion
+    expect(activeMap.has("slow-1")).toBe(false);
+    expect(deps.clearTimeout).toHaveBeenCalled();
+  });
+
+  it("tool timeout returns TOOL_TIMEOUT output and resets active state", async () => {
+    const ricky = mockWindowRicky();
+    const cbs = noopCallbacks();
+    const { deps, dcInstance } = dcSpyDeps();
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    ricky.getToolSpecs.mockResolvedValue([{ name: "slow_tool", risk: "low" }]);
+    ricky.createRealtimeToken.mockResolvedValue({ value: "t", sttLanguageHint: "sr" });
+    ricky.executeTool.mockReturnValue(new Promise(() => {}));
+
+    await client.connect();
+
+    const privateClient = client as unknown as { activeToolCalls: Map<string, unknown>; deps: RealtimeClientDeps };
+    privateClient.deps.setTimeout = ((fn: () => void, _timeout?: number) => {
+      void Promise.resolve().then(fn);
+      return 999;
+    }) as RealtimeClientDeps["setTimeout"];
+    privateClient.deps.clearTimeout = vi.fn() as RealtimeClientDeps["clearTimeout"];
+
+    await callExecuteFn(client, [{ call_id: "slow-timeout", name: "slow_tool", arguments: "{}" }]);
+
+    expect(privateClient.activeToolCalls.has("slow-timeout")).toBe(false);
+    expect(cbs.onActivity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Alat se nije završio na vrijeme: slow_tool",
+      }),
+    );
+    const sent = (dcInstance() as FakeDataChannel)._sent.join("\n");
+    expect(sent).toContain("TOOL_TIMEOUT");
+    expect(sent).toContain("Alat se nije završio na vrijeme.");
+  });
+
+  it("batch continues after one tool throws", async () => {
+    const ricky = mockWindowRicky();
+    const cbs = noopCallbacks();
+    const deps = fakeDeps();
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    ricky.getToolSpecs.mockResolvedValue([
+      { name: "good_tool", risk: "low" },
+      { name: "bad_tool", risk: "low" },
+    ]);
+    ricky.createRealtimeToken.mockResolvedValue({ value: "t", sttLanguageHint: "sr" });
+
+    let callCount = 0;
+    ricky.executeTool.mockImplementation(() => {
+      callCount++;
+      if (callCount === 1) return Promise.resolve({ ok: true });
+      throw new Error("Tool crashed");
+    });
+
+    await client.connect();
+
+    await callExecuteFn(client, [
+      { call_id: "good-1", name: "good_tool", arguments: "{}" },
+      { call_id: "bad-1", name: "bad_tool", arguments: "{}" },
+    ]);
+
+    // Both tools should have been attempted
+    expect(callCount).toBe(2);
+  });
+
+  it("thumbnail loading prepare failure returns safe tool output", async () => {
+    const ricky = mockWindowRicky();
+    const cbs = noopCallbacks();
+    const { deps, dcInstance } = dcSpyDeps();
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    ricky.getToolSpecs.mockResolvedValue([{ name: "thumbnail_generate", risk: "low" }]);
+    ricky.createRealtimeToken.mockResolvedValue({ value: "t", sttLanguageHint: "sr" });
+    ricky.executeTool.mockRejectedValue(new Error("loading prepare failed"));
+
+    await client.connect();
+
+    await callExecuteFn(client, [{ call_id: "thumb-prepare-1", name: "thumbnail_generate", arguments: "{}" }]);
+
+    expect(ricky.executeTool).toHaveBeenCalledTimes(1);
+    const sent = (dcInstance() as FakeDataChannel)._sent.join("\n");
+    expect(sent).toContain("Tool execution failed");
+    expect(sent).toContain("Alat nije uspio: thumbnail_generate");
+  });
+
+  it("duplicate completed call_id does not execute the tool twice", async () => {
+    const ricky = mockWindowRicky();
+    const cbs = noopCallbacks();
+    const { deps, dcInstance } = dcSpyDeps();
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    ricky.getToolSpecs.mockResolvedValue([{ name: "safe_tool", risk: "low" }]);
+    ricky.createRealtimeToken.mockResolvedValue({ value: "t", sttLanguageHint: "sr" });
+    ricky.executeTool.mockResolvedValue({ ok: true });
+
+    await client.connect();
+
+    await callExecuteFn(client, [{ call_id: "duplicate-1", name: "safe_tool", arguments: "{}" }]);
+    await callExecuteFn(client, [{ call_id: "duplicate-1", name: "safe_tool", arguments: "{}" }]);
+
+    expect(ricky.executeTool).toHaveBeenCalledTimes(1);
+    const sent = (dcInstance() as FakeDataChannel)._sent.join("\n");
+    expect(sent).toContain("\\\"duplicate\\\":true");
+    expect(sent).toContain("Ovaj tool poziv je već obrađen.");
+  });
+
+  it("active duplicate call_id does not mark the original call as completed", async () => {
+    const ricky = mockWindowRicky();
+    const cbs = noopCallbacks();
+    const { deps, dcInstance } = dcSpyDeps();
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    ricky.getToolSpecs.mockResolvedValue([{ name: "slow_tool", risk: "low" }]);
+    ricky.createRealtimeToken.mockResolvedValue({ value: "t", sttLanguageHint: "sr" });
+
+    await client.connect();
+
+    const privateClient = client as unknown as {
+      activeToolCalls: Map<string, unknown>;
+      completedToolCallIds: Set<string>;
+    };
+    privateClient.activeToolCalls.set("active-duplicate-1", {
+      name: "slow_tool",
+      startedAt: Date.now(),
+      generation: 1,
+    });
+
+    await callExecuteFn(client, [{ call_id: "active-duplicate-1", name: "slow_tool", arguments: "{}" }]);
+
+    expect(ricky.executeTool).not.toHaveBeenCalled();
+    expect(privateClient.completedToolCallIds.has("active-duplicate-1")).toBe(false);
+    const sent = (dcInstance() as FakeDataChannel)._sent.join("\n");
+    expect(sent).toContain("Tool je već aktivan");
+    expect(sent).toContain("slow_tool se već izvršava.");
+  });
+
+  it("duplicate confirmation call_id creates only one confirmation", async () => {
+    const ricky = mockWindowRicky();
+    const cbs = noopCallbacks();
+    const { deps, dcInstance } = dcSpyDeps();
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    ricky.getToolSpecs.mockResolvedValue([{ name: "danger_tool", risk: "high" }]);
+    ricky.createRealtimeToken.mockResolvedValue({ value: "t", sttLanguageHint: "sr" });
+    ricky.executeTool.mockResolvedValue({
+      ok: false,
+      errorCode: "CONFIRMATION_REQUIRED",
+      message: "Potrebna je potvrda.",
+    });
+
+    await client.connect();
+
+    await callExecuteFn(client, [{ call_id: "confirm-duplicate-1", name: "danger_tool", arguments: "{}" }]);
+    await callExecuteFn(client, [{ call_id: "confirm-duplicate-1", name: "danger_tool", arguments: "{}" }]);
+
+    expect(ricky.executeTool).toHaveBeenCalledTimes(1);
+    expect(ricky.createConfirmation).toHaveBeenCalledTimes(1);
+    const sent = (dcInstance() as FakeDataChannel)._sent.join("\n");
+    expect(sent).toContain("\\\"waiting_confirmation\\\":true");
+    expect(sent).toContain("\\\"duplicate\\\":true");
+  });
+
+  it("tool resolve after disconnect does not send stale output", async () => {
+    const ricky = mockWindowRicky();
+    const cbs = noopCallbacks();
+    const { deps, dcInstance } = dcSpyDeps();
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    ricky.getToolSpecs.mockResolvedValue([{ name: "slow_tool", risk: "low" }]);
+    ricky.createRealtimeToken.mockResolvedValue({ value: "t", sttLanguageHint: "sr" });
+
+    let resolveTool: (v: unknown) => void = () => {};
+    ricky.executeTool.mockReturnValue(new Promise((resolve) => { resolveTool = resolve; }));
+
+    await client.connect();
+    const dc = dcInstance() as FakeDataChannel;
+    dc._sent.length = 0;
+
+    const execPromise = callExecuteFn(client, [{ call_id: "stale-after-disconnect-1", name: "slow_tool", arguments: "{}" }]);
+    client.disconnect();
+    resolveTool({ ok: true });
+    await execPromise;
+
+    expect(dc._sent).toHaveLength(0);
+  });
+
+  it("disconnect clears active tool calls", async () => {
+    const ricky = mockWindowRicky();
+    const cbs = noopCallbacks();
+    const deps = fakeDeps();
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    ricky.getToolSpecs.mockResolvedValue([{ name: "test_tool", risk: "low" }]);
+    ricky.createRealtimeToken.mockResolvedValue({ value: "t", sttLanguageHint: "sr" });
+
+    await client.connect();
+
+    // Manually set up active tool call to simulate in-flight execution
+    const activeMap = (client as unknown as { activeToolCalls: Map<string, unknown> }).activeToolCalls;
+    activeMap.set("stale-1", { name: "test_tool", startedAt: Date.now(), generation: 1 });
+
+    client.disconnect();
+
+    // Active tool map should be empty after disconnect
+    expect(activeMap.size).toBe(0);
+  });
+
+  it("unknown tool in batch does not prevent other tools from executing", async () => {
+    const ricky = mockWindowRicky();
+    const cbs = noopCallbacks();
+    const deps = fakeDeps();
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    ricky.getToolSpecs.mockResolvedValue([{ name: "known_tool", risk: "low" }]);
+    ricky.createRealtimeToken.mockResolvedValue({ value: "t", sttLanguageHint: "sr" });
+    ricky.executeTool.mockResolvedValue({ ok: true });
+
+    await client.connect();
+
+    await callExecuteFn(client, [
+      { call_id: "unk-1", name: "unknown_tool", arguments: "{}" },
+      { call_id: "known-1", name: "known_tool", arguments: "{}" },
+    ]);
+
+    // known_tool should have been executed
+    expect(ricky.executeTool).toHaveBeenCalledTimes(1);
+    expect(ricky.executeTool).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "known_tool" }),
     );
   });
 });

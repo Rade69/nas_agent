@@ -65,6 +65,9 @@ const RECONNECT_JITTER_MS = 250;
 const MAX_OUTBOUND_QUEUE_SIZE = 50;
 const MAX_OUTBOUND_QUEUE_AGE_MS = 10000;
 
+// R3 — tool lifecycle
+const DEFAULT_TOOL_TIMEOUT_MS = 30000;
+
 export class RickyRealtimeClient {
   private pc: RTCPeerConnection | null = null;
   private dc: RTCDataChannel | null = null;
@@ -103,6 +106,10 @@ export class RickyRealtimeClient {
   private reconnectTimer: ReturnType<RealtimeClientDeps["setTimeout"]> | null = null;
   private outboundQueue: Array<{ event: Record<string, unknown>; createdAt: number }> = [];
 
+  // R3 — tool call lifecycle
+  private activeToolCalls = new Map<string, { name: string; startedAt: number; generation: number }>();
+  private completedToolCallIds = new Set<string>();
+
   constructor(callbacks: RealtimeCallbacks, deps?: Partial<RealtimeClientDeps>) {
     this.callbacks = callbacks;
     this.deps = { ...defaultRealtimeDeps, ...deps };
@@ -136,6 +143,8 @@ export class RickyRealtimeClient {
 
     this.externalContentSeen = false;
     this.manualDisconnectRequested = false;
+    this.activeToolCalls.clear();
+    this.completedToolCallIds.clear();
     if (!options.preserveOutboundQueue) {
       this.reconnectAttempts = 0;
       this._cleanupOutboundQueue();
@@ -203,6 +212,8 @@ export class RickyRealtimeClient {
     this.manualDisconnectRequested = true;
     this._cleanupReconnectState();
     this._cleanupOutboundQueue();
+    this.activeToolCalls.clear();
+    this.completedToolCallIds.clear();
     this.connectAbortController?.abort();
     this.connectionGeneration++;
     this.connectPromise = null;
@@ -706,6 +717,11 @@ export class RickyRealtimeClient {
     }
   }
 
+  // R3 — tool-call lifecycle with timeout, idempotency, and safe output.
+  // Every call_id gets exactly one controlled output. Duplicate calls are
+  // rejected without re-execution. Timeout returns a safe failure output.
+  // Stale output after disconnect/new generation is never sent to wrong session.
+  // Context: docs/VOICE_COMMUNICATION_R3_BRIEF_FOR_PI.md
   private async executeFunctionCalls(items: ResponseOutputItem[], generation: number): Promise<void> {
     if (generation !== this.connectionGeneration) return;
 
@@ -719,13 +735,33 @@ export class RickyRealtimeClient {
       const name = item.name;
       if (!callId || !name) continue;
 
+      // R3 — idempotency: duplicate call_id must not execute the tool again
+      if (this.completedToolCallIds.has(callId)) {
+        await this._sendToolOutput(callId, {
+          ok: false,
+          duplicate: true,
+          message: "Ovaj tool poziv je već obrađen.",
+        }, generation);
+        shouldCreateResponse = true;
+        continue;
+      }
+      if (this.activeToolCalls.has(callId)) {
+        await this._sendToolOutput(callId, {
+          ok: false,
+          error: "Tool je već aktivan",
+          message: `Alat ${name} se već izvršava.`,
+        }, generation, { markCompleted: false });
+        shouldCreateResponse = true;
+        continue;
+      }
+
       const parsedArgs = parseToolArguments(item.arguments || "{}");
       const knownTool = this.toolSpecs.some((tool) => tool.name === name);
       if (!knownTool) {
-        await this.returnToolOutput(callId, {
+        await this._sendToolOutput(callId, {
           ok: false,
           error: `Alat nije dostupan: ${name}`,
-        });
+        }, generation);
         shouldCreateResponse = true;
         continue;
       }
@@ -739,85 +775,84 @@ export class RickyRealtimeClient {
           content: typeof parsedArgs.prompt === "string" ? parsedArgs.prompt : "Ricky generiše sliku.",
         });
       }
-      if (name === "thumbnail_generate" || name === "thumbnail_edit") {
-        const loadingResult = await window.ricky.executeTool({
-          name: "thumbnail_loading_prepare",
-          arguments: {
-            ...parsedArgs,
-            mode: name === "thumbnail_edit" ? "edit" : "generate",
-          },
-        } satisfies RickyToolCall);
-        if (typeof loadingResult.runId === "string") parsedArgs.runId = loadingResult.runId;
-        if (typeof loadingResult.targetId === "string") parsedArgs.targetId = loadingResult.targetId;
-        if (loadingResult.artifact) this.callbacks.onArtifact(loadingResult.artifact);
-      }
-      const result = await window.ricky.executeTool({
-        name,
-        arguments: parsedArgs,
-        // FAZA S-2 voice-path fix (agent_reports/2026-07-10_s2-voice-path-fix.md):
-        // forward whether external content was already read this voice session,
-        // so the backend can escalate acting tools (previously always omitted —
-        // the voice path could never trigger this defense).
-        context: { external_content_seen: this.externalContentSeen },
-      } satisfies RickyToolCall);
-      const executedSpec = this.toolSpecs.find((tool) => tool.name === name);
-      if (executedSpec?.reads_external_content && result.ok) {
-        this.externalContentSeen = true;
-      }
-      // FAZA 13/14 confirmation bridge: when the backend blocks a tool call
-      // because it needs an approved confirmation, auto-propose one and tell
-      // the model to wait instead of retrying blindly.
-      // Context: docs/RICKY_CONFIRMATION_BRIDGE_BRIEF.md
-      if (result.errorCode === "CONFIRMATION_REQUIRED") {
-        const spec = this.toolSpecs.find((t) => t.name === name);
-        const risk = (spec?.risk as string) || "high";
-        await window.ricky.createConfirmation({
-          action_name: name,
-          payload: parsedArgs as Record<string, unknown>,
-          risk_level: risk as "low" | "medium" | "high" | "critical",
-          tool_name: name,
-        });
-        this.callbacks.onActivity(createActivityEvent("tool", `Čekam potvrdu: ${name}`));
-        this.callbacks.onVoiceState("waiting_confirmation");
-        await this.returnToolOutput(callId, {
+
+      // R3 — register call as active before execution
+      this.activeToolCalls.set(callId, { name, startedAt: Date.now(), generation });
+
+      try {
+        if (name === "thumbnail_generate" || name === "thumbnail_edit") {
+          const loadingResult = await this._runToolWithTimeout(
+            `${callId}:thumbnail_loading_prepare`,
+            "thumbnail_loading_prepare",
+            {
+              ...parsedArgs,
+              mode: name === "thumbnail_edit" ? "edit" : "generate",
+            },
+            generation,
+          );
+          if (typeof loadingResult.runId === "string") parsedArgs.runId = loadingResult.runId;
+          if (typeof loadingResult.targetId === "string") parsedArgs.targetId = loadingResult.targetId;
+          if (loadingResult.artifact) this.callbacks.onArtifact(loadingResult.artifact);
+        }
+
+        const result = await this._runToolWithTimeout(callId, name, parsedArgs, generation);
+
+        // R3 — stale guard: if generation changed or manual disconnect, don't proceed
+        if (generation !== this.connectionGeneration || this.manualDisconnectRequested) return;
+
+        const executedSpec = this.toolSpecs.find((tool) => tool.name === name);
+        if (executedSpec?.reads_external_content && result.ok) {
+          this.externalContentSeen = true;
+        }
+
+        // FAZA 13/14 confirmation bridge — must not be broken by R3
+        if (result.errorCode === "CONFIRMATION_REQUIRED") {
+          if (!this.completedToolCallIds.has(callId)) {
+            const spec = this.toolSpecs.find((t) => t.name === name);
+            const risk = (spec?.risk as string) || "high";
+            await window.ricky.createConfirmation({
+              action_name: name,
+              payload: parsedArgs as Record<string, unknown>,
+              risk_level: risk as "low" | "medium" | "high" | "critical",
+              tool_name: name,
+            });
+          }
+          this.callbacks.onActivity(createActivityEvent("tool", `Čekam potvrdu: ${name}`));
+          this.callbacks.onVoiceState("waiting_confirmation");
+          await this._sendToolOutput(callId, {
+            ok: false,
+            waiting_confirmation: true,
+            message: "Potrebna je tvoja potvrda prije izvršenja. Potvrdi u dijalogu.",
+          } as RickyToolResult, generation);
+          shouldCreateResponse = true;
+          continue;
+        }
+
+        if (result.mode === "display" || result.mode === "computer") {
+          this.callbacks.onMode(result.mode);
+        }
+        if (result.artifact) this.callbacks.onArtifact(result.artifact);
+        if (name === "image_generate" && result.ok && typeof result.path === "string") {
+          void window.ricky
+            .saveThumbnailAs({ path: result.path, suggestedName: "ricky-image.png" })
+            .catch((error) => console.error("[image_generate] auto save-as dialog failed:", error));
+        }
+        if (result.thumbnailReady === true) this.callbacks.onThumbnailReady();
+        if (result.silent !== true) shouldCreateResponse = true;
+        await this._sendToolOutput(callId, result, generation);
+      } catch (error) {
+        // R3 — safe failure: every exception path must produce an output
+        const timeout = error instanceof Error && error.message.startsWith("TOOL_TIMEOUT:");
+        await this._sendToolOutput(callId, {
           ok: false,
-          waiting_confirmation: true,
-          message: "Potrebna je tvoja potvrda prije izvršenja. Potvrdi u dijalogu.",
-        } as RickyToolResult);
-        // continue, not return: this may not be the last function_call in the
-        // batch (e.g. set_mode + computer_type_text in one turn) — returning
-        // here would skip every remaining call and never send it a
-        // function_call_output, leaving the model waiting on a reply that
-        // never comes. shouldCreateResponse=true so the model can actually
-        // tell the user it needs approval instead of going silent.
+          error: timeout ? "Tool timeout" : "Tool execution failed",
+          errorCode: timeout ? "TOOL_TIMEOUT" : undefined,
+          message: timeout ? "Alat se nije završio na vrijeme." : `Alat nije uspio: ${name}`,
+        }, generation);
         shouldCreateResponse = true;
-        continue;
+      } finally {
+        this.activeToolCalls.delete(callId);
       }
-      if (result.mode === "display" || result.mode === "computer") {
-        this.callbacks.onMode(result.mode);
-      }
-      if (result.artifact) this.callbacks.onArtifact(result.artifact);
-      // User-reported gap (2026-07-13): image_generate silently archived the
-      // generated image into the app's internal data folder with no way to
-      // choose the destination. Fire the native save dialog automatically
-      // right when generation finishes — not gated behind a manual button
-      // click, since the whole complaint was "he shouldn't decide the
-      // location himself". Fire-and-forget: the voice/text turn already
-      // completed (result.artifact above already showed the image), so this
-      // doesn't block the conversation waiting on the user's dialog choice.
-      // If they cancel, the internal copy is untouched — nothing is lost.
-      if (name === "image_generate" && result.ok && typeof result.path === "string") {
-        // Was silently swallowing errors (.catch(() => {})) — a failure here (e.g.
-        // the source path fails saveThumbnailAs's dataDir allowlist check) looked
-        // identical to "nothing happened" from the user's side. Log so a repeat
-        // failure is diagnosable in devtools instead of invisible.
-        void window.ricky
-          .saveThumbnailAs({ path: result.path, suggestedName: "ricky-image.png" })
-          .catch((error) => console.error("[image_generate] auto save-as dialog failed:", error));
-      }
-      if (result.thumbnailReady === true) this.callbacks.onThumbnailReady();
-      if (result.silent !== true) shouldCreateResponse = true;
-      await this.returnToolOutput(callId, result);
     }
 
     if (shouldCreateResponse) {
@@ -831,6 +866,53 @@ export class RickyRealtimeClient {
       this.callbacks.onVoiceState("idle");
     }
     this.toolRunning = false;
+  }
+
+  // R3 — run a tool with a timeout. Returns the tool result, or a safe timeout
+  // output if the tool doesn't finish in time.
+  private async _runToolWithTimeout(
+    callId: string,
+    name: string,
+    parsedArgs: Record<string, unknown>,
+    generation: number,
+  ): Promise<RickyToolResult> {
+    let timer: ReturnType<RealtimeClientDeps["setTimeout"]> | null = null;
+    try {
+      return await Promise.race([
+        window.ricky.executeTool({
+          name,
+          arguments: parsedArgs,
+          context: { external_content_seen: this.externalContentSeen },
+        } satisfies RickyToolCall),
+        new Promise<never>((_, reject) => {
+          timer = this.deps.setTimeout(() => {
+            if (generation === this.connectionGeneration) {
+              this.callbacks.onActivity(createActivityEvent("error", `Alat se nije završio na vrijeme: ${name}`));
+            }
+            reject(new Error(`TOOL_TIMEOUT:${callId}:${name}`));
+          }, DEFAULT_TOOL_TIMEOUT_MS);
+        }),
+      ]);
+    } finally {
+      if (timer) {
+        this.deps.clearTimeout(timer);
+      }
+    }
+  }
+
+  // R3 — send tool output only if we're still on the correct generation and
+  // not manually disconnected. Marks the call_id as completed after success.
+  private async _sendToolOutput(
+    callId: string,
+    result: RickyToolResult,
+    generation: number,
+    options?: { markCompleted?: boolean },
+  ): Promise<void> {
+    if (generation !== this.connectionGeneration || this.manualDisconnectRequested) return;
+    if (options?.markCompleted !== false) {
+      this.completedToolCallIds.add(callId);
+    }
+    await this.returnToolOutput(callId, result);
   }
 
   private async returnToolOutput(callId: string, result: RickyToolResult): Promise<void> {
