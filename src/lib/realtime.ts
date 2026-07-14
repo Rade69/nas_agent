@@ -58,6 +58,13 @@ const realtimeUrl = "https://api.openai.com/v1/realtime/calls";
 const MIC_IDLE_TIMEOUT_MS = 5 * 60 * 1000;
 const DEFAULT_CONNECT_TIMEOUT_MS = 30000;
 
+// R2 — controlled reconnect & outbound queue
+const MAX_RECONNECT_ATTEMPTS = 3;
+const RECONNECT_BASE_DELAY_MS = 1000;
+const RECONNECT_JITTER_MS = 250;
+const MAX_OUTBOUND_QUEUE_SIZE = 50;
+const MAX_OUTBOUND_QUEUE_AGE_MS = 10000;
+
 export class RickyRealtimeClient {
   private pc: RTCPeerConnection | null = null;
   private dc: RTCDataChannel | null = null;
@@ -90,6 +97,12 @@ export class RickyRealtimeClient {
   private connectTimeoutSignal: AbortSignal | null = null;
   private connectTimeoutAbortListener: (() => void) | null = null;
 
+  // R2 — controlled reconnect, outbound queue, manual disconnect guard
+  private reconnectAttempts = 0;
+  private manualDisconnectRequested = false;
+  private reconnectTimer: ReturnType<RealtimeClientDeps["setTimeout"]> | null = null;
+  private outboundQueue: Array<{ event: Record<string, unknown>; createdAt: number }> = [];
+
   constructor(callbacks: RealtimeCallbacks, deps?: Partial<RealtimeClientDeps>) {
     this.callbacks = callbacks;
     this.deps = { ...defaultRealtimeDeps, ...deps };
@@ -109,8 +122,10 @@ export class RickyRealtimeClient {
   // R1 — single-flight connect with timeout, abort, and generation guard.
   // If connect is already in progress, returns the same pending promise.
   // If already connected, does nothing.
+  // R2 — resets reconnectAttempts, manualDisconnectRequested, and outboundQueue.
   // Context: docs/VOICE_COMMUNICATION_R1_BRIEF_FOR_PI.md
-  async connect(): Promise<void> {
+  // Context: docs/VOICE_COMMUNICATION_R2_BRIEF_FOR_PI.md
+  async connect(options: { preserveOutboundQueue?: boolean } = {}): Promise<void> {
     if (this.connectPromise) return this.connectPromise;
     if (this.dc?.readyState === "open") return;
 
@@ -120,6 +135,11 @@ export class RickyRealtimeClient {
     const signal = this.connectAbortController.signal;
 
     this.externalContentSeen = false;
+    this.manualDisconnectRequested = false;
+    if (!options.preserveOutboundQueue) {
+      this.reconnectAttempts = 0;
+      this._cleanupOutboundQueue();
+    }
 
     this.connectPromise = this._connectInternal(generation, signal);
     try {
@@ -178,7 +198,11 @@ export class RickyRealtimeClient {
 
   // R1 — abort active connect attempt and invalidate generation
   // so stale async continuations cannot emit connected/error.
+  // R2 — marks manual disconnect so reconnect is suppressed.
   disconnect(): void {
+    this.manualDisconnectRequested = true;
+    this._cleanupReconnectState();
+    this._cleanupOutboundQueue();
     this.connectAbortController?.abort();
     this.connectionGeneration++;
     this.connectPromise = null;
@@ -217,6 +241,161 @@ export class RickyRealtimeClient {
     }
     this.connectTimeoutSignal = null;
     this.connectTimeoutAbortListener = null;
+  }
+
+  // ---------- R2 — controlled reconnect ----------
+
+  // Called on transport failure (PC failed/disconnected/closed, DC close/error).
+  // Decides whether to reconnect or emit a terminal error.
+  private _handleTransportFailure(reason: string): void {
+    this.cleanupConnectionResources();
+
+    if (this.manualDisconnectRequested) {
+      this.callbacks.onConnectionState("idle");
+      this.callbacks.onMood("idle");
+      this.callbacks.onVoiceState("idle");
+      this.callbacks.onMouthShape(silentMouthShape());
+      return;
+    }
+
+    if (!this._shouldReconnect(reason)) {
+      const msg = this._transportFailureMessage(reason);
+      this.callbacks.onConnectionState("error");
+      this.callbacks.onMood("error");
+      this.callbacks.onVoiceState("error");
+      this.callbacks.onStatus(msg);
+      this.callbacks.onActivity(createActivityEvent("error", msg));
+      this.callbacks.onMouthShape(silentMouthShape());
+      this._cleanupOutboundQueue();
+      return;
+    }
+
+    this._scheduleReconnect(reason);
+  }
+
+  // R2 — reconnect policy: only transient transport/network failures get retried.
+  // Manual disconnect, quota, billing, auth, microphone, and timeout are permanent.
+  private _shouldReconnect(reason: string): boolean {
+    if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) return false;
+    // Transient transport reasons that can recover
+    const transientReasons = ["failed", "disconnected", "dc-close", "dc-error"];
+    return transientReasons.includes(reason);
+  }
+
+  private _transportFailureMessage(reason: string): string {
+    switch (reason) {
+      case "failed": return "WebRTC konekcija je pukla";
+      case "disconnected": return "WebRTC konekcija je prekinuta";
+      case "dc-close": return "Glasovni kanal je neočekivano zatvoren";
+      case "dc-error": return "Greška u glasovnom kanalu";
+      default: return `Transportna greška: ${reason}`;
+    }
+  }
+
+  // R2 — schedule reconnect with exponential backoff and jitter.
+  // Retries use the existing connect() path (new generation, new token, full setup).
+  private _scheduleReconnect(reason: string): void {
+    if (this.reconnectTimer || this.connectPromise) return;
+
+    this.reconnectAttempts++;
+    const attempt = this.reconnectAttempts;
+    const baseDelay = RECONNECT_BASE_DELAY_MS * Math.pow(2, attempt - 1);
+    const jitter = Math.floor(Math.random() * RECONNECT_JITTER_MS);
+    const delay = baseDelay + jitter;
+
+    const status = `Veza je prekinuta. Pokušavam ponovo ${attempt}/${MAX_RECONNECT_ATTEMPTS}…`;
+    this.callbacks.onConnectionState("connecting");
+    this.callbacks.onStatus(status);
+    this.callbacks.onActivity(createActivityEvent("status", `Reconnect pokušaj ${attempt}/${MAX_RECONNECT_ATTEMPTS}`, reason));
+
+    this.reconnectTimer = this.deps.setTimeout(() => {
+      this.reconnectTimer = null;
+      if (this.manualDisconnectRequested) return;
+      void this._executeReconnect();
+    }, delay);
+  }
+
+  // R2 — execute a single reconnect attempt through the standard connect() path.
+  private async _executeReconnect(): Promise<void> {
+    try {
+      await this.connect({ preserveOutboundQueue: true });
+      if (this.dc?.readyState === "open") {
+        this.reconnectAttempts = 0;
+        this.callbacks.onStatus("Ponovo povezano.");
+        this.callbacks.onActivity(createActivityEvent("status", "Reconnect uspješan"));
+        this._flushOutboundQueue();
+      } else {
+        this._handleReconnectAttemptFailure("dc-error");
+      }
+    } catch {
+      this._handleReconnectAttemptFailure("dc-error");
+    }
+  }
+
+  private _handleReconnectAttemptFailure(reason: string): void {
+    if (this.manualDisconnectRequested) return;
+    if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
+      const msg = "Reconnect nije uspio. Pokreni glas ponovo.";
+      this.callbacks.onConnectionState("error");
+      this.callbacks.onMood("error");
+      this.callbacks.onVoiceState("error");
+      this.callbacks.onStatus(msg);
+      this.callbacks.onActivity(createActivityEvent("error", msg, reason));
+      this.callbacks.onMouthShape(silentMouthShape());
+      this._cleanupOutboundQueue();
+      return;
+    }
+    this._scheduleReconnect(reason);
+  }
+
+  // R2 — clean up reconnect timer and reset attempts.
+  private _cleanupReconnectState(): void {
+    if (this.reconnectTimer) {
+      this.deps.clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.reconnectAttempts = 0;
+  }
+
+  // ---------- R2 — outbound event queue ----------
+
+  // R2 — enqueue an event for later delivery when the DataChannel is not open.
+  // Respects max size (drops oldest) and max age (dropped on flush).
+  private _enqueueEvent(event: Record<string, unknown>): void {
+    const now = Date.now();
+    if (this.outboundQueue.length >= MAX_OUTBOUND_QUEUE_SIZE) {
+      this.outboundQueue.shift(); // drop oldest
+    }
+    this.outboundQueue.push({ event, createdAt: now });
+  }
+
+  // R2 — flush queued events through the DataChannel.
+  // Drops stale events (older than MAX_OUTBOUND_QUEUE_AGE_MS).
+  // Only sends if we're on the current generation and DC is open.
+  private _flushOutboundQueue(): void {
+    if (!this.dc || this.dc.readyState !== "open") return;
+    const now = Date.now();
+    const stale: typeof this.outboundQueue = [];
+    const sendable: typeof this.outboundQueue = [];
+
+    for (const item of this.outboundQueue) {
+      if (now - item.createdAt > MAX_OUTBOUND_QUEUE_AGE_MS) {
+        stale.push(item);
+      } else {
+        sendable.push(item);
+      }
+    }
+
+    for (const item of sendable) {
+      this.dc.send(JSON.stringify(item.event));
+    }
+
+    this.outboundQueue = [];
+  }
+
+  // R2 — clear the outbound queue (called on manual disconnect or permanent error).
+  private _cleanupOutboundQueue(): void {
+    this.outboundQueue = [];
   }
 
   // R1 — timeout promise that rejects with Serbian message.
@@ -258,18 +437,12 @@ export class RickyRealtimeClient {
     audio.autoplay = true;
 
     // R1 — transport health: detect PeerConnection failures
+    // R2 — route through _handleTransportFailure for controlled reconnect
     pc.onconnectionstatechange = () => {
       if (generation !== this.connectionGeneration) return;
       const state = pc.connectionState;
       if (state === "failed" || state === "disconnected" || state === "closed") {
-        this.cleanupConnectionResources();
-        const msg = state === "failed" ? "WebRTC konekcija je pukla" : "WebRTC konekcija je prekinuta";
-        this.callbacks.onConnectionState("error");
-        this.callbacks.onMood("error");
-        this.callbacks.onVoiceState("error");
-        this.callbacks.onStatus(msg);
-        this.callbacks.onActivity(createActivityEvent("error", msg));
-        this.callbacks.onMouthShape(silentMouthShape());
+        this._handleTransportFailure(state);
       }
     };
 
@@ -301,29 +474,26 @@ export class RickyRealtimeClient {
 
     dc.addEventListener("open", () => {
       if (generation !== this.connectionGeneration) return;
+      this.reconnectAttempts = 0;
       this.callbacks.onConnectionState("connected");
       this.callbacks.onMood("idle");
       this.callbacks.onVoiceState("idle");
       this.callbacks.onStatus("Ricky je uživo. Govori prirodno.");
       this.callbacks.onActivity(createActivityEvent("status", "WebRTC povezan"));
+      this._flushOutboundQueue();
       this.bumpIdleTimer();
     });
 
     // R1 — transport health: DataChannel close/error
+    // R2 — route through _handleTransportFailure for controlled reconnect
     const onDcClose = () => {
       if (generation !== this.connectionGeneration) return;
-      this.cleanupConnectionResources();
-      this.callbacks.onConnectionState("error");
-      this.callbacks.onMood("error");
-      this.callbacks.onVoiceState("error");
-      this.callbacks.onStatus("Glasovni kanal je neočekivano zatvoren");
-      this.callbacks.onActivity(createActivityEvent("error", "DataChannel zatvoren"));
-      this.callbacks.onMouthShape(silentMouthShape());
+      this._handleTransportFailure("dc-close");
     };
     dc.addEventListener("close", onDcClose);
     dc.addEventListener("error", () => {
       if (generation !== this.connectionGeneration) return;
-      onDcClose();
+      this._handleTransportFailure("dc-error");
     });
 
     dc.addEventListener("message", (event) => {
@@ -374,6 +544,17 @@ export class RickyRealtimeClient {
     }
     if (lower.includes("prekinuto") || lower.includes("abort")) {
       return "Povezivanje je prekinuto.";
+    }
+    if (
+      lower.includes("getaddrinfo failed") ||
+      lower.includes("errno 11001") ||
+      lower.includes("enotfound") ||
+      lower.includes("eai_again") ||
+      lower.includes("dns") ||
+      lower.includes("fetch failed") ||
+      lower.includes("network down")
+    ) {
+      return "Nema internet konekcije ili DNS ne radi. Provjeri mrežu i pokušaj ponovo.";
     }
     if (lower.includes("insufficient_quota") || lower.includes("quota")) {
       return "OpenAI kvota je potrošena. Provjeri stanje naloga i billing.";
@@ -663,9 +844,17 @@ export class RickyRealtimeClient {
     });
   }
 
+  // R2 — outbound event queue. If DataChannel is not open but the session is
+  // alive (connected or connecting, not manually disconnected), queue the event
+  // for later delivery. Never queue after manual disconnect or permanent error.
   private sendEvent(event: Record<string, unknown>): void {
     if (this.dc?.readyState === "open") {
       this.dc.send(JSON.stringify(event));
+      return;
+    }
+    // Queue only if session is expected to recover (not manual disconnect)
+    if (!this.manualDisconnectRequested && (this.pc || this.dc || this.connectPromise || this.reconnectTimer)) {
+      this._enqueueEvent(event);
     }
   }
 

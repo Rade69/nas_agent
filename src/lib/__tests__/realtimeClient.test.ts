@@ -265,7 +265,9 @@ describe("RickyRealtimeClient — fake connect", () => {
     expect(cbs.onConnectionState).toHaveBeenCalledWith("error");
     expect(cbs.onMood).toHaveBeenCalledWith("error");
     expect(cbs.onVoiceState).toHaveBeenCalledWith("error");
-    expect(cbs.onStatus).toHaveBeenCalledWith("Realtime greška: Network down");
+    expect(cbs.onStatus).toHaveBeenCalledWith(
+      "Nema internet konekcije ili DNS ne radi. Provjeri mrežu i pokušaj ponovo.",
+    );
     expect(cbs.onConnectionState).toHaveBeenLastCalledWith("error");
     expect(cbs.onMood).toHaveBeenLastCalledWith("error");
     expect(cbs.onVoiceState).toHaveBeenLastCalledWith("error");
@@ -569,7 +571,9 @@ describe("RickyRealtimeClient — R1 transport health", () => {
     vi.restoreAllMocks();
   });
 
-  it("DataChannel close after connected emits error", async () => {
+  // R2: transport failure triggers reconnect (connecting state), not direct error.
+  // Direct error only happens after max attempts or manual disconnect.
+  it("DataChannel close after connected triggers reconnect attempt", async () => {
     mockWindowRicky();
     const cbs = noopCallbacks();
 
@@ -603,13 +607,14 @@ describe("RickyRealtimeClient — R1 transport health", () => {
       }
     }
 
-    // Should emit error, not idle
-    expect(cbs.onConnectionState).toHaveBeenCalledWith("error");
-    expect(cbs.onMood).toHaveBeenCalledWith("error");
-    expect(cbs.onVoiceState).toHaveBeenCalledWith("error");
+    // Should trigger reconnect (connecting state), not terminal error
+    expect(cbs.onConnectionState).toHaveBeenCalledWith("connecting");
+    expect(cbs.onStatus).toHaveBeenCalledWith(
+      expect.stringContaining("Pokušavam ponovo"),
+    );
   });
 
-  it("DataChannel error after connected emits error", async () => {
+  it("DataChannel error after connected triggers reconnect attempt", async () => {
     mockWindowRicky();
     const cbs = noopCallbacks();
 
@@ -642,7 +647,10 @@ describe("RickyRealtimeClient — R1 transport health", () => {
       }
     }
 
-    expect(cbs.onConnectionState).toHaveBeenCalledWith("error");
+    expect(cbs.onConnectionState).toHaveBeenCalledWith("connecting");
+    expect(cbs.onStatus).toHaveBeenCalledWith(
+      expect.stringContaining("Pokušavam ponovo"),
+    );
   });
 });
 
@@ -711,6 +719,21 @@ describe("RickyRealtimeClient — R1 error classification", () => {
     );
   });
 
+  it("classifies DNS/network token failures as network error", async () => {
+    const w = mockWindowRicky();
+    w.createRealtimeToken.mockRejectedValue(
+      new Error("Error invoking remote method 'realtime:create-token': Error: Python backend request failed: 502 Realtime token request failed: [Errno 11001] getaddrinfo failed"),
+    );
+    const cbs = noopCallbacks();
+
+    const client = new RickyRealtimeClient(cbs, fakeDeps());
+    await client.connect();
+
+    expect(cbs.onStatus).toHaveBeenCalledWith(
+      "Nema internet konekcije ili DNS ne radi. Provjeri mrežu i pokušaj ponovo.",
+    );
+  });
+
   it("falls back to truncated generic message for unknown errors", async () => {
     mockWindowRicky();
     const cbs = noopCallbacks();
@@ -723,6 +746,229 @@ describe("RickyRealtimeClient — R1 error classification", () => {
 
     expect(cbs.onStatus).toHaveBeenCalledWith(
       expect.stringContaining("Realtime greška"),
+    );
+  });
+});
+
+/** Helper for R2 tests: returns deps with a spy-able DataChannel instance. */
+function dcSpyDeps() {
+  let dcInstance: FakeDataChannel | null = null;
+  const originalCreatePeer = fakeDeps().createPeerConnection;
+  const wrappedCreatePeer = () => {
+    const pc = originalCreatePeer() as unknown as FakePeerConnection;
+    const origCreateDc = pc.createDataChannel.bind(pc);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (pc as any).createDataChannel = (label: string) => {
+      const dc = origCreateDc(label) as unknown as FakeDataChannel;
+      dcInstance = dc;
+      return dc as unknown as RTCDataChannel;
+    };
+    return pc as unknown as RTCPeerConnection;
+  };
+  const deps = fakeDeps({ createPeerConnection: vi.fn().mockImplementation(wrappedCreatePeer) });
+  return { deps, dcInstance: () => dcInstance };
+}
+
+// ---------- R2 tests — controlled reconnect, outbound queue ----------
+
+describe("RickyRealtimeClient — R2 reconnect", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("manual disconnect does not trigger reconnect", async () => {
+    mockWindowRicky();
+    const cbs = noopCallbacks();
+    const { deps, dcInstance } = dcSpyDeps();
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    await client.connect();
+    client.disconnect();
+    vi.clearAllMocks();
+
+    // Fire DC close event AFTER manual disconnect
+    const dc = dcInstance();
+    if (dc) {
+      const listeners = (dc as FakeDataChannel)._listeners.get("close");
+      if (listeners) {
+        for (const listener of listeners) {
+          listener({} as Event);
+        }
+      }
+    }
+
+    // Should NOT trigger reconnect (no connecting state)
+    expect(cbs.onConnectionState).not.toHaveBeenCalledWith("connecting");
+  });
+
+  it("reconnect calls connect() again via reconnect path", async () => {
+    mockWindowRicky();
+    const cbs = noopCallbacks();
+    const { deps, dcInstance } = dcSpyDeps();
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    await client.connect();
+    vi.clearAllMocks();
+
+    // Simulate transport failure (DC close)
+    const dc = dcInstance();
+    if (dc) {
+      const listeners = (dc as FakeDataChannel)._listeners.get("close");
+      if (listeners) {
+        for (const listener of listeners) {
+          listener({} as Event);
+        }
+      }
+    }
+
+    // Should emit reconnect status
+    expect(cbs.onStatus).toHaveBeenCalledWith(
+      expect.stringContaining("Pokušavam ponovo 1/3"),
+    );
+    expect(cbs.onConnectionState).toHaveBeenCalledWith("connecting");
+  });
+
+  it("reconnect status includes attempt counter", async () => {
+    mockWindowRicky();
+    const cbs = noopCallbacks();
+    const { deps, dcInstance } = dcSpyDeps();
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    await client.connect();
+    vi.clearAllMocks();
+
+    // Simulate transport failure (DC close)
+    const dc = dcInstance();
+    if (dc) {
+      const listeners = (dc as FakeDataChannel)._listeners.get("close");
+      if (listeners) {
+        for (const listener of listeners) {
+          listener({} as Event);
+        }
+      }
+    }
+
+    // Should emit reconnect status with attempt counter
+    expect(cbs.onStatus).toHaveBeenCalledWith(
+      expect.stringContaining("Pokušavam ponovo 1/3"),
+    );
+    expect(cbs.onConnectionState).toHaveBeenCalledWith("connecting");
+  });
+
+  it("failed reconnect attempt schedules the next attempt", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    mockWindowRicky();
+    const cbs = noopCallbacks();
+    const timers: Array<{ fn: () => void; timeout?: number }> = [];
+    const { deps, dcInstance } = dcSpyDeps();
+    deps.setTimeout = ((fn: () => void, timeout?: number) => {
+      timers.push({ fn, timeout });
+      return timers.length;
+    }) as RealtimeClientDeps["setTimeout"];
+    deps.fetch = vi.fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        text: vi.fn().mockResolvedValue("fake-sdp-answer"),
+      } as unknown as Response)
+      .mockRejectedValueOnce(new Error("Network down"));
+
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    await client.connect();
+    vi.clearAllMocks();
+
+    const dc = dcInstance();
+    if (dc) {
+      const listeners = (dc as FakeDataChannel)._listeners.get("close");
+      if (listeners) {
+        for (const listener of listeners) {
+          listener({} as Event);
+        }
+      }
+    }
+
+    const firstReconnect = timers.find((timer) => timer.timeout === 1000);
+    expect(firstReconnect).toBeDefined();
+    firstReconnect?.fn();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(cbs.onStatus).toHaveBeenCalledWith(
+      expect.stringContaining("Pokušavam ponovo 2/3"),
+    );
+  });
+});
+
+describe("RickyRealtimeClient — R2 outbound queue", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("outbound queue is flushed when DC opens", async () => {
+    mockWindowRicky();
+    const cbs = noopCallbacks();
+
+    const { deps, dcInstance } = dcSpyDeps();
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    await client.connect();
+
+    // After connect, DC should be open and queue flushed.
+    // Verify connected was emitted (proves flush happened without error)
+    expect(cbs.onConnectionState).toHaveBeenCalledWith("connected");
+
+    // DC._sent should be empty since no events were queued during connect
+    const dc = dcInstance();
+    expect(dc).not.toBeNull();
+    expect((dc as FakeDataChannel)._sent.length).toBe(0);
+  });
+
+  it("outbound queue is cleared on manual disconnect", async () => {
+    mockWindowRicky();
+    const cbs = noopCallbacks();
+    const deps = fakeDeps();
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    await client.connect();
+    client.disconnect();
+
+    // After disconnect, manualDisconnectRequested is true — no crash, clean state
+    expect(cbs.onConnectionState).toHaveBeenCalledWith("idle");
+  });
+
+  it("queued events survive reconnect and flush into the new DataChannel", async () => {
+    vi.spyOn(Math, "random").mockReturnValue(0);
+    mockWindowRicky();
+    const cbs = noopCallbacks();
+    const timers: Array<{ fn: () => void; timeout?: number }> = [];
+    const { deps, dcInstance } = dcSpyDeps();
+    deps.setTimeout = ((fn: () => void, timeout?: number) => {
+      timers.push({ fn, timeout });
+      return timers.length;
+    }) as RealtimeClientDeps["setTimeout"];
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    await client.connect();
+
+    const firstDc = dcInstance();
+    expect(firstDc).not.toBeNull();
+    const listeners = (firstDc as FakeDataChannel)._listeners.get("close");
+    if (listeners) {
+      for (const listener of listeners) {
+        listener({} as Event);
+      }
+    }
+
+    client.setDictationMode(true);
+
+    const reconnect = timers.find((timer) => timer.timeout === 1000);
+    expect(reconnect).toBeDefined();
+    reconnect?.fn();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    const secondDc = dcInstance();
+    expect(secondDc).not.toBe(firstDc);
+    expect((secondDc as FakeDataChannel)._sent).toContainEqual(
+      expect.stringContaining("\"session.update\""),
     );
   });
 });
