@@ -1,0 +1,561 @@
+<!doctype html>
+<html lang="bs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>RileyJarvis Windows Hybrid - Multi-agent Security Map</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #050914;
+      --panel: #0b1424;
+      --panel-2: #101d31;
+      --line: #244568;
+      --text: #eef6ff;
+      --muted: #a9b9cd;
+      --blue: #2f9bff;
+      --cyan: #36d7ff;
+      --green: #26d486;
+      --yellow: #f5b642;
+      --red: #ff5b6a;
+      --violet: #8d6bff;
+      --shadow: rgba(0, 0, 0, 0.34);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 22% 8%, rgba(47, 155, 255, 0.20), transparent 32%),
+        radial-gradient(circle at 82% 18%, rgba(141, 107, 255, 0.14), transparent 26%),
+        linear-gradient(180deg, #050914 0%, #07101c 48%, #050812 100%);
+      color: var(--text);
+      font-family: "Segoe UI", Inter, Arial, sans-serif;
+      line-height: 1.5;
+    }
+
+    main {
+      width: min(1420px, calc(100vw - 40px));
+      margin: 0 auto;
+      padding: 34px 0 48px;
+    }
+
+    .hero {
+      display: grid;
+      gap: 14px;
+      margin-bottom: 24px;
+      padding: 26px;
+      border: 1px solid rgba(80, 145, 210, 0.28);
+      border-radius: 16px;
+      background: rgba(7, 15, 28, 0.82);
+      box-shadow: 0 28px 90px var(--shadow);
+    }
+
+    .hero h1 {
+      margin: 0;
+      font-size: clamp(30px, 4vw, 56px);
+      line-height: 1.04;
+      letter-spacing: 0;
+    }
+
+    .hero p {
+      max-width: 960px;
+      margin: 0;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 12px;
+      border: 1px solid rgba(95, 170, 240, 0.26);
+      border-radius: 999px;
+      color: #dcecff;
+      background: rgba(15, 31, 51, 0.74);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .grid {
+      display: grid;
+      gap: 18px;
+    }
+
+    .grid.three {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .grid.two {
+      grid-template-columns: 1.08fr 0.92fr;
+    }
+
+    .section {
+      margin-top: 18px;
+      padding: 22px;
+      border: 1px solid rgba(80, 145, 210, 0.22);
+      border-radius: 16px;
+      background: rgba(8, 17, 31, 0.82);
+      box-shadow: 0 18px 55px rgba(0, 0, 0, 0.24);
+    }
+
+    .section h2 {
+      margin: 0 0 14px;
+      font-size: 22px;
+    }
+
+    .section > p {
+      margin: -6px 0 16px;
+      color: var(--muted);
+    }
+
+    .card {
+      position: relative;
+      min-height: 86px;
+      padding: 15px;
+      border: 1px solid rgba(92, 158, 220, 0.24);
+      border-radius: 12px;
+      background: linear-gradient(180deg, rgba(17, 33, 54, 0.95), rgba(11, 22, 39, 0.92));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 16px;
+    }
+
+    .card p,
+    .card li {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .card p {
+      margin: 0;
+    }
+
+    .card ul {
+      margin: 8px 0 0;
+      padding-left: 18px;
+    }
+
+    .accent-blue { border-top: 3px solid var(--blue); }
+    .accent-cyan { border-top: 3px solid var(--cyan); }
+    .accent-green { border-top: 3px solid var(--green); }
+    .accent-yellow { border-top: 3px solid var(--yellow); }
+    .accent-red { border-top: 3px solid var(--red); }
+    .accent-violet { border-top: 3px solid var(--violet); }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 14px;
+      align-items: stretch;
+    }
+
+    .flow .card::after {
+      content: ">";
+      position: absolute;
+      top: 50%;
+      right: -13px;
+      width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(54, 215, 255, 0.34);
+      border-radius: 999px;
+      color: var(--cyan);
+      background: #081425;
+      transform: translateY(-50%);
+      z-index: 2;
+    }
+
+    .flow .card:last-child::after {
+      display: none;
+    }
+
+    .tree {
+      display: grid;
+      gap: 12px;
+    }
+
+    .root {
+      display: grid;
+      place-items: center;
+      min-height: 66px;
+      border: 1px solid rgba(54, 215, 255, 0.36);
+      border-radius: 14px;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(54, 215, 255, 0.18), transparent 58%),
+        rgba(9, 22, 39, 0.95);
+      color: #f4fbff;
+      font-size: 22px;
+      font-weight: 850;
+    }
+
+    .branches {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .branch {
+      padding: 14px;
+      border: 1px solid rgba(92, 158, 220, 0.24);
+      border-radius: 14px;
+      background: rgba(11, 23, 41, 0.92);
+    }
+
+    .branch h3 {
+      margin: 0 0 10px;
+      color: #eaf6ff;
+      font-size: 15px;
+    }
+
+    .node {
+      display: block;
+      margin: 7px 0;
+      padding: 8px 9px;
+      border-left: 3px solid rgba(54, 215, 255, 0.64);
+      border-radius: 8px;
+      background: rgba(18, 34, 55, 0.86);
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .security-layers {
+      display: grid;
+      gap: 12px;
+    }
+
+    .layer {
+      display: grid;
+      grid-template-columns: 190px minmax(0, 1fr);
+      gap: 14px;
+      align-items: stretch;
+      padding: 12px;
+      border: 1px solid rgba(92, 158, 220, 0.20);
+      border-radius: 14px;
+      background: rgba(9, 20, 36, 0.78);
+    }
+
+    .layer strong {
+      display: grid;
+      place-items: center;
+      border-radius: 10px;
+      color: #fff;
+      background: rgba(47, 155, 255, 0.20);
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .checks {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-content: center;
+    }
+
+    .check {
+      display: inline-flex;
+      align-items: center;
+      min-height: 30px;
+      padding: 0 10px;
+      border: 1px solid rgba(80, 145, 210, 0.18);
+      border-radius: 8px;
+      color: #d8e9fb;
+      background: rgba(17, 33, 54, 0.78);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .agent-ring {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .guardrail {
+      margin-top: 12px;
+      padding: 14px;
+      border: 1px solid rgba(38, 212, 134, 0.25);
+      border-radius: 12px;
+      background: rgba(38, 212, 134, 0.08);
+    }
+
+    .guardrail h3 {
+      margin: 0 0 8px;
+      color: #bfffe0;
+      font-size: 15px;
+    }
+
+    .guardrail ol {
+      margin: 0;
+      padding-left: 20px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .note {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border: 1px solid rgba(245, 182, 66, 0.28);
+      border-radius: 12px;
+      background: rgba(245, 182, 66, 0.08);
+      color: #ffe7ad;
+      font-size: 13px;
+    }
+
+    code {
+      color: #d9f4ff;
+      font-family: Consolas, "Cascadia Mono", monospace;
+      font-size: 0.94em;
+    }
+
+    @media (max-width: 1100px) {
+      .grid.three,
+      .grid.two,
+      .flow,
+      .branches,
+      .agent-ring {
+        grid-template-columns: 1fr;
+      }
+
+      .flow .card::after {
+        display: none;
+      }
+
+      .layer {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <h1>RileyJarvis Windows Hybrid</h1>
+      <p>
+        Graficka mapa projekta: hijerarhija fajlova, sigurnosne ograde i
+        multi-agentski razvojni tok u kojem rade Claude Code, Codex i pi agent.
+      </p>
+      <div class="legend">
+        <span class="pill">React UI</span>
+        <span class="pill">Electron shell</span>
+        <span class="pill">Python backend brain</span>
+        <span class="pill">SQLite audit/storage</span>
+        <span class="pill">Tool permission engine</span>
+        <span class="pill">Multi-agent workflow</span>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>1. Sta se pravi</h2>
+      <div class="flow">
+        <article class="card accent-cyan">
+          <h3>Korisnik</h3>
+          <p>Glas, tekst, potvrde, Stop/kill-switch i Computer Mode odluke.</p>
+        </article>
+        <article class="card accent-blue">
+          <h3>React renderer</h3>
+          <p>UI, orb, artifact panel i WebRTC OpenAI Realtime voice pipeline.</p>
+        </article>
+        <article class="card accent-violet">
+          <h3>Electron shell</h3>
+          <p>Prozori, preload API, IPC allowlist i Python process manager.</p>
+        </article>
+        <article class="card accent-green">
+          <h3>Python backend</h3>
+          <p>Agent runtime, tool registry, permission engine, storage i AI integracije.</p>
+        </article>
+        <article class="card accent-yellow">
+          <h3>Windows + cloud</h3>
+          <p>Gated OS automation, OpenAI, Exa i lokalna SQLite baza.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>2. Hijerarhija fajlova</h2>
+      <p>Ovo je prikaz koji mozes pokazati nekome ko prvi put gleda projekat.</p>
+      <div class="tree">
+        <div class="root">Nas-agent/</div>
+        <div class="branches">
+          <div class="branch accent-blue">
+            <h3>src/ - React renderer</h3>
+            <span class="node">App.tsx - glavni UI state</span>
+            <span class="node">components/ - UI paneli, orb, confirmations</span>
+            <span class="node">components/pixel/ - desktop i mini computer shell</span>
+            <span class="node">lib/ - realtime.ts, event router, voice state</span>
+            <span class="node">styles/ - CSS slojevi 00-14</span>
+          </div>
+          <div class="branch accent-violet">
+            <h3>electron/ - desktop shell</h3>
+            <span class="node">main.cjs - entry/wiring, bez nove business logike</span>
+            <span class="node">preload.cjs - eksplicitni window.ricky API</span>
+            <span class="node">core/ - windows, IPC, security self-test</span>
+            <span class="node">ipc_handlers/ - allowlisted kanali</span>
+            <span class="node">services/ - Python process + backend client</span>
+          </div>
+          <div class="branch accent-green">
+            <h3>python_backend/app/ - backend brain</h3>
+            <span class="node">api/ - REST endpointi</span>
+            <span class="node">agent/ - runtime, executor, permission, cancel</span>
+            <span class="node">tools/ - system, memory, web, images</span>
+            <span class="node">storage/ - SQLite + repositories</span>
+            <span class="node">core/ - auth, logging, sandbox, self-test</span>
+          </div>
+          <div class="branch accent-yellow">
+            <h3>docs/ + agent_reports/</h3>
+            <span class="node">MIGRATION_PLAN.md - status faza</span>
+            <span class="node">SECURITY_HARDENING_PLAN.md - security gates</span>
+            <span class="node">TOOL_CONTRACTS.md - tool manifest</span>
+            <span class="node">agent_reports/ - trag rada agenata</span>
+            <span class="node">assets/ - Ricky branding i ikonografija</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>3. Ugradjeni sigurnosni sistemi</h2>
+      <div class="security-layers">
+        <div class="layer">
+          <strong>Electron / renderer</strong>
+          <div class="checks">
+            <span class="check">nodeIntegration=false</span>
+            <span class="check">contextIsolation=true</span>
+            <span class="check">sandbox=true</span>
+            <span class="check">IPC allowlist</span>
+            <span class="check">preload bez generic invoke</span>
+            <span class="check">production CSP</span>
+            <span class="check">XSS audit</span>
+          </div>
+        </div>
+        <div class="layer">
+          <strong>Backend boundary</strong>
+          <div class="checks">
+            <span class="check">127.0.0.1 only</span>
+            <span class="check">RICKY_LOCAL_TOKEN</span>
+            <span class="check">Authorization: Bearer</span>
+            <span class="check">OpenAI key backend-side</span>
+            <span class="check">security self-test</span>
+            <span class="check">log redaction</span>
+          </div>
+        </div>
+        <div class="layer">
+          <strong>Tool security</strong>
+          <div class="checks">
+            <span class="check">ToolDefinition manifest</span>
+            <span class="check">risk levels</span>
+            <span class="check">Computer Mode gate</span>
+            <span class="check">confirmation_id binding</span>
+            <span class="check">payload_hash</span>
+            <span class="check">active window validation</span>
+            <span class="check">blocked apps</span>
+          </div>
+        </div>
+        <div class="layer">
+          <strong>Runtime safety</strong>
+          <div class="checks">
+            <span class="check">execution_id</span>
+            <span class="check">cancellation token</span>
+            <span class="check">cancel-all Stop</span>
+            <span class="check">kill-switch</span>
+            <span class="check">action/tool log</span>
+            <span class="check">SQLite audit trail</span>
+          </div>
+        </div>
+        <div class="layer">
+          <strong>Development guardrails</strong>
+          <div class="checks">
+            <span class="check">GitNexus impact</span>
+            <span class="check">agent_reports</span>
+            <span class="check">MIGRATION_PLAN tracker</span>
+            <span class="check">no arbitrary shell tool</span>
+            <span class="check">no new main.cjs business logic</span>
+            <span class="check">npm run quality</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>4. Multi-agentski radni tok</h2>
+      <div class="agent-ring">
+        <article class="card accent-violet">
+          <h3>Claude Code</h3>
+          <p>Glavni agent za faze, arhitekturno centralne izmjene i sigurnosno-kriticne slojeve.</p>
+        </article>
+        <article class="card accent-cyan">
+          <h3>Codex</h3>
+          <p>Ciljane izmjene, review, dokumentacija, verifikacija i male izolovane popravke.</p>
+        </article>
+        <article class="card accent-yellow">
+          <h3>pi agent / OpenRouter</h3>
+          <p>Paralelni audit/refactor zadaci preko vise LLM modela, uz jasne report fajlove.</p>
+        </article>
+      </div>
+      <div class="guardrail">
+        <h3>Workflow koji sprecava sudare</h3>
+        <ol>
+          <li>Agent prvo radi <code>git status</code> i <code>git log</code>.</li>
+          <li>Prije izmjene simbola radi se GitNexus impact analiza.</li>
+          <li>Agent dira samo svoj scope i ne stageuje tudje izmjene.</li>
+          <li>Svaki zadatak dobija <code>agent_reports/</code> izvjestaj.</li>
+          <li>Tracker u <code>docs/MIGRATION_PLAN.md</code> ostaje izvor istine za faze.</li>
+          <li>Mali commitovi cuvaju trag ko je sta uradio.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="section grid two">
+      <div>
+        <h2>5. Granice odgovornosti</h2>
+        <div class="grid">
+          <article class="card accent-blue">
+            <h3>React ne upravlja OS-om</h3>
+            <p>Renderer prikazuje UI i voice state. Ne dobija filesystem, shell ili OS moc.</p>
+          </article>
+          <article class="card accent-violet">
+            <h3>Electron je tanak shell</h3>
+            <p>Prozori, IPC i Python process manager. Nova agent/storage/AI logika ne ide u <code>electron/main.cjs</code>.</p>
+          </article>
+          <article class="card accent-green">
+            <h3>Python je sigurnosna granica</h3>
+            <p>Tool executor, permission engine, confirmation binding i audit log odlucuju sta se smije izvrsiti.</p>
+          </article>
+        </div>
+      </div>
+      <div>
+        <h2>6. Kako to objasniti za 60 sekundi</h2>
+        <article class="card accent-red">
+          <h3>Kratka prica</h3>
+          <p>
+            Ovo je lokalni Windows AI companion. UI je u React/Electronu, ali
+            opasne odluke i alati idu kroz Python backend. Svaki tool ima risk,
+            Computer Mode, confirmation i audit log. Vise agenata razvija isti
+            projekat, ali GitNexus, mali commitovi, tracker i agent_reports
+            cuvaju red.
+          </p>
+        </article>
+        <div class="note">
+          Za tehnicku verziju sa Mermaid dijagramima pogledati
+          <code>docs/MULTI_AGENT_SECURITY_ARCHITECTURE_MAP.md</code>.
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
