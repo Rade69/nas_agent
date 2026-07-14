@@ -18,12 +18,6 @@ dependencies = [
   # FAZA S-1: runtime enforcement of each tool's input_schema (was already
   # present transitively; declared explicitly so it is not an accidental dep).
   "jsonschema",
-  # Email draft tool (docs/EMAIL_COMPOSE_TOOL_PLAN_V2_GMAIL.md) — Chrome
-  # DevTools Protocol client for the isolated-profile Gmail adapter. CDP is
-  # plain JSON-RPC over a WebSocket; this is the only piece not already
-  # covered by httpx. Confirmed sufficient in the Faza A0 spike (agent_reports/
-  # 2026-07-13_email-faza-a0-spike-findings.md) — no heavier CDP library needed.
-  "websockets",
 ]
 
 [tool.setuptools.packages.find]
