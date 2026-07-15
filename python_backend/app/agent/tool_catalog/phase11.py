@@ -17,6 +17,7 @@ def register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) -> 
     from app.tools.images.generate import make_handlers as make_image_handlers
     from app.tools.memory.notes import make_handlers as make_notes_handlers
     from app.tools.memory.records import make_handlers as make_records_handlers
+    from app.tools.messaging.email import make_handlers as make_email_handlers
     from app.tools.system.filesystem_search import make_handlers as make_filesystem_search_handlers
     from app.tools.system.mode import make_handlers as make_mode_handlers
     from app.tools.system.screenshot import make_handlers as make_screenshot_handlers
@@ -32,6 +33,7 @@ def register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) -> 
     image_handlers = make_image_handlers(services["openai_image_client"], services["images_dir"])
     mode_handlers = make_mode_handlers()
     filesystem_search_handlers = make_filesystem_search_handlers(services["data_dir"])
+    email_handlers = make_email_handlers(services["email_draft_store"], services["data_dir"])
 
     def _def(
         name: str,
@@ -48,6 +50,7 @@ def register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) -> 
         blocked_apps: list[str] | None = None,
         reads_external_content: bool = False,
         outbound: bool = False,
+        logs_action_receipt: bool = False,
     ) -> ToolDefinition:
         return ToolDefinition(
             name=name,
@@ -59,7 +62,7 @@ def register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) -> 
             requires_active_window_match=requires_active_window_match,
             allowed_apps=allowed_apps or [],
             blocked_apps=blocked_apps or [],
-            logs_action_receipt=False,
+            logs_action_receipt=logs_action_receipt,
             allowed_in_background=not requires_computer_mode,
             timeout_ms=timeout_ms,
             implemented_by="python",
@@ -360,4 +363,55 @@ def register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) -> 
             reads_external_content=True,
         ),
         filesystem_search_handlers["filesystem_search"],
+    )
+
+    # --- email_draft_stage / email_prepare_draft (docs/EMAIL_COMPOSE_TOOL_
+    # PLAN_V2_GMAIL.md Faza B) — split into two tools so the generic
+    # confirmation bridge (src/lib/realtime.ts's executeFunctionCalls,
+    # which persists a confirmed tool's raw arguments into the confirmations
+    # SQLite table) never sees actual email content. email_draft_stage is
+    # low-risk and unconfirmed — it only stores to/subject/body in memory
+    # (app/services/email_draft_store.py, TTL'd, never written to disk) and
+    # returns a draft_id + safe summary. email_prepare_draft takes ONLY
+    # draft_id, so the persisted confirmation payload is never more than a
+    # random reference — not the email itself. ---
+    registry.register(
+        _def(
+            "email_draft_stage",
+            "Stage an email draft (recipient, subject, body) for later preparation. Returns a draft_id and a safe summary — does not open anything or touch email yet. Cc/Bcc are not supported yet.",
+            {
+                "type": "object",
+                "properties": {
+                    "to": {"type": "string"},
+                    "subject": {"type": "string"},
+                    "body": {"type": "string"},
+                },
+                "required": ["to", "subject", "body"],
+                "additionalProperties": False,
+            },
+        ),
+        email_handlers["email_draft_stage"],
+    )
+    registry.register(
+        _def(
+            "email_prepare_draft",
+            "Open a fresh, isolated Gmail compose window and fill in the recipient, subject, and body from a previously staged draft (see email_draft_stage). This tool NEVER clicks Send — the user reviews and sends manually in the opened window.",
+            {
+                "type": "object",
+                "properties": {
+                    "draft_id": {"type": "string"},
+                },
+                "required": ["draft_id"],
+                "additionalProperties": False,
+            },
+            risk="high",
+            requires_confirmation=True,
+            requires_computer_mode=True,
+            # A full launch-Chrome + navigate + fill + verify + close cycle
+            # measured well under this in Faza A manual testing; generous
+            # headroom for a cold Chrome start on a slower machine.
+            timeout_ms=45000,
+            logs_action_receipt=True,
+        ),
+        email_handlers["email_prepare_draft"],
     )

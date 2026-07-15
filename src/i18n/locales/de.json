@@ -194,6 +194,8 @@
     "cancel": "Abbrechen",
     "sendEmail": "E-Mail senden",
     "run": "Starten",
+    "prepareDraft": "Entwurf vorbereiten",
+    "emailNeverSent": "Ricky sendet die E-Mail nicht — das machst du selbst im geöffneten Fenster.",
     "discardAria": "Bestätigung verwerfen",
     "discard": "Verwerfen",
     "dialogAria": "Ricky schlägt eine Aktion vor",

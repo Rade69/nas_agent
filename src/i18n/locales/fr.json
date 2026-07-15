@@ -194,6 +194,8 @@
     "cancel": "Annuler",
     "sendEmail": "Envoyer l'e-mail",
     "run": "Exécuter",
+    "prepareDraft": "Préparer le brouillon",
+    "emailNeverSent": "Ricky n'enverra pas l'e-mail — tu le feras toi-même dans la fenêtre qui s'ouvre.",
     "discardAria": "Rejeter la confirmation",
     "discard": "Rejeter",
     "dialogAria": "Ricky propose une action",

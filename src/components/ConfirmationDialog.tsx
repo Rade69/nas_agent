@@ -93,9 +93,14 @@ export function ConfirmationDialog({
   );
   const hasUnrecognized = Object.keys(unrecognizedPayload).length > 0;
 
-  const confirmLabel = /email|mail/i.test(confirmation.action_name)
-    ? t("confirmation.sendEmail")
-    : t("confirmation.run");
+  // email_prepare_draft (docs/EMAIL_COMPOSE_TOOL_PLAN_V2_GMAIL.md poglavlje 5,
+  // review 4.5): the old /email|mail/i substring check on action_name would
+  // have matched this exact tool name and shown "Pošalji email" (Send Email)
+  // for a tool that never sends — security-relevant label, so it must be an
+  // exact tool_name check, never a fuzzy heuristic. No tool this session
+  // matched the old pattern anyway (verified before removing it).
+  const isEmailDraftConfirmation = confirmation.tool_name === "email_prepare_draft";
+  const confirmLabel = isEmailDraftConfirmation ? t("confirmation.prepareDraft") : t("confirmation.run");
 
   return (
     <div className="confirmation-overlay" role="dialog" aria-modal="true" aria-label={t("confirmation.dialogAria")}>
@@ -120,6 +125,11 @@ export function ConfirmationDialog({
         </header>
 
         <section className="confirmation-body">
+          {isEmailDraftConfirmation ? (
+            <div className="confirmation-row confirmation-row-notice">
+              <span className="confirmation-value confirmation-notice">{t("confirmation.emailNeverSent")}</span>
+            </div>
+          ) : null}
           <div className="confirmation-row">
             <span className="confirmation-label">{t("previews.actionLabel")}</span>
             <span className="confirmation-value">{confirmation.action_name}</span>

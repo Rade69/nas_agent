@@ -194,6 +194,8 @@
     "cancel": "Cancel",
     "sendEmail": "Send email",
     "run": "Run",
+    "prepareDraft": "Prepare draft",
+    "emailNeverSent": "Ricky will not send the email — you'll do that yourself in the window that opens.",
     "discardAria": "Discard confirmation",
     "discard": "Discard",
     "dialogAria": "Ricky proposes an action",

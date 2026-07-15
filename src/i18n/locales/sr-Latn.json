@@ -194,6 +194,8 @@
     "cancel": "Otkaži",
     "sendEmail": "Pošalji email",
     "run": "Pokreni",
+    "prepareDraft": "Pripremi draft",
+    "emailNeverSent": "Ricky neće poslati email — ti ćeš to uraditi ručno u prozoru koji se otvori.",
     "discardAria": "Odbaci potvrdu",
     "discard": "Odbaci",
     "dialogAria": "Ricky predlaže akciju",

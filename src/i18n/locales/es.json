@@ -194,6 +194,8 @@
     "cancel": "Cancelar",
     "sendEmail": "Enviar correo",
     "run": "Ejecutar",
+    "prepareDraft": "Preparar borrador",
+    "emailNeverSent": "Ricky no enviará el correo — tú lo harás manualmente en la ventana que se abra.",
     "discardAria": "Descartar confirmación",
     "discard": "Descartar",
     "dialogAria": "Ricky propone una acción",

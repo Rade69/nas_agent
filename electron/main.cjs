@@ -226,6 +226,10 @@ const PHASE11_DELEGATED_TOOLS = new Set([
   // filesystem_search (agent_reports/2026-07-13_filesystem-search-tool.md):
   // read-only folder/file discovery, replaces blind Explorer clicking.
   "filesystem_search",
+  // email_draft_stage / email_prepare_draft (docs/EMAIL_COMPOSE_TOOL_PLAN_V2_
+  // GMAIL.md Faza B) — Gmail draft preparation, never sends.
+  "email_draft_stage",
+  "email_prepare_draft",
   // FAZA 13: computer-use tools now have Python equivalents (ctypes + Win32 API).
   "computer_open_app",
   "computer_type_text",
@@ -251,6 +255,12 @@ const LEGACY_FAIL_CLOSED_TOOLS = new Set([
   "computer_click",
   "computer_click_element",
   "computer_set_text_element",
+  // email_prepare_draft (docs/EMAIL_COMPOSE_TOOL_PLAN_V2_GMAIL.md) — same
+  // reasoning: requires_confirmation=True, and there is no legacy Electron
+  // fallback for it at all (brand new feature), so a Python-down failure
+  // would otherwise fall all the way through to "Unknown tool" instead of
+  // this clear, correctly-attributed error.
+  "email_prepare_draft",
 ]);
 
 // Adapt a Python ToolExecutionResponse into the legacy {ok, artifact, ...}

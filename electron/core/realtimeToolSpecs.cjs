@@ -91,6 +91,39 @@ const toolSpecs = [
       additionalProperties: false,
     },
   },
+  // email_draft_stage / email_prepare_draft (docs/EMAIL_COMPOSE_TOOL_PLAN_V2_
+  // GMAIL.md Faza B) — split so the confirmation persisted for
+  // email_prepare_draft is never more than a draft_id, never the actual
+  // email content (see gmail_draft_adapter.py / email_draft_store.py).
+  {
+    type: "function",
+    name: "email_draft_stage",
+    description: "Stage an email draft (recipient, subject, body) for later preparation. Returns a draft_id and a safe summary — does not open anything or touch email yet. Cc/Bcc are not supported yet.",
+    parameters: {
+      type: "object",
+      properties: {
+        to: { type: "string" },
+        subject: { type: "string" },
+        body: { type: "string" },
+      },
+      required: ["to", "subject", "body"],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: "function",
+    name: "email_prepare_draft",
+    risk: "high",
+    description: "Open a fresh, isolated Gmail compose window and fill in the recipient, subject, and body from a previously staged draft (see email_draft_stage). This tool NEVER clicks Send — the user reviews and sends manually in the opened window.",
+    parameters: {
+      type: "object",
+      properties: {
+        draft_id: { type: "string" },
+      },
+      required: ["draft_id"],
+      additionalProperties: false,
+    },
+  },
   {
     type: "function",
     name: "image_generate",

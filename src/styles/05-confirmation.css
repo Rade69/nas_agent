@@ -92,6 +92,21 @@
   gap: 4px;
 }
 
+/* email_prepare_draft persistent notice (docs/EMAIL_COMPOSE_TOOL_PLAN_V2_
+   GMAIL.md poglavlje 5) — "Ricky will not send" must read as a standing
+   fact, not a field value, so it gets its own row without a label column. */
+.confirmation-row-notice {
+  padding: 8px 10px;
+  background: rgba(255, 200, 87, 0.1);
+  border: 1px solid rgba(255, 200, 87, 0.3);
+  border-radius: 8px;
+}
+
+.confirmation-notice {
+  color: rgba(255, 220, 150, 0.95);
+  font-weight: 600;
+}
+
 .confirmation-label {
   flex: 0 0 78px;
   color: rgba(255, 255, 255, 0.5);
