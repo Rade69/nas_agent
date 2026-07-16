@@ -112,8 +112,14 @@ export function PlansPanel({
   console.log("[PlansPanel] render", { visible, loading, error, plansCount: plans.length, tab, isCreating });
   if (!visible) {
     console.log("[PlansPanel] not visible, returning null");
-    return null;
+    return <div style={{background:"#600",color:"#fff",padding:8,fontSize:12}}>PLANS PANEL NOT VISIBLE</div>;
   }
+
+  const debugBanner = (
+    <div style={{background:"#060",color:"#fff",padding:"4px 8px",fontSize:11,borderRadius:4,marginBottom:4}}>
+      PLANS: {plans.length} plans | loading={String(loading)} | error={String(!!error)} | tab={tab}
+    </div>
+  );
 
   const filteredPlans = plans.filter((plan) => TAB_STATUSES[tab].includes(plan.status));
 
@@ -140,10 +146,7 @@ export function PlansPanel({
 
   return (
     <section className="plans-panel" aria-label="Ricky plans and proposals">
-      {/* P0 DEBUG: remove after fix */}
-      <div style={{background:"#600",color:"#fff",padding:"4px 8px",fontSize:11,borderRadius:4,marginBottom:4}}>
-        DEBUG: plans={plans.length} loading={String(loading)} error={String(!!error)} tab={tab}
-      </div>
+      {debugBanner}
       <div className="plans-tabs">
         {(Object.keys(TAB_STATUSES) as PlanTab[]).map((planTab) => (
           <button
