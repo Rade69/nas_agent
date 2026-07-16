@@ -108,18 +108,9 @@ export function PlansPanel({
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
 
-  // DEBUG: verify component renders
-  console.log("[PlansPanel] render", { visible, loading, error, plansCount: plans.length, tab, isCreating });
   if (!visible) {
-    console.log("[PlansPanel] not visible, returning null");
-    return <div style={{background:"#600",color:"#fff",padding:8,fontSize:12}}>PLANS PANEL NOT VISIBLE</div>;
+    return null;
   }
-
-  const debugBanner = (
-    <div style={{background:"#060",color:"#fff",padding:"4px 8px",fontSize:11,borderRadius:4,marginBottom:4}}>
-      PLANS: {plans.length} plans | loading={String(loading)} | error={String(!!error)} | tab={tab}
-    </div>
-  );
 
   const filteredPlans = plans.filter((plan) => TAB_STATUSES[tab].includes(plan.status));
 
@@ -131,7 +122,6 @@ export function PlansPanel({
   };
 
   const handleSubmitNewPlan = () => {
-    console.log("[PlansPanel] handleSubmitNewPlan called", { newTitle });
     const trimmed = newTitle.trim();
     if (!trimmed) return;
     onCreatePlan(trimmed);
@@ -140,13 +130,11 @@ export function PlansPanel({
   };
 
   const handleTabClick = (planTab: PlanTab) => {
-    console.log("[PlansPanel] tab click", planTab);
     setTab(planTab);
   };
 
   return (
     <section className="plans-panel" aria-label="Ricky plans and proposals">
-      {debugBanner}
       <div className="plans-tabs">
         {(Object.keys(TAB_STATUSES) as PlanTab[]).map((planTab) => (
           <button
@@ -187,16 +175,25 @@ export function PlansPanel({
                     <strong>{plan.title}</strong>
                     {plan.summary ? <span className="plan-summary">{plan.summary}</span> : null}
                   </div>
+                  {plan.steps.length > 0 ? (
+                    <span className="plan-progress">
+                      {plan.steps.filter((s) => s.status === "completed" || s.status === "skipped").length}/{plan.steps.length}
+                    </span>
+                  ) : null}
                   <span className={`plan-badge ${badge.className}`}>{badge.label}</span>
                 </header>
 
                 {plan.steps.length > 0 ? (
                   <ol className="plan-steps">
-                    {plan.steps.map((step: PlanStep) => {
+                    {plan.steps.map((step: PlanStep, idx: number) => {
                       const stepBusy = busyPlanId === plan.id && busyStepId === step.id;
                       const next = STEP_STATUS_NEXT[step.status];
+                      // P1: first pending/in_progress step is the "next" step
+                      const isNext = step.status === "pending" || step.status === "in_progress";
+                      const isFirstNext = isNext && !plan.steps.slice(0, idx).some((s) => s.status === "pending" || s.status === "in_progress");
+                      const errorDetail = step.details?.error as string | undefined;
                       return (
-                        <li key={step.id} className={`plan-step plan-step-${step.status}`}>
+                        <li key={step.id} className={`plan-step plan-step-${step.status}${isFirstNext ? " plan-step-next" : ""}`}>
                           <span className="plan-step-index">{step.step_index + 1}</span>
                           <span className="plan-step-title">{step.title}</span>
                           <span className="plan-step-status">{stepStatusLabel(step.status)}</span>
@@ -209,6 +206,9 @@ export function PlansPanel({
                             >
                               <Check size={12} />
                             </button>
+                          ) : null}
+                          {errorDetail ? (
+                            <span className="plan-step-error">{errorDetail}</span>
                           ) : null}
                         </li>
                       );
@@ -236,13 +236,22 @@ export function PlansPanel({
                     </button>
                   ) : null}
                   {plan.status === "running" ? (
-                    <button
-                      className="plan-action plan-complete"
-                      onClick={() => onUpdatePlanStatus(plan.id, "completed")}
-                      disabled={busyPlanId === plan.id}
-                    >
-                      {t("plans.complete")}
-                    </button>
+                    <>
+                      <button
+                        className="plan-action plan-pause"
+                        onClick={() => onUpdatePlanStatus(plan.id, "approved")}
+                        disabled={busyPlanId === plan.id}
+                      >
+                        {t("plans.pause")}
+                      </button>
+                      <button
+                        className="plan-action plan-complete"
+                        onClick={() => onUpdatePlanStatus(plan.id, "completed")}
+                        disabled={busyPlanId === plan.id}
+                      >
+                        {t("plans.complete")}
+                      </button>
+                    </>
                   ) : null}
                   {plan.status !== "completed" && plan.status !== "rejected" && plan.status !== "cancelled" ? (
                     <button
@@ -288,7 +297,7 @@ export function PlansPanel({
           </div>
         </div>
       ) : (
-        <button className="plans-new-btn" onClick={() => { console.log("[PlansPanel] new-plan click"); setIsCreating(true); }}>
+        <button className="plans-new-btn" onClick={() => setIsCreating(true)}>
           {t("previews.newPlan")}
         </button>
       )}

@@ -185,7 +185,8 @@
     "approve": "Odobri plan",
     "run": "Pokreni",
     "complete": "Označi završenim",
-    "reject": "Odbaci"
+    "reject": "Odbaci",
+    "pause": "Pauziraj"
   },
   "activity": {
     "empty": "Još nema aktivnosti."

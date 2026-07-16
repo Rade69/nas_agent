@@ -177,7 +177,8 @@
     "approve": "Plan genehmigen",
     "run": "Starten",
     "complete": "Als abgeschlossen markieren",
-    "reject": "Ablehnen"
+    "reject": "Ablehnen",
+    "pause": "Pausieren"
   },
   "activity": {
     "empty": "Noch keine Aktivität."
@@ -262,6 +263,7 @@
     "computerMode": "Computermodus",
     "confirmNeeded": "Bestätigung erforderlich",
     "reject": "Ablehnen",
+    "pause": "Pausieren",
     "approve": "Bestätigen"
   }
 }

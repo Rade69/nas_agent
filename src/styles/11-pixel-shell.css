@@ -992,6 +992,38 @@
   padding: 14px 0;
 }
 
+/* P1: progress, next step, pause, error detail */
+.pixel-drawer .plan-progress {
+  font-size: 11px;
+  color: #7b93b0;
+  background: rgba(22, 139, 255, 0.08);
+  padding: 2px 7px;
+  border-radius: 5px;
+  white-space: nowrap;
+}
+
+.pixel-drawer .plan-step-next {
+  border-left: 2px solid rgba(22, 139, 255, 0.5);
+  background: rgba(22, 139, 255, 0.06);
+}
+
+.pixel-drawer .plan-step-error {
+  display: block;
+  grid-column: 2 / -1;
+  font-size: 11px;
+  color: #e08585;
+  margin-top: 2px;
+}
+
+.pixel-drawer .plan-action.plan-pause {
+  color: #e0c070;
+  border-color: rgba(200, 170, 80, 0.25);
+}
+
+.pixel-drawer .plan-action.plan-pause:hover {
+  background: rgba(200, 170, 80, 0.1);
+}
+
 .drawer-placeholder-text {
   color: #8fa0b5;
   margin: 0;

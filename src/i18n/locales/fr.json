@@ -177,7 +177,8 @@
     "approve": "Approuver le plan",
     "run": "Exécuter",
     "complete": "Marquer comme terminé",
-    "reject": "Rejeter"
+    "reject": "Rejeter",
+    "pause": "Pause"
   },
   "activity": {
     "empty": "Pas encore d'activité."
@@ -262,6 +263,7 @@
     "computerMode": "Mode ordinateur",
     "confirmNeeded": "Confirmation requise",
     "reject": "Rejeter",
+    "pause": "Pause",
     "approve": "Approuver"
   }
 }
