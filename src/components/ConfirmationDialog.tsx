@@ -4,7 +4,7 @@
  *  (250ms arm delay) to prevent accidental double-clicks (S-4/S30).
  *  Localized via i18next (Localization PR-2).
  *  Context: agent_reports/2026-07-11_gui-localization-pr2.md */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import type { Confirmation, RiskLevel } from "../vite-env";
@@ -57,6 +57,44 @@ function riskClassName(risk: RiskLevel): string {
   return `confirmation-risk-pill confirmation-risk-${risk}`;
 }
 
+/** A2: Testable focus-trap + Escape decision logic.
+ *  Returns what the keydown handler should do, without touching the DOM.
+ *  - Escape → reject/cancel (safe, NEVER approve)
+ *  - Shift+Tab on first focusable (or container) → wrap to last
+ *  - Tab on last focusable → wrap to first
+ */
+export type DialogKeyDownAction =
+  | { type: "escape" }
+  | { type: "wrap-focus"; target: "first" | "last" }
+  | { type: "default" };
+
+export function resolveDialogKeyDown(
+  key: string,
+  shiftKey: boolean,
+  isPending: boolean,
+  busy: boolean,
+  focusableCount: number,
+  activeElementIndex: number, // -1 = container itself
+): DialogKeyDownAction {
+  // Escape → reject/cancel (safe action). NEVER approve.
+  if (key === "Escape") {
+    return isPending && !busy ? { type: "escape" } : { type: "default" };
+  }
+  if (key !== "Tab" || focusableCount === 0) return { type: "default" };
+  if (shiftKey) {
+    // Shift+Tab: wrap from first (or container) → last
+    if (activeElementIndex === 0 || activeElementIndex === -1) {
+      return { type: "wrap-focus", target: "last" };
+    }
+  } else {
+    // Tab: wrap from last → first
+    if (activeElementIndex === focusableCount - 1) {
+      return { type: "wrap-focus", target: "first" };
+    }
+  }
+  return { type: "default" };
+}
+
 export function ConfirmationDialog({
   confirmation,
   busy,
@@ -72,16 +110,80 @@ export function ConfirmationDialog({
   // confirmation the instant it renders.
   const [armed, setArmed] = useState(false);
 
+  // A2: focus management — save the previously-focused element so we can
+  // restore it when the dialog closes. The dialog container itself receives
+  // focus on open (NEVER the Approve button — section 8: approval must stay
+  // a deliberate action).
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
   useEffect(() => {
     if (confirmation && confirmation.status === "pending") {
       setVisible(true);
       setArmed(false);
+      // A2: save the element that had focus before the dialog opened.
+      if (document.activeElement instanceof HTMLElement) {
+        previousFocusRef.current = document.activeElement;
+      }
       const timer = setTimeout(() => setArmed(true), 250);
       return () => clearTimeout(timer);
     }
+    // A2: dialog closing — restore focus to the element that opened it.
     setVisible(false);
+    const prev = previousFocusRef.current;
+    if (prev && typeof prev.focus === "function") {
+      // Defer so the dialog is fully unmounted first.
+      requestAnimationFrame(() => prev.focus());
+    }
+    previousFocusRef.current = null;
     return undefined;
   }, [confirmation]);
+
+  // A2: focus the dialog container when it becomes visible. We focus the
+  // CONTAINER (tabIndex={-1}), never a button — so Enter does nothing on
+  // a freshly-opened dialog and approval stays deliberate (section 8).
+  // With aria-labelledby/aria-describedby, the screen reader reads the
+  // dialog content when the container receives focus.
+  useEffect(() => {
+    if (visible && dialogRef.current) {
+      // requestAnimationFrame ensures the element is in the DOM.
+      requestAnimationFrame(() => dialogRef.current?.focus());
+    }
+  }, [visible]);
+
+  // A2: Escape = reject/cancel (safe, non-destructive — NEVER approve).
+  // Focus trap: Tab/Shift+Tab wraps within the dialog so focus can't
+  // escape into the background while it's open. Decision logic lives in
+  // resolveDialogKeyDown() (pure function, tested).
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    const focusable = Array.from(
+      dialog.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    );
+    const activeIndex = focusable.findIndex((el) => el === document.activeElement);
+    // -1 = dialog container itself has focus (activeElement not in focusable list)
+    const action = resolveDialogKeyDown(
+      e.key, e.shiftKey, isPending, busy, focusable.length, activeIndex === -1 ? -1 : activeIndex,
+    );
+    switch (action.type) {
+      case "escape":
+        e.preventDefault();
+        if (confirmation) onCancel(confirmation.id);
+        break;
+      case "wrap-focus": {
+        e.preventDefault();
+        const target = action.target === "first" ? focusable[0] : focusable[focusable.length - 1];
+        target?.focus();
+        break;
+      }
+      case "default":
+      default:
+        break;
+    }
+  };
 
   if (!visible || !confirmation) return null;
   const isPending = confirmation.status === "pending";
@@ -103,14 +205,23 @@ export function ConfirmationDialog({
   const confirmLabel = isEmailDraftConfirmation ? t("confirmation.prepareDraft") : t("confirmation.run");
 
   return (
-    <div className="confirmation-overlay" role="dialog" aria-modal="true" aria-label={t("confirmation.dialogAria")}>
+    <div
+      className="confirmation-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="confirmation-dialog-title"
+      aria-describedby="confirmation-dialog-desc"
+      ref={dialogRef}
+      tabIndex={-1}
+      onKeyDown={handleKeyDown}
+    >
       <div className="confirmation-dialog">
         <header className="confirmation-header">
           <span className="confirmation-icon">
             <IconWarning className="confirmation-icon-svg" />
           </span>
           <div className="confirmation-title-block">
-            <strong>{t("previews.confirmTitle")}</strong>
+            <strong id="confirmation-dialog-title">{t("previews.confirmTitle")}</strong>
             <small>{t("previews.confirmDefaultSummary")}</small>
           </div>
           <button
@@ -130,7 +241,7 @@ export function ConfirmationDialog({
               <span className="confirmation-value confirmation-notice">{t("confirmation.emailNeverSent")}</span>
             </div>
           ) : null}
-          <div className="confirmation-row">
+          <div className="confirmation-row" id="confirmation-dialog-desc">
             <span className="confirmation-label">{t("previews.actionLabel")}</span>
             <span className="confirmation-value">{confirmation.action_name}</span>
           </div>

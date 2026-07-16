@@ -10,7 +10,7 @@
  *  already been disabled. Now this window renders a compact confirm/reject
  *  card itself when a confirmation is pending, so approving never requires
  *  leaving Computer Mode. */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import rikiAvatar from "../../../assets/Riki-avatar.png";
 import type { VoiceState } from "../../lib/realtime";
@@ -38,6 +38,16 @@ export function MiniComputerWindow({
   const [armed, setArmed] = useState(false);
   const isPendingConfirm = pendingConfirmation?.status === "pending";
 
+  // A2: focus the card container (not the Approve button) when the
+  // confirmation appears, and handle Escape → reject (safe action).
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isPendingConfirm && cardRef.current) {
+      requestAnimationFrame(() => cardRef.current?.focus());
+    }
+  }, [isPendingConfirm, pendingConfirmation?.id]);
+
   useEffect(() => {
     if (!isPendingConfirm) {
       setArmed(false);
@@ -54,7 +64,21 @@ export function MiniComputerWindow({
   if (pendingConfirmation && isPendingConfirm) {
     return (
       <main className="mini-computer-window mini-computer-window-confirm">
-        <div className="mini-confirm-card">
+        <div
+          className="mini-confirm-card"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t("mini.confirmNeeded")}
+          tabIndex={-1}
+          ref={cardRef}
+          onKeyDown={(e) => {
+            // A2: Escape = reject (safe, non-destructive — NEVER approve)
+            if (e.key === "Escape" && !confirmationBusy) {
+              e.preventDefault();
+              onRejectConfirmation(pendingConfirmation.id);
+            }
+          }}
+        >
           <span className="mini-confirm-label">{t("mini.confirmNeeded")}</span>
           <p className="mini-confirm-action">{pendingConfirmation.action_name}</p>
           <div className="mini-confirm-actions">
