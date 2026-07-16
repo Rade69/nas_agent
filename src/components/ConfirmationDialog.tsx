@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
-import type { Confirmation, RiskLevel } from "../vite-env";
+import type { Confirmation, Plan, RiskLevel } from "../vite-env";
 import IconWarning from "../../assets/brending/icons/safety/icon-warning.svg?react";
 import IconConfirm from "../../assets/brending/icons/safety/icon-confirm.svg?react";
 import IconCancel from "../../assets/brending/icons/safety/icon-cancel.svg?react";
@@ -48,6 +48,7 @@ function riskLabel(risk: RiskLevel): string {
 type ConfirmationDialogProps = {
   confirmation: Confirmation | null;
   busy: boolean;
+  plans: Plan[];
   onApprove: (confirmationId: string) => void;
   onReject: (confirmationId: string) => void;
   onCancel: (confirmationId: string) => void;
@@ -98,6 +99,7 @@ export function resolveDialogKeyDown(
 export function ConfirmationDialog({
   confirmation,
   busy,
+  plans,
   onApprove,
   onReject,
   onCancel,
@@ -236,6 +238,23 @@ export function ConfirmationDialog({
         </header>
 
         <section className="confirmation-body">
+          {/* P3: show plan context if this confirmation belongs to a plan */}
+          {confirmation.plan_id ? (() => {
+            const linkedPlan = plans.find((p) => p.id === confirmation.plan_id);
+            if (!linkedPlan) return null;
+            const activeStep = linkedPlan.steps.find((s) => s.status === "in_progress" || s.status === "pending");
+            return (
+              <div className="confirmation-row confirmation-row-plan">
+                <span className="confirmation-label">{t("plans.planLabel")}</span>
+                <span className="confirmation-value">{linkedPlan.title}</span>
+                {activeStep ? (
+                  <span className="confirmation-value confirmation-step-ref">
+                    {t("plans.stepLabel")} {activeStep.step_index + 1}: {activeStep.title}
+                  </span>
+                ) : null}
+              </div>
+            );
+          })() : null}
           {isEmailDraftConfirmation ? (
             <div className="confirmation-row confirmation-row-notice">
               <span className="confirmation-value confirmation-notice">{t("confirmation.emailNeverSent")}</span>

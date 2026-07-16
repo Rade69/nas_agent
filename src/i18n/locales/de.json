@@ -178,6 +178,8 @@
     "run": "Starten",
     "complete": "Als abgeschlossen markieren",
     "reject": "Ablehnen",
+    "planLabel": "Plan",
+    "stepLabel": "Schritt",
     "pause": "Pausieren"
   },
   "activity": {
@@ -263,6 +265,8 @@
     "computerMode": "Computermodus",
     "confirmNeeded": "Bestätigung erforderlich",
     "reject": "Ablehnen",
+    "planLabel": "Plan",
+    "stepLabel": "Schritt",
     "pause": "Pausieren",
     "approve": "Bestätigen"
   }

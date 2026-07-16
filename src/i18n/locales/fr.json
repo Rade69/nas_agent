@@ -178,6 +178,8 @@
     "run": "Exécuter",
     "complete": "Marquer comme terminé",
     "reject": "Rejeter",
+    "planLabel": "Plan",
+    "stepLabel": "Étape",
     "pause": "Pause"
   },
   "activity": {
@@ -263,6 +265,8 @@
     "computerMode": "Mode ordinateur",
     "confirmNeeded": "Confirmation requise",
     "reject": "Rejeter",
+    "planLabel": "Plan",
+    "stepLabel": "Étape",
     "pause": "Pause",
     "approve": "Approuver"
   }

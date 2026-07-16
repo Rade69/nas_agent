@@ -544,6 +544,21 @@ export default function App() {
               ...(typeof retryResultObj.errorCode === "string" ? { errorCode: retryResultObj.errorCode } : {}),
             },
           });
+          // P3: update plan step after confirmation result
+          if (approved.plan_id) {
+            const plan = plans.find((p) => p.id === approved.plan_id);
+            const activeStep = plan?.steps.find(
+              (s) => s.status === "in_progress" || s.status === "pending"
+            );
+            if (activeStep) {
+              void window.ricky.updatePlanStep(approved.plan_id, activeStep.id, {
+                status: retryResultObj.ok !== false ? "completed" : "failed",
+                details: { retryResult: retryResultObj },
+              }).then((updated) => {
+                if (updated) setPlans((list) => list.map((p) => (p.id === updated.id ? updated : p)));
+              }).catch(() => {});
+            }
+          }
         } catch (retryErr) {
           void window.ricky.publishConfirmationResult({
             toolName: approved.tool_name,
@@ -763,6 +778,7 @@ export default function App() {
       <ConfirmationDialog
         confirmation={pendingConfirmation}
         busy={confirmationBusy}
+        plans={plans}
         onApprove={handleApproveConfirmation}
         onReject={handleRejectConfirmation}
         onCancel={handleCancelConfirmation}

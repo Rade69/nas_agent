@@ -186,6 +186,8 @@
     "run": "Pokreni",
     "complete": "Označi završenim",
     "reject": "Odbaci",
+    "planLabel": "Plan",
+    "stepLabel": "Korak",
     "pause": "Pauziraj"
   },
   "activity": {
