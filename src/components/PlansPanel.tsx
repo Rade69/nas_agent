@@ -104,10 +104,16 @@ export function PlansPanel({
 }: PlansPanelProps) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<PlanTab>("aktivni");
-  // P0: inline creation form — user names the plan before creating
+  // P0: inline creation form
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
-  if (!visible) return null;
+
+  // DEBUG: verify component renders
+  console.log("[PlansPanel] render", { visible, loading, error, plansCount: plans.length, tab, isCreating });
+  if (!visible) {
+    console.log("[PlansPanel] not visible, returning null");
+    return null;
+  }
 
   const filteredPlans = plans.filter((plan) => TAB_STATUSES[tab].includes(plan.status));
 
@@ -119,6 +125,7 @@ export function PlansPanel({
   };
 
   const handleSubmitNewPlan = () => {
+    console.log("[PlansPanel] handleSubmitNewPlan called", { newTitle });
     const trimmed = newTitle.trim();
     if (!trimmed) return;
     onCreatePlan(trimmed);
@@ -126,14 +133,23 @@ export function PlansPanel({
     setIsCreating(false);
   };
 
+  const handleTabClick = (planTab: PlanTab) => {
+    console.log("[PlansPanel] tab click", planTab);
+    setTab(planTab);
+  };
+
   return (
     <section className="plans-panel" aria-label="Ricky plans and proposals">
+      {/* P0 DEBUG: remove after fix */}
+      <div style={{background:"#600",color:"#fff",padding:"4px 8px",fontSize:11,borderRadius:4,marginBottom:4}}>
+        DEBUG: plans={plans.length} loading={String(loading)} error={String(!!error)} tab={tab}
+      </div>
       <div className="plans-tabs">
         {(Object.keys(TAB_STATUSES) as PlanTab[]).map((planTab) => (
           <button
             key={planTab}
             className={`plans-tab${tab === planTab ? " active" : ""}`}
-            onClick={() => setTab(planTab)}
+            onClick={() => handleTabClick(planTab)}
           >
             {tabLabel(planTab)}
           </button>
@@ -269,7 +285,7 @@ export function PlansPanel({
           </div>
         </div>
       ) : (
-        <button className="plans-new-btn" onClick={() => setIsCreating(true)}>
+        <button className="plans-new-btn" onClick={() => { console.log("[PlansPanel] new-plan click"); setIsCreating(true); }}>
           {t("previews.newPlan")}
         </button>
       )}
