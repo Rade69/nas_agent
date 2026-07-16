@@ -8,9 +8,8 @@
  *  Context: agent_reports/2026-07-12_custom-quick-commands.md */
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { UserSettings } from "../../vite-env";
+import type { UserSettings, BrowserBridgeStatus, PairingSession } from "../../vite-env";
 import i18n from "../../i18n";
-// Jedan izvor istine za jezičke mape (agent_reports/2026-07-12_language-map-consolidation.md).
 import { SUPPORTED_LANGUAGES } from "../../shared/languages";
 
 type SaveStatus = "loading" | "idle" | "saving" | "saved" | "error";
@@ -35,6 +34,11 @@ export function SettingsPanel({
   const [languageStatus, setLanguageStatus] = useState<SaveStatus>("loading");
   const [commandsInput, setCommandsInput] = useState<string[]>([]);
   const [commandsStatus, setCommandsStatus] = useState<SaveStatus>("loading");
+  // C0: Browser Bridge
+  const [bridgeStatus, setBridgeStatus] = useState<BrowserBridgeStatus | null>(null);
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
+  const [pairingId, setPairingId] = useState<string | null>(null);
+  const [pairingExpiry, setPairingExpiry] = useState<number>(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -64,6 +68,35 @@ export function SettingsPanel({
       cancelled = true;
     };
   }, []);
+
+  // C0: Browser Bridge — poll status every 5 seconds
+  useEffect(() => {
+    let cancelled = false;
+    const poll = () => {
+      window.ricky.getBrowserBridgeStatus().then((status) => {
+        if (!cancelled) setBridgeStatus(status);
+      }).catch(() => {});
+    };
+    poll();
+    const interval = setInterval(poll, 5000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
+
+  // C0: Pairing code countdown
+  useEffect(() => {
+    if (pairingExpiry <= 0) return;
+    const interval = setInterval(() => {
+      setPairingExpiry((prev) => {
+        if (prev <= 1) {
+          setPairingCode(null);
+          setPairingId(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [pairingExpiry]);
 
   async function handleSaveName() {
     const trimmed = nameInput.trim();
@@ -273,6 +306,141 @@ export function SettingsPanel({
             <span className="pixel-settings-feedback pixel-settings-feedback-error">{t("settings.error")}</span>
           ) : null}
         </div>
+      </section>
+
+      {/* C0: Browser Bridge */}
+      <section className="pixel-settings-section">
+        <h3>Browseri i kartice</h3>
+        <p className="pixel-settings-hint">
+          Poveži Ricky sa Brave/Chrome/Edge browserom da bi mogao da vidi, broji, otvara i zatvara kartice.
+        </p>
+
+        {/* Status */}
+        <div style={{
+          padding: "10px 12px",
+          borderRadius: 6,
+          marginBottom: 14,
+          fontSize: "0.85rem",
+          background: bridgeStatus?.connected ? "#1b4332" : "#3e1a1a",
+          border: bridgeStatus?.connected ? "1px solid #2d6a4f" : "1px solid #6b2c2c",
+        }}>
+          {bridgeStatus?.connected ? (
+            <>
+              ✅ <strong>Povezano</strong> — {bridgeStatus.browser_kind} / {bridgeStatus.profile_label || "Default"}
+              {bridgeStatus.extension_version && <span style={{opacity:0.6, marginLeft:8}}>v{bridgeStatus.extension_version}</span>}
+            </>
+          ) : (
+            <>⚠ <strong>Nije povezano</strong> — instaliraj Ricky Browser Bridge ekstenziju</>
+          )}
+        </div>
+
+        {/* Pairing flow */}
+        {!bridgeStatus?.connected && (
+          <>
+            <label className="pixel-settings-field">
+              <span>Browser</span>
+              <select
+                id="bridge-browser-select"
+                defaultValue="brave"
+                style={{
+                  width: "100%",
+                  padding: "8px 10px",
+                  border: "1px solid #444",
+                  borderRadius: 6,
+                  background: "#16213e",
+                  color: "#e0e0e0",
+                  fontSize: "0.9rem",
+                }}
+              >
+                <option value="brave">Brave</option>
+                <option value="chrome">Chrome</option>
+                <option value="edge">Edge</option>
+              </select>
+            </label>
+
+            {!pairingCode ? (
+              <button
+                className="pixel-primary"
+                onClick={async () => {
+                  const select = document.getElementById("bridge-browser-select") as HTMLSelectElement;
+                  const browserKind = select?.value || "brave";
+                  try {
+                    const session: PairingSession = await window.ricky.startBrowserPairing(browserKind);
+                    setPairingCode(session.human_code);
+                    setPairingId(session.pairing_id);
+                    setPairingExpiry(session.expires_in_seconds);
+                  } catch (e: any) {
+                    alert("Greška: " + (e?.message || "Nije uspjelo pokretanje pairinga."));
+                  }
+                }}
+              >
+                🔑 Poveži
+              </button>
+            ) : (
+              <div style={{
+                background: "#0d1b2a",
+                borderRadius: 8,
+                padding: "14px 16px",
+                marginBottom: 12,
+                textAlign: "center",
+              }}>
+                <p style={{margin: "0 0 8px 0", fontSize:"0.82rem", color:"#aaa"}}>
+                  Otvori ekstenziju (klikni na ikonicu u browser toolbaru → Options) i unesi ovaj kod:
+                </p>
+                <div style={{
+                  fontFamily: "'Courier New', monospace",
+                  fontSize: "1.8rem",
+                  fontWeight: "bold",
+                  letterSpacing: 5,
+                  color: "#4CAF50",
+                  padding: "8px 0",
+                }}>
+                  {pairingCode}
+                </div>
+                <p style={{margin: "4px 0 0 0", fontSize:"0.75rem", color:"#888"}}>
+                  Kod ističe za {pairingExpiry}s
+                </p>
+                <button
+                  className="pixel-secondary"
+                  style={{marginTop: 8}}
+                  onClick={() => {
+                    navigator.clipboard.writeText(pairingCode);
+                  }}
+                >
+                  📋 Kopiraj kod
+                </button>
+                <button
+                  className="pixel-secondary"
+                  style={{marginTop: 8, marginLeft: 8}}
+                  onClick={() => {
+                    setPairingCode(null);
+                    setPairingId(null);
+                    setPairingExpiry(0);
+                    if (pairingId) window.ricky.cancelBrowserPairing(pairingId).catch(() => {});
+                  }}
+                >
+                  ✕ Otkaži
+                </button>
+              </div>
+            )}
+
+            <div style={{
+              fontSize: "0.78rem",
+              color: "#777",
+              lineHeight: 1.5,
+            }}>
+              <strong>Kako instalirati ekstenziju (development):</strong>
+              <ol style={{paddingLeft: 16, margin: "4px 0"}}>
+                <li>Otvori <code>brave://extensions</code> (ili chrome://extensions / edge://extensions)</li>
+                <li>Uključi <strong>Developer mode</strong></li>
+                <li>Klikni <strong>Load unpacked</strong></li>
+                <li>Izaberi folder <code>browser_extension/</code> iz ovog projekta</li>
+                <li>Klikni na ikonicu ekstenzije → <strong>Options</strong></li>
+                <li>Unesi pairing kod koji se prikaže ovdje nakon klika na Poveži</li>
+              </ol>
+            </div>
+          </>
+        )}
       </section>
     </div>
   );

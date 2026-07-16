@@ -46,7 +46,7 @@ Produkcijska distribucija ekstenzije i sigurno uparivanje su zasebno složeni di
 
 ## Potreban follow-up
 
-PR 1 i PR 2 su naknadno implementirani od pi agenta i potvrđeni sa 31/31 ciljanih testova. Sljedeći follow-up je PR 3: potvrđeno zatvaranje, hardening, multi-window/incognito pravila i produkcijski packaging.
+PR 1, PR 2 i funkcionalni PR 3 naknadno su implementirani od pi agenta. PR3 zatvaranje i confirmation hardening potvrđeni su sa ukupno 41/41 ciljanih testova. Preostaju produkcijski packaging/auto-instalacija ekstenzije i ručni smoke test sa stvarnim browserom.
 
 ## Potrebna korisnička potvrda
 

@@ -21,6 +21,7 @@ def register_phase13_tools(registry: ToolRegistry) -> None:
     from app.tools.system.computer import make_handlers as make_computer_handlers
     from app.tools.system.browser import make_handler as make_browser_handler
     from app.tools.system.browser_tabs import make_handler as make_browser_tabs_handler
+    from app.tools.system.browser_tabs import make_close_handler as make_browser_tab_close_handler
 
     handlers = make_computer_handlers()
 
@@ -169,15 +170,16 @@ def register_phase13_tools(registry: ToolRegistry) -> None:
     registry.register(
         _def(
             "browser_tabs",
-            "List, activate, or close browser tabs in an already-open Brave or Chrome window. Always call action=\"list\" FIRST — never guess tab numbers or titles. action=\"activate\" switches to an existing tab by its 1-based position from the most recent snapshot (use the snapshot_id from the list result). 'Open the fifth tab' means ACTIVATE tab #5, not create a new tab. After success say exactly: 'Aktivirao sam N. tab: Title.' On TAB_SNAPSHOT_STALE, re-list and confirm the target. If BROWSER_EXTENSION_NOT_CONNECTED, tell the user and do NOT try keyboard shortcuts. Serbian 'Brejv' = Brave.",
+            "List or activate browser tabs in an already-open Brave or Chrome window. Always call action=\"list\" FIRST — never guess tab numbers or titles. action=\"activate\" switches to an existing tab by its 1-based position from the most recent snapshot (use the snapshot_id from the list result). 'Open the fifth tab' means ACTIVATE tab #5, not create a new tab. After success say exactly: 'Aktivirao sam N. tab: Title.' On TAB_SNAPSHOT_STALE, re-list and confirm the target. If BROWSER_EXTENSION_NOT_CONNECTED, tell the user and do NOT try keyboard shortcuts. Serbian 'Brejv' = Brave.",
             {
                 "type": "object",
                 "properties": {
-                    "action": {"type": "string", "enum": ["list", "activate", "close"], "description": "What to do with the tabs."},
+                    "action": {"type": "string", "enum": ["list", "activate"], "description": "What to do with the tabs."},
                     "browser": {"type": "string", "enum": ["brave", "brejv", "chrome"], "description": "Target browser. 'brejv' normalizes to 'brave'."},
                     "scope": {"type": "string", "enum": ["current_window", "all_windows"], "description": "Tab scope. Default is current_window."},
-                    "snapshot_id": {"type": "string", "description": "REQUIRED for activate/close. The snapshot_id from the most recent list result."},
-                    "position": {"type": "number", "minimum": 1, "description": "REQUIRED for activate/close. 1-based tab position in the snapshot."},
+                    "profile_id": {"type": "string", "description": "Optional stable profile ID from the snapshot. Use when multiple profiles of the same browser are connected."},
+                    "snapshot_id": {"type": "string", "description": "REQUIRED for activate. The snapshot_id from the most recent list result."},
+                    "position": {"type": "number", "minimum": 1, "description": "REQUIRED for activate. 1-based tab position in the snapshot."},
                 },
                 "required": ["action"],
                 "additionalProperties": False,
@@ -187,4 +189,26 @@ def register_phase13_tools(registry: ToolRegistry) -> None:
             timeout_ms=15000,
         ),
         make_browser_tabs_handler(),
+    )
+
+    registry.register(
+        _def(
+            "browser_tab_close",
+            "Close a Brave or Chrome browser tab by its 1-based position from a snapshot. This tool requires explicit user confirmation — the user will see a confirmation dialog before the tab is closed. Always call browser_tabs(action=\"list\") first to get a fresh snapshot_id, profile_id, and current positions. Pass the profile_id from the snapshot to ensure the close targets the correct browser profile. Never guess tab numbers. On TAB_SNAPSHOT_STALE or TAB_PROFILE_MISMATCH, re-list and try again. Serbian 'Brejv' = Brave.",
+            {
+                "type": "object",
+                "properties": {
+                    "browser": {"type": "string", "enum": ["brave", "brejv", "chrome"], "description": "Target browser."},
+                    "profile_id": {"type": "string", "description": "Stable profile ID from the list snapshot. Ensures close targets the right profile."},
+                    "snapshot_id": {"type": "string", "description": "The snapshot_id from the most recent browser_tabs list call."},
+                    "position": {"type": "number", "minimum": 1, "description": "1-based position of the tab to close."},
+                },
+                "required": ["snapshot_id", "position"],
+                "additionalProperties": False,
+            },
+            risk="high",
+            requires_confirmation=True,
+            timeout_ms=15000,
+        ),
+        make_browser_tab_close_handler(),
     )

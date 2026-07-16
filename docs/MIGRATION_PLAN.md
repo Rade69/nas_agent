@@ -81,15 +81,27 @@ Post-approval feedback gap je zatvoren: rezultat UI retryja nakon odobrenja sada
 
 Dodat je namjenski Python `browser_open` alat za default/Brave/Chrome/Edge/Firefox, sa HTTP(S)-only URL validacijom, detekcijom instalacije, `shell=False` pokretanjem i strukturiranim greškama. Fonetski glasovni unos `Brejv` normalizuje se na Brave, a Realtime model je eksplicitno upućen na to mapiranje i na korištenje ovog alata umjesto generičnog `computer_open_app`. Vidi `agent_reports/2026-07-15_precise-browser-open.md`.
 
-### Upravljanje postojećim browser tabovima — PR 1/3 i PR 2/3 završeni
+### Upravljanje postojećim browser tabovima — ✅ PR 1-3 + C0 završeni
 
 Brave/Chrome MV3 ekstenzija i Python `browser_tabs` broker za pouzdano listanje, brojanje, aktiviranje po rednom broju i potvrđeno zatvaranje postojećih tabova.
 
-- **PR 1** ✅ urađeno (pi, 2026-07-15): ekstenzija, pairing, read-only `list`, snapshot store sa TTL-om, WebSocket broker, REST status endpoint, 23 testa.
-- **PR 2** ✅ urađeno (pi, 2026-07-15): `activate` ordinalnog taba, stale/race zaštita (TAB_SNAPSHOT_STALE detekcija u brokeru), precizne model instrukcije, 8 novih testova (31 ukupno).
-- **PR 3** ⬜ planirano: `close` sa potvrdom, hardening, multi-window, incognito, produkcijski packaging
+- **PR 1** ✅ (pi, 2026-07-15): ekstenzija, pairing, read-only `list`, snapshot store sa TTL-om, WebSocket broker, REST status endpoint, 23 testa.
+- **PR 2** ✅ (pi, 2026-07-15): `activate` ordinalnog taba, stale/race zaštita, precizne model instrukcije, 8 novih testova.
+- **PR 3** ✅ (pi, 2026-07-15): `browser_tab_close` kao zaseban high-risk confirmation tool, payload_hash binding, stale snapshot detekcija, 10 novih testova.
+- **C0** 🟡 kod završen (pi) + 422 pairing hotfix (Codex, 2026-07-16): pairing token sistem, per-install credentials, `pair` protokol, Settings UI, credential-based auth i structured status endpoint; stvarni klik „Poveži“ je otkrio dvostruki JSON serialization bug, pa handler sada predaje običan objekat zajedničkom `requestJson` sloju. **Ukupno: 42 backend testa; pravi Brave list/count/activate smoke još je obavezan prije pune ✅ oznake.**
 
-Vidi `agent_reports/2026-07-15_browser-tabs-pr1-pr2.md` i `docs/PI_BROWSER_TAB_CONTROL_BRIEF.md`.
+Vidi `agent_reports/2026-07-15_browser-tabs-pr1-pr2-pr3.md`, `agent_reports/2026-07-16_browser-bridge-c0.md` i `docs/PI_BROWSER_TAB_CONTROL_BRIEF.md`.
+
+- **C1** ✅ (pi, 2026-07-16): multi-connection registry, profile routing (_resolve_profile), snapshot/profile binding, per-connection pending, revoke/rename, 8 novih testova. **Ukupno: 50 testova.**
+- **C2** ⬜ planirano: Chrome/Edge discovery + guided install, `browser_tab_open`
+- **C3** ⬜ planirano: Vivaldi, Opera, Opera GX, Chromium
+- **C4** ⬜ planirano: Chrome Web Store/Edge Add-ons publishing, hardening
+
+Vidi `docs/PI_CHROMIUM_BROWSER_BRIDGE_COMPLETION_BRIEF.md` za C1-C4 plan.
+
+### Chromium Browser Bridge completion — planirano
+
+PR1–PR3 tool logika je završena, ali stvarni browser integration nije kompletan: nedostaju Settings install/pairing tok, multi-browser/multi-profile connection registry, precizni profile routing, nova kartica u odabranom profilu, produkcijska distribucija ekstenzije i live E2E matrix. Završni plan za Chrome, Edge, Brave, Vivaldi, Opera/Opera GX i Chromium nalazi se u `docs/PI_CHROMIUM_BROWSER_BRIDGE_COMPLETION_BRIEF.md`.
 
 ## Security Gates
 

@@ -94,4 +94,9 @@ contextBridge.exposeInMainWorld("ricky", {
       ipcRenderer.removeListener("app:kill-switch", listener);
     };
   },
+  // C0: Browser Bridge — pairing and status (thin IPC, no business logic)
+  getBrowserBridgeStatus: () => ipcRenderer.invoke("browser-bridge:status"),
+  startBrowserPairing: (browserKind) => ipcRenderer.invoke("browser-bridge:pairing-start", { browserKind }),
+  getBrowserPairingStatus: (pairingId) => ipcRenderer.invoke("browser-bridge:pairing-status", { pairingId }),
+  cancelBrowserPairing: (pairingId) => ipcRenderer.invoke("browser-bridge:pairing-cancel", { pairingId }),
 });

@@ -7,7 +7,7 @@
   <style>
     body {
       font-family: system-ui, -apple-system, sans-serif;
-      max-width: 420px;
+      max-width: 440px;
       margin: 24px auto;
       padding: 0 16px;
       color: #e0e0e0;
@@ -16,7 +16,7 @@
     h1 { font-size: 1.3rem; margin-bottom: 4px; }
     .subtitle { color: #888; font-size: 0.85rem; margin-top: 0; margin-bottom: 20px; }
     label { display: block; font-size: 0.85rem; margin-bottom: 4px; color: #aaa; }
-    input[type="text"], input[type="password"] {
+    input[type="text"], input[type="password"], select {
       width: 100%;
       padding: 8px 10px;
       border: 1px solid #444;
@@ -41,28 +41,51 @@
     button:hover { background: #1a508b; }
     button.primary { background: #4CAF50; }
     button.primary:hover { background: #43A047; }
+    button.danger { background: #c0392b; }
+    button.danger:hover { background: #e74c3c; }
     .status {
       padding: 10px 12px;
       border-radius: 6px;
       font-size: 0.85rem;
       margin-bottom: 16px;
+      line-height: 1.4;
     }
     .status.connected { background: #1b4332; border: 1px solid #2d6a4f; }
     .status.disconnected { background: #3e1a1a; border: 1px solid #6b2c2c; }
-    .status.auth-failed { background: #4a3000; border: 1px solid #8b6914; }
+    .status.pairing { background: #4a3000; border: 1px solid #8b6914; }
+    .section {
+      background: #16213e;
+      border: 1px solid #2a3a5c;
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+    }
+    .section h3 {
+      margin: 0 0 10px 0;
+      font-size: 0.95rem;
+      color: #ccc;
+    }
+    .code-display {
+      font-family: 'Courier New', monospace;
+      font-size: 1.6rem;
+      font-weight: bold;
+      letter-spacing: 4px;
+      text-align: center;
+      padding: 10px;
+      background: #0d1b2a;
+      border-radius: 6px;
+      color: #4CAF50;
+      margin: 8px 0;
+    }
     .help {
       font-size: 0.78rem;
       color: #777;
       margin-top: 20px;
       line-height: 1.5;
     }
-    .help code {
-      background: #16213e;
-      padding: 1px 4px;
-      border-radius: 3px;
-      font-size: 0.78rem;
-    }
+    .help code { background: #16213e; padding: 1px 4px; border-radius: 3px; }
     #save-status { font-size: 0.82rem; margin-top: 4px; min-height: 1.2em; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
@@ -73,29 +96,57 @@
     Checking connection...
   </div>
 
-  <label for="pairing-secret">Pairing Secret</label>
-  <div style="display: flex; gap: 8px;">
-    <input type="password" id="pairing-secret" placeholder="Paste the pairing secret from Ricky's settings..." style="flex:1">
-    <button id="toggle-visibility" style="flex-shrink:0">👁</button>
+  <!-- C0: Pairing with one-time code (primary flow) -->
+  <div class="section" id="pairing-section">
+    <h3>🔑 Pair with one-time code</h3>
+    <label for="pairing-code">Pairing Code (from Ricky's Settings)</label>
+    <input type="text" id="pairing-code" placeholder="e.g. ABC123" maxlength="6" style="text-transform:uppercase; letter-spacing:3px; font-size:1.2rem; text-align:center">
+    <label for="browser-kind">Browser</label>
+    <select id="browser-kind">
+      <option value="brave">Brave</option>
+      <option value="chrome">Chrome</option>
+      <option value="edge">Edge</option>
+      <option value="vivaldi">Vivaldi</option>
+      <option value="opera">Opera</option>
+      <option value="opera_gx">Opera GX</option>
+      <option value="chromium">Chromium</option>
+    </select>
+    <label for="profile-label">Profile Label (optional)</label>
+    <input type="text" id="profile-label" placeholder="Default">
+    <button id="pair-btn" class="primary">Pair Now</button>
+    <span id="save-status"></span>
   </div>
-  <button id="save-secret" class="primary">Save &amp; Connect</button>
-  <span id="save-status"></span>
 
-  <label for="broker-url" style="margin-top: 16px;">Broker URL</label>
-  <input type="text" id="broker-url" placeholder="ws://127.0.0.1:9119">
-  <button id="save-url">Save URL</button>
+  <!-- Legacy: manual secret entry (hidden by default, toggle for dev) -->
+  <div class="section hidden" id="legacy-section">
+    <h3>⚙ Legacy — Manual Secret</h3>
+    <label for="pairing-secret">Pairing Secret</label>
+    <div style="display: flex; gap: 8px;">
+      <input type="password" id="pairing-secret" placeholder="Paste the full secret..." style="flex:1">
+      <button id="toggle-visibility" style="flex-shrink:0">👁</button>
+    </div>
+    <button id="save-secret" class="primary">Save &amp; Connect</button>
+  </div>
 
-  <button id="reconnect-btn">⟳ Reconnect</button>
+  <!-- Advanced settings -->
+  <div class="section">
+    <h3>⚙ Advanced</h3>
+    <label for="broker-url">Broker URL</label>
+    <input type="text" id="broker-url" placeholder="ws://127.0.0.1:9119">
+    <button id="save-url">Save URL</button>
+    <button id="reconnect-btn">⟳ Reconnect</button>
+    <button id="reset-btn" class="danger">Reset Pairing</button>
+  </div>
 
   <div class="help">
     <strong>How to pair:</strong>
     <ol>
-      <li>Open Ricky's Settings panel</li>
-      <li>Find "Browser Bridge" and copy the pairing secret</li>
-      <li>Paste it here and click <strong>Save &amp; Connect</strong></li>
+      <li>Open <strong>Ricky's Settings → Browseri i kartice</strong></li>
+      <li>Click <strong>Poveži</strong> for your browser</li>
+      <li>Copy the 6-character pairing code shown</li>
+      <li>Paste it here, select your browser, and click <strong>Pair Now</strong></li>
       <li>A green "ON" badge on the extension means it's connected</li>
     </ol>
-    <p>The default broker is <code>ws://127.0.0.1:9119</code> — change it only if Ricky's backend runs on a different port.</p>
     <p><strong>Privacy:</strong> This extension only reads tab titles and URLs for listing. It never reads page content, doesn't inject scripts, and doesn't track your browsing.</p>
   </div>
 

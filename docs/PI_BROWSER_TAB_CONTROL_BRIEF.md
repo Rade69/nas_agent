@@ -2,8 +2,8 @@
 
 ## Status i vlasnik
 
-- Status: PR 1 i PR 2 implementirani od pi agenta 2026-07-15; PR 3 je preostao.
-- Sljedeći zadatak za pi agenta: PR 3 — potvrđeno zatvaranje, hardening i packaging.
+- Status: PR 1, PR 2 i funkcionalni PR 3 implementirani od pi agenta 2026-07-15.
+- Preostali follow-up: produkcijski packaging/auto-instalacija ekstenzije i ručni smoke test sa stvarnim browserom.
 - Datum brifa: 2026-07-15.
 - Vezano za postojeći `browser_open`, ali je zaseban, mali paket rada.
 
@@ -214,7 +214,7 @@ Sve greške prolaze kroz postojeći `AppError`/tool error format. Poruka korisni
 - stale/race zaštita i jezičke instrukcije.
 - Ručni test sa najmanje šest tabova i naredbama prvi/peti/posljednji.
 
-### PR 3 — zatvaranje i hardening ⬜ preostalo
+### PR 3 — zatvaranje i hardening ✅ završeno
 
 - `close` kao high-risk confirmation akcija.
 - Provjera da approval retry ne može djelovati na drugi tab nakon promjene redoslijeda.

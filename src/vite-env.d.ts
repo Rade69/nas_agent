@@ -135,6 +135,26 @@ export type Screenshot = {
   sentToModel: boolean;
 };
 
+// C0: Browser Bridge
+
+export type BrowserBridgeStatus = {
+  connected: boolean;
+  browser_kind: string | null;
+  profile_label: string | null;
+  profile_id: string | null;
+  installation_id: string | null;
+  extension_version: string | null;
+  last_seen_at: string | null;
+};
+
+export type PairingSession = {
+  pairing_id: string;
+  human_code: string;
+  browser_kind: string;
+  status: string;
+  expires_in_seconds: number;
+};
+
 export type Plan = {
   id: string;
   title: string;
@@ -247,6 +267,11 @@ declare global {
       onCompanionToggleVoice: (handler: () => void) => () => void;
       // FAZA S-4: global kill-switch event (main → renderer). Returns unsubscribe.
       onKillSwitch: (handler: () => void) => () => void;
+      // C0: Browser Bridge — pairing and status
+      getBrowserBridgeStatus: () => Promise<BrowserBridgeStatus>;
+      startBrowserPairing: (browserKind: string) => Promise<PairingSession>;
+      getBrowserPairingStatus: (pairingId: string) => Promise<PairingSession>;
+      cancelBrowserPairing: (pairingId: string) => Promise<{ ok: boolean }>;
     };
   }
 }

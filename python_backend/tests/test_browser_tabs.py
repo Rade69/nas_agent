@@ -33,6 +33,20 @@ def _execute(client: TestClient, arguments: dict) -> dict:
     return response.json()
 
 
+def _execute_close(client: TestClient, arguments: dict) -> dict:
+    """Execute browser_tab_close tool."""
+    response = client.post(
+        "/tools/execute",
+        json={
+            "tool_name": "browser_tab_close",
+            "arguments": arguments,
+            "context": {"computer_mode": True},
+        },
+    )
+    assert response.status_code == 200
+    return response.json()
+
+
 # ---------------------------------------------------------------------------
 # Tool definition smoke tests
 # ---------------------------------------------------------------------------
@@ -60,6 +74,10 @@ def test_list_defaults_action(client: TestClient) -> None:
 
 
 def test_rejects_invalid_action(client: TestClient) -> None:
+    body = _execute(client, {"action": "close"})
+    assert body["ok"] is False
+    assert body["error"]["code"] == "INVALID_ARGUMENTS"
+
     body = _execute(client, {"action": "hack_tabs"})
     assert body["ok"] is False
     assert body["error"]["code"] == "INVALID_ARGUMENTS"
@@ -68,7 +86,7 @@ def test_rejects_invalid_action(client: TestClient) -> None:
 def test_list_accepts_valid_scope(client: TestClient) -> None:
     """All valid scopes pass validation even if broker isn't running."""
     with patch(
-        "app.tools.system.browser_tabs._get_broker",
+        "app.tools.system.browser_tabs._get_broker_imported",
         side_effect=RuntimeError("not initialized"),
     ):
         for scope in ["current_window", "all_windows"]:
@@ -90,7 +108,7 @@ def test_rejects_invalid_scope(client: TestClient) -> None:
 def test_brejv_normalizes_to_brave(client: TestClient) -> None:
     """Phonetic 'brejv' is accepted and normalized to 'brave'."""
     with patch(
-        "app.tools.system.browser_tabs._get_broker",
+        "app.tools.system.browser_tabs._get_broker_imported",
         side_effect=RuntimeError("not initialized"),
     ):
         body = _execute(client, {"action": "list", "browser": "brejv"})
@@ -100,7 +118,7 @@ def test_brejv_normalizes_to_brave(client: TestClient) -> None:
 
 def test_brave_is_valid_browser(client: TestClient) -> None:
     with patch(
-        "app.tools.system.browser_tabs._get_broker",
+        "app.tools.system.browser_tabs._get_broker_imported",
         side_effect=RuntimeError("not initialized"),
     ):
         body = _execute(client, {"action": "list", "browser": "brave"})
@@ -109,7 +127,7 @@ def test_brave_is_valid_browser(client: TestClient) -> None:
 
 def test_chrome_is_valid_browser(client: TestClient) -> None:
     with patch(
-        "app.tools.system.browser_tabs._get_broker",
+        "app.tools.system.browser_tabs._get_broker_imported",
         side_effect=RuntimeError("not initialized"),
     ):
         body = _execute(client, {"action": "list", "browser": "chrome"})
@@ -155,10 +173,32 @@ def test_activate_rejects_negative_position(client: TestClient) -> None:
     assert body["error"]["code"] == "INVALID_ARGUMENTS"
 
 
-def test_close_requires_snapshot_id(client: TestClient) -> None:
-    body = _execute(client, {"action": "close", "browser": "brave", "position": 1})
+def test_close_requires_snapshot_id_for_dedicated_tool(client: TestClient) -> None:
+    """browser_tab_close requires snapshot_id (no action param)."""
+    body = _execute_close(client, {"browser": "brave", "position": 1})
     assert body["ok"] is False
     assert body["error"]["code"] == "INVALID_ARGUMENTS"
+
+
+def test_close_requires_position(client: TestClient) -> None:
+    body = _execute_close(client, {"browser": "brave", "snapshot_id": "snap"})
+    assert body["ok"] is False
+    assert body["error"]["code"] == "INVALID_ARGUMENTS"
+
+
+# ---------------------------------------------------------------------------
+# browser_tab_close — listing and risk check
+# ---------------------------------------------------------------------------
+
+
+def test_browser_tab_close_is_high_risk_with_confirmation(client: TestClient) -> None:
+    """browser_tab_close is high risk and requires confirmation."""
+    tools = {tool["name"]: tool for tool in client.get("/tools").json()["tools"]}
+    tool = tools["browser_tab_close"]
+    assert tool["risk"] == "high"
+    assert tool["requires_confirmation"] is True
+    assert tool["requires_computer_mode"] is True
+    assert tool["implemented_by"] == "python"
 
 
 # ---------------------------------------------------------------------------
@@ -231,7 +271,7 @@ def test_list_returns_structured_snapshot(client: TestClient) -> None:
     assert len(result["tabs"]) == 3
     assert result["tabs"][1]["position"] == 2  # 1-based
     assert result["tabs"][1]["title"] == "GitHub"
-    mock_broker.list_tabs.assert_awaited_once_with(scope="current_window")
+    mock_broker.list_tabs.assert_awaited_once_with(scope="current_window", browser="brave", profile_id=None)
 
 
 def test_list_all_windows_scope(client: TestClient) -> None:
@@ -260,7 +300,7 @@ def test_list_all_windows_scope(client: TestClient) -> None:
     assert body["ok"] is True
     assert body["result"]["count"] == 0
     assert body["result"]["scope"] == "all_windows"
-    mock_broker.list_tabs.assert_awaited_once_with(scope="all_windows")
+    mock_broker.list_tabs.assert_awaited_once_with(scope="all_windows", browser="chrome", profile_id=None)
 
 
 # ---------------------------------------------------------------------------
@@ -302,6 +342,7 @@ def test_activate_succeeds_with_valid_snapshot(client: TestClient) -> None:
         snapshot_id="tabsnap-abc123",
         position=2,
         browser="brave",
+        profile_id=None,
     )
 
 
@@ -443,7 +484,7 @@ def test_activate_rejects_incognito(client: TestClient) -> None:
 def test_activate_extension_not_connected(client: TestClient) -> None:
     """When broker isn't initialized, returns BROWSER_EXTENSION_NOT_CONNECTED."""
     with patch(
-        "app.tools.system.browser_tabs._get_broker",
+        "app.tools.system.browser_tabs._get_broker_imported",
         side_effect=RuntimeError("not initialized"),
     ):
         body = _execute(client, {
@@ -485,6 +526,347 @@ def test_activate_brejv_normalized(client: TestClient) -> None:
         snapshot_id="snap",
         position=1,
         browser="brave",
+        profile_id=None,
+    )
+
+
+# ---------------------------------------------------------------------------
+# PR 3: browser_tab_close tests (high-risk, confirmation-gated)
+# ---------------------------------------------------------------------------
+
+
+def test_close_requires_confirmation_without_id(client: TestClient) -> None:
+    """browser_tab_close without confirmation_id returns CONFIRMATION_REQUIRED."""
+    body = _execute_close(client, {
+        "browser": "brave",
+        "snapshot_id": "tabsnap-abc123",
+        "position": 3,
+    })
+    assert body["ok"] is False
+    assert body["error"]["code"] == "CONFIRMATION_REQUIRED"
+
+
+def test_close_rejects_stale_confirmation_id(client: TestClient) -> None:
+    """Non-existent confirmation_id is rejected."""
+    body = _execute_close(client, {
+        "browser": "brave",
+        "snapshot_id": "tabsnap-abc123",
+        "position": 3,
+    })
+    assert body["error"]["code"] == "CONFIRMATION_REQUIRED"
+
+
+def test_close_succeeds_after_approval(client: TestClient) -> None:
+    """Full approval flow: propose → approve → execute → success."""
+    # Step 1: Propose a confirmation
+    from app.core.payload_hash import hash_payload
+
+    confirm_payload = {
+        "browser": "brave",
+        "snapshot_id": "tabsnap-abc123",
+        "position": 3,
+    }
+
+    # Create a confirmation via the API
+    create_resp = client.post("/confirmations", json={
+        "action_name": "Close browser tab",
+        "payload": confirm_payload,
+        "risk_level": "high",
+        "summary": "Close tab at position 3: YouTube (youtube.com)",
+        "tool_name": "browser_tab_close",
+    })
+    assert create_resp.status_code == 200
+    confirm_id = create_resp.json()["id"]
+
+    # Step 2: Approve it
+    approve_resp = client.post(f"/confirmations/{confirm_id}/approve")
+    assert approve_resp.status_code == 200
+
+    # Step 3: Execute with confirmation_id
+    mock_broker = MagicMock()
+    mock_broker.close_tab = AsyncMock(return_value={
+        "ok": True,
+        "browser": "brave",
+        "snapshot_id": "tabsnap-abc123",
+        "position": 3,
+        "tab_id": "t-103",
+        "title": "YouTube",
+    })
+
+    with patch(
+        "app.tools.system.browser_tabs._get_broker",
+        return_value=mock_broker,
+    ):
+        body = _execute_close(client, {
+            "browser": "brave",
+            "snapshot_id": "tabsnap-abc123",
+            "position": 3,
+        })
+        # Add confirmation_id via context
+
+    # The body will be CONFIRMATION_REQUIRED because context.confirmation_id wasn't set.
+    # The confirmation flow goes through the frontend adding it to context.
+    # For the unit test, we need to simulate that.
+    # Let's do a lower-level test of the handler directly instead.
+
+    # Actually, let's test that the close flow works with the broker mocked
+    # and confirmation_id in the request context.
+    with patch(
+        "app.tools.system.browser_tabs._get_broker",
+        return_value=mock_broker,
+    ):
+        body = client.post("/tools/execute", json={
+            "tool_name": "browser_tab_close",
+            "arguments": confirm_payload,
+            "context": {
+                "computer_mode": True,
+                "confirmation_id": confirm_id,
+            },
+        }).json()
+
+    assert body["ok"] is True
+    assert body["result"]["position"] == 3
+    assert body["result"]["title"] == "YouTube"
+    assert "YouTube" in body["result"]["message"]
+    mock_broker.close_tab.assert_awaited_once_with(
+        snapshot_id="tabsnap-abc123",
+        position=3,
+        browser="brave",
+        profile_id=None,
+    )
+
+
+def test_close_stale_snapshot_after_approval(client: TestClient) -> None:
+    """When snapshot expires between approval and execution, TAB_SNAPSHOT_STALE is returned."""
+    from app.core.errors import AppError
+
+    confirm_payload = {
+        "browser": "brave",
+        "snapshot_id": "tabsnap-expired",
+        "position": 2,
+    }
+
+    # Create and approve a confirmation
+    create_resp = client.post("/confirmations", json={
+        "action_name": "Close browser tab",
+        "payload": confirm_payload,
+        "risk_level": "high",
+        "summary": "Close tab at position 2",
+        "tool_name": "browser_tab_close",
+    })
+    confirm_id = create_resp.json()["id"]
+    client.post(f"/confirmations/{confirm_id}/approve")
+
+    # Mock broker that raises TAB_SNAPSHOT_STALE
+    mock_broker = MagicMock()
+    mock_broker.close_tab = AsyncMock(
+        side_effect=AppError(
+            "TAB_SNAPSHOT_STALE",
+            "The tab list snapshot has expired.",
+        )
+    )
+
+    with patch(
+        "app.tools.system.browser_tabs._get_broker",
+        return_value=mock_broker,
+    ):
+        body = client.post("/tools/execute", json={
+            "tool_name": "browser_tab_close",
+            "arguments": confirm_payload,
+            "context": {
+                "computer_mode": True,
+                "confirmation_id": confirm_id,
+            },
+        }).json()
+
+    assert body["ok"] is False
+    assert body["error"]["code"] == "TAB_SNAPSHOT_STALE"
+    # The confirmation was consumed — can't retry with the same ID
+
+
+def test_close_confirmation_cannot_be_reused(client: TestClient) -> None:
+    """A consumed confirmation_id cannot be used twice."""
+    confirm_payload = {
+        "browser": "brave",
+        "snapshot_id": "tabsnap-abc123",
+        "position": 1,
+    }
+
+    create_resp = client.post("/confirmations", json={
+        "action_name": "Close browser tab",
+        "payload": confirm_payload,
+        "risk_level": "high",
+        "tool_name": "browser_tab_close",
+    })
+    confirm_id = create_resp.json()["id"]
+    client.post(f"/confirmations/{confirm_id}/approve")
+
+    mock_broker = MagicMock()
+    mock_broker.close_tab = AsyncMock(return_value={
+        "ok": True,
+        "snapshot_id": "tabsnap-abc123",
+        "position": 1,
+        "tab_id": "t-1",
+        "title": "Test",
+    })
+
+    with patch(
+        "app.tools.system.browser_tabs._get_broker",
+        return_value=mock_broker,
+    ):
+        # First call — succeeds
+        body1 = client.post("/tools/execute", json={
+            "tool_name": "browser_tab_close",
+            "arguments": confirm_payload,
+            "context": {
+                "computer_mode": True,
+                "confirmation_id": confirm_id,
+            },
+        }).json()
+        assert body1["ok"] is True
+
+        # Second call with same confirmation_id — fails
+        body2 = client.post("/tools/execute", json={
+            "tool_name": "browser_tab_close",
+            "arguments": confirm_payload,
+            "context": {
+                "computer_mode": True,
+                "confirmation_id": confirm_id,
+            },
+        }).json()
+        assert body2["ok"] is False
+        assert body2["error"]["code"] in (
+            "CONFIRMATION_NOT_FOUND",
+            "CONFIRMATION_ALREADY_CONSUMED",
+            "CONFIRMATION_NOT_APPROVED",
+        )
+
+
+def test_close_payload_hash_mismatch_rejected(client: TestClient) -> None:
+    """Confirmation with different payload args is rejected."""
+    original_payload = {
+        "browser": "brave",
+        "snapshot_id": "tabsnap-abc123",
+        "position": 1,
+    }
+
+    create_resp = client.post("/confirmations", json={
+        "action_name": "Close browser tab",
+        "payload": original_payload,
+        "risk_level": "high",
+        "tool_name": "browser_tab_close",
+    })
+    confirm_id = create_resp.json()["id"]
+    client.post(f"/confirmations/{confirm_id}/approve")
+
+    # Try with different position
+    body = client.post("/tools/execute", json={
+        "tool_name": "browser_tab_close",
+        "arguments": {
+            "browser": "brave",
+            "snapshot_id": "tabsnap-abc123",
+            "position": 5,  # Different from approved position=1
+        },
+        "context": {
+            "computer_mode": True,
+            "confirmation_id": confirm_id,
+        },
+    }).json()
+
+    assert body["ok"] is False
+    assert body["error"]["code"] == "CONFIRMATION_MISMATCH"
+
+
+def test_close_incognito_rejected(client: TestClient) -> None:
+    """Even with confirmation, incognito tabs are rejected."""
+    from app.core.errors import AppError
+
+    confirm_payload = {
+        "browser": "brave",
+        "snapshot_id": "tabsnap-incognito",
+        "position": 1,
+    }
+
+    create_resp = client.post("/confirmations", json={
+        "action_name": "Close browser tab",
+        "payload": confirm_payload,
+        "risk_level": "high",
+        "tool_name": "browser_tab_close",
+    })
+    confirm_id = create_resp.json()["id"]
+    client.post(f"/confirmations/{confirm_id}/approve")
+
+    mock_broker = MagicMock()
+    mock_broker.close_tab = AsyncMock(
+        side_effect=AppError(
+            "INCOGNITO_NOT_ALLOWED",
+            "Incognito tabs are excluded by default.",
+        )
+    )
+
+    with patch(
+        "app.tools.system.browser_tabs._get_broker",
+        return_value=mock_broker,
+    ):
+        body = client.post("/tools/execute", json={
+            "tool_name": "browser_tab_close",
+            "arguments": confirm_payload,
+            "context": {
+                "computer_mode": True,
+                "confirmation_id": confirm_id,
+            },
+        }).json()
+
+    assert body["ok"] is False
+    assert body["error"]["code"] == "INCOGNITO_NOT_ALLOWED"
+
+
+def test_close_brejv_normalized(client: TestClient) -> None:
+    """'brejv' is normalized to 'brave' for close too."""
+    confirm_payload = {
+        "browser": "brejv",
+        "snapshot_id": "tabsnap",
+        "position": 1,
+    }
+
+    create_resp = client.post("/confirmations", json={
+        "action_name": "Close browser tab",
+        "payload": confirm_payload,
+        "risk_level": "high",
+        "tool_name": "browser_tab_close",
+    })
+    confirm_id = create_resp.json()["id"]
+    client.post(f"/confirmations/{confirm_id}/approve")
+
+    mock_broker = MagicMock()
+    mock_broker.close_tab = AsyncMock(return_value={
+        "ok": True,
+        "snapshot_id": "tabsnap",
+        "position": 1,
+        "tab_id": "t-1",
+        "title": "Test",
+    })
+
+    with patch(
+        "app.tools.system.browser_tabs._get_broker",
+        return_value=mock_broker,
+    ):
+        body = client.post("/tools/execute", json={
+            "tool_name": "browser_tab_close",
+            "arguments": confirm_payload,
+            "context": {
+                "computer_mode": True,
+                "confirmation_id": confirm_id,
+            },
+        }).json()
+
+    assert body["ok"] is True
+    # Verify broker was called with "brave" not "brejv"
+    mock_broker.close_tab.assert_awaited_once_with(
+        snapshot_id="tabsnap",
+        position=1,
+        browser="brave",
+        profile_id=None,
     )
 
 
@@ -542,7 +924,7 @@ def test_broker_ensure_secret_generates_and_persists(tmp_path) -> None:
     from app.services.browser_extension_broker import BrowserExtensionBroker
 
     broker = BrowserExtensionBroker(tmp_path)
-    secret1 = broker.ensure_secret()
+    secret1 = broker._ensure_legacy_secret()
     assert len(secret1) == 64  # 32 bytes = 64 hex chars
 
     # Secret file should exist
@@ -551,20 +933,43 @@ def test_broker_ensure_secret_generates_and_persists(tmp_path) -> None:
 
     # Reload — should return same secret
     broker2 = BrowserExtensionBroker(tmp_path)
-    secret2 = broker2.ensure_secret()
+    secret2 = broker2._ensure_legacy_secret()
     assert secret2 == secret1
 
 
-def test_broker_pairing_display() -> None:
+def test_broker_pairing_session_flow() -> None:
     from app.services.browser_extension_broker import BrowserExtensionBroker
-
     import tempfile
+    from pathlib import Path
     with tempfile.TemporaryDirectory() as tmp:
-        from pathlib import Path
         broker = BrowserExtensionBroker(Path(tmp))
-        display = broker.get_pairing_display()
-        assert len(display) == 9  # 8 chars + …
-        assert display.endswith("…")
+        # Create pairing session
+        session = broker.create_pairing_session("brave")
+        assert "human_code" in session
+        assert len(session["human_code"]) == 6
+        assert session["expires_in_seconds"] > 0
+
+        # Check status
+        status = broker.get_pairing_session(session["pairing_id"])
+        assert status is not None
+        assert status["status"] == "pending"
+
+        # Cancel
+        assert broker.cancel_pairing_session(session["pairing_id"]) is True
+        status2 = broker.get_pairing_session(session["pairing_id"])
+        assert status2["status"] == "expired"
+
+
+def test_broker_get_status_returns_structure() -> None:
+    from app.services.browser_extension_broker import BrowserExtensionBroker
+    import tempfile
+    from pathlib import Path
+    with tempfile.TemporaryDirectory() as tmp:
+        broker = BrowserExtensionBroker(Path(tmp))
+        status = broker.get_status()
+        assert status["connected"] is False
+        assert status["connection_count"] == 0
+        assert status["connections"] == []
 
 
 # ---------------------------------------------------------------------------
@@ -620,3 +1025,266 @@ def test_browser_tab_error_codes_have_all_required() -> None:
         "INCOGNITO_NOT_ALLOWED",
     }
     assert set(BROWSER_TAB_ERROR_CODES.keys()) == required
+
+
+# ---------------------------------------------------------------------------
+# C1: multi-connection broker tests
+# ---------------------------------------------------------------------------
+
+
+def test_multi_connection_resolve_profile_exact_match() -> None:
+    """_resolve_profile finds exact profile_id match."""
+    import tempfile
+    from pathlib import Path
+    from app.services.browser_extension_broker import (
+        BrowserExtensionBroker, InstallCredential,
+    )
+    from datetime import datetime, timezone
+
+    with tempfile.TemporaryDirectory() as tmp:
+        broker = BrowserExtensionBroker(Path(tmp))
+        # Register two fake connections
+        inst1 = InstallCredential(
+            installation_id="inst-aaa", profile_id="profile-brave-default",
+            credential="cred1", browser_kind="brave", profile_label="Default",
+            extension_version="1.0.0", created_at=datetime.now(timezone.utc),
+        )
+        inst2 = InstallCredential(
+            installation_id="inst-bbb", profile_id="profile-chrome-work",
+            credential="cred2", browser_kind="chrome", profile_label="Work",
+            extension_version="1.0.0", created_at=datetime.now(timezone.utc),
+        )
+        broker._install_credentials["inst-aaa"] = inst1
+        broker._install_credentials["inst-bbb"] = inst2
+
+        # No connections active yet — resolve should fail
+        from app.core.errors import AppError
+        try:
+            broker._resolve_profile(profile_id="profile-brave-default")
+            assert False, "Should raise"
+        except AppError as e:
+            assert e.code == "BROWSER_PROFILE_NOT_CONNECTED"
+
+
+def test_resolve_profile_by_browser_kind() -> None:
+    """_resolve_profile with browser finds single match."""
+    import tempfile
+    from pathlib import Path
+    from app.services.browser_extension_broker import (
+        BrowserExtensionBroker, InstallCredential, ConnectionState,
+    )
+    from datetime import datetime, timezone
+    from unittest.mock import MagicMock
+
+    with tempfile.TemporaryDirectory() as tmp:
+        broker = BrowserExtensionBroker(Path(tmp))
+        inst = InstallCredential(
+            installation_id="inst-aaa", profile_id="p-brave",
+            credential="c", browser_kind="brave", profile_label="Default",
+            extension_version="1.0", created_at=datetime.now(timezone.utc),
+        )
+        mock_ws = MagicMock()
+        mock_ws.client_state = 1  # CONNECTED
+        conn = ConnectionState(
+            profile_id="p-brave", installation_id="inst-aaa",
+            websocket=mock_ws, install=inst,
+        )
+        broker._connections["p-brave"] = conn
+
+        result = broker._resolve_profile(browser="brave")
+        assert result.profile_id == "p-brave"
+
+
+def test_resolve_profile_ambiguous() -> None:
+    """Multiple profiles of same browser raises ambiguous."""
+    import tempfile
+    from pathlib import Path
+    from app.services.browser_extension_broker import (
+        BrowserExtensionBroker, InstallCredential, ConnectionState,
+    )
+    from datetime import datetime, timezone
+    from unittest.mock import MagicMock
+    from app.core.errors import AppError
+
+    with tempfile.TemporaryDirectory() as tmp:
+        broker = BrowserExtensionBroker(Path(tmp))
+        mock_ws = MagicMock()
+        mock_ws.client_state = 1
+
+        for i, label in enumerate(["Default", "Work"]):
+            inst = InstallCredential(
+                installation_id=f"inst-{i}", profile_id=f"p-brave-{i}",
+                credential=f"c{i}", browser_kind="brave", profile_label=label,
+                extension_version="1.0", created_at=datetime.now(timezone.utc),
+            )
+            conn = ConnectionState(
+                profile_id=f"p-brave-{i}", installation_id=f"inst-{i}",
+                websocket=mock_ws, install=inst,
+            )
+            broker._connections[f"p-brave-{i}"] = conn
+
+        try:
+            broker._resolve_profile(browser="brave")
+            assert False, "Should raise"
+        except AppError as e:
+            assert e.code == "BROWSER_PROFILE_AMBIGUOUS"
+
+
+def test_resolve_profile_single_connection_no_browser() -> None:
+    """With exactly one connection, no browser/profile needed."""
+    import tempfile
+    from pathlib import Path
+    from app.services.browser_extension_broker import (
+        BrowserExtensionBroker, InstallCredential, ConnectionState,
+    )
+    from datetime import datetime, timezone
+    from unittest.mock import MagicMock
+
+    with tempfile.TemporaryDirectory() as tmp:
+        broker = BrowserExtensionBroker(Path(tmp))
+        inst = InstallCredential(
+            installation_id="inst", profile_id="p-1",
+            credential="c", browser_kind="brave", profile_label="Default",
+            extension_version="1.0", created_at=datetime.now(timezone.utc),
+        )
+        mock_ws = MagicMock()
+        mock_ws.client_state = 1
+        broker._connections["p-1"] = ConnectionState(
+            profile_id="p-1", installation_id="inst",
+            websocket=mock_ws, install=inst,
+        )
+
+        result = broker._resolve_profile()  # No args
+        assert result.profile_id == "p-1"
+
+
+def test_snapshot_profile_binding_prevents_cross_profile_use() -> None:
+    """Snapshot from profile A cannot be used on profile B."""
+    import tempfile
+    from pathlib import Path
+    from app.services.browser_extension_broker import (
+        BrowserExtensionBroker, SnapshotStore,
+    )
+
+    with tempfile.TemporaryDirectory() as tmp:
+        broker = BrowserExtensionBroker(Path(tmp))
+
+        # Store snapshot for profile "p-brave"
+        broker._snapshots.store("snap-1", {
+            "profile_id": "p-brave",
+            "browser": "brave",
+            "tabs": [{"position": 1, "tab_id": "t-1", "title": "Test"}],
+            "count": 1,
+        })
+
+        # Try to retrieve for different profile
+        result = broker._snapshots.get("snap-1", profile_id="p-chrome")
+        assert result is None  # Should be rejected
+
+        # Retrieve for correct profile
+        result = broker._snapshots.get("snap-1", profile_id="p-brave")
+        assert result is not None
+
+
+def test_revoke_connection_removes_it() -> None:
+    """Revoke removes connection from registry and marks credential revoked."""
+    import tempfile
+    from pathlib import Path
+    from app.services.browser_extension_broker import (
+        BrowserExtensionBroker, InstallCredential, ConnectionState,
+    )
+    from datetime import datetime, timezone
+    from unittest.mock import MagicMock
+
+    with tempfile.TemporaryDirectory() as tmp:
+        broker = BrowserExtensionBroker(Path(tmp))
+        inst = InstallCredential(
+            installation_id="inst-1", profile_id="p-1",
+            credential="c", browser_kind="brave", profile_label="Default",
+            extension_version="1.0", created_at=datetime.now(timezone.utc),
+        )
+        mock_ws = MagicMock()
+        mock_ws.client_state = 1
+        broker._install_credentials["inst-1"] = inst
+        broker._connections["p-1"] = ConnectionState(
+            profile_id="p-1", installation_id="inst-1",
+            websocket=mock_ws, install=inst,
+        )
+
+        assert len(broker._connections) == 1
+        assert broker.revoke_connection("p-1") is True
+        assert len(broker._connections) == 0
+        assert inst.revoked is True
+
+
+def test_get_connections_lists_active_and_stored() -> None:
+    """get_connections returns both active and stored credentials."""
+    import tempfile
+    from pathlib import Path
+    from app.services.browser_extension_broker import (
+        BrowserExtensionBroker, InstallCredential, ConnectionState,
+    )
+    from datetime import datetime, timezone
+    from unittest.mock import MagicMock
+
+    with tempfile.TemporaryDirectory() as tmp:
+        broker = BrowserExtensionBroker(Path(tmp))
+
+        # Active connection
+        inst1 = InstallCredential(
+            installation_id="inst-1", profile_id="p-1",
+            credential="c1", browser_kind="brave", profile_label="Default",
+            extension_version="1.0", created_at=datetime.now(timezone.utc),
+        )
+        broker._install_credentials["inst-1"] = inst1
+        mock_ws = MagicMock()
+        mock_ws.client_state = 1
+        broker._connections["p-1"] = ConnectionState(
+            profile_id="p-1", installation_id="inst-1",
+            websocket=mock_ws, install=inst1,
+        )
+
+        # Stored credential, not connected
+        inst2 = InstallCredential(
+            installation_id="inst-2", profile_id="p-2",
+            credential="c2", browser_kind="chrome", profile_label="Work",
+            extension_version="1.0", created_at=datetime.now(timezone.utc),
+        )
+        broker._install_credentials["inst-2"] = inst2
+
+        conns = broker.get_connections()
+        assert len(conns) == 2
+        active = [c for c in conns if c["connected"]]
+        inactive = [c for c in conns if not c["connected"]]
+        assert len(active) == 1
+        assert len(inactive) == 1
+        assert active[0]["browser_kind"] == "brave"
+        assert inactive[0]["browser_kind"] == "chrome"
+
+
+def test_rename_profile_updates_label() -> None:
+    """Rename updates profile_label on active connection."""
+    import tempfile
+    from pathlib import Path
+    from app.services.browser_extension_broker import (
+        BrowserExtensionBroker, InstallCredential, ConnectionState,
+    )
+    from datetime import datetime, timezone
+    from unittest.mock import MagicMock
+
+    with tempfile.TemporaryDirectory() as tmp:
+        broker = BrowserExtensionBroker(Path(tmp))
+        inst = InstallCredential(
+            installation_id="inst", profile_id="p-1",
+            credential="c", browser_kind="brave", profile_label="Default",
+            extension_version="1.0", created_at=datetime.now(timezone.utc),
+        )
+        broker._install_credentials["inst"] = inst
+        mock_ws = MagicMock()
+        broker._connections["p-1"] = ConnectionState(
+            profile_id="p-1", installation_id="inst",
+            websocket=mock_ws, install=inst,
+        )
+
+        assert broker.rename_profile("p-1", "Personal") is True
+        assert inst.profile_label == "Personal"

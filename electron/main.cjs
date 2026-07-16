@@ -115,6 +115,32 @@ const {
 } = require("./tools_legacy/legacyMedia.cjs");
 const { handleEventsList } = require("./ipc_handlers/events.cjs");
 const { handleSettingsGet, handleSettingsUpdate } = require("./ipc_handlers/settings.cjs");
+
+// C0: Browser Bridge — thin IPC pass-through to Python backend
+// No business logic here; these only forward HTTP calls to the backend.
+async function handleBrowserBridgeStatus() {
+  try {
+    return await requestJson("/browser-bridge/status");
+  } catch (e) {
+    return { connected: false };
+  }
+}
+async function handleBrowserPairingStart(_event, { browserKind }) {
+  return await requestJson("/browser-bridge/pairing-sessions", {
+    method: "POST",
+    // requestJson is the single JSON serialization boundary. Passing an
+    // already-stringified value made FastAPI receive a JSON string and return
+    // 422 instead of the PairingSessionRequest object.
+    // Context: agent_reports/2026-07-16_browser-bridge-c0.md
+    body: { browser_kind: browserKind },
+  });
+}
+async function handleBrowserPairingStatus(_event, { pairingId }) {
+  return await requestJson(`/browser-bridge/pairing-sessions/${encodeURIComponent(pairingId)}`);
+}
+async function handleBrowserPairingCancel(_event, { pairingId }) {
+  return await requestJson(`/browser-bridge/pairing-sessions/${encodeURIComponent(pairingId)}`, { method: "DELETE" });
+}
 const { handleTextRewrite } = require("./ipc_handlers/text.cjs");
 const { handleScreenshotsList, handleScreenshotsDeleteAll } = require("./ipc_handlers/screenshots.cjs");
 const { handleThumbnailAddReference, handleThumbnailSaveAs } = require("./ipc_handlers/thumbnails.cjs");
@@ -233,6 +259,7 @@ const PHASE11_DELEGATED_TOOLS = new Set([
   // FAZA 13: computer-use tools now have Python equivalents (ctypes + Win32 API).
   "browser_open",
   "browser_tabs",
+  "browser_tab_close",
   "computer_open_app",
   "computer_type_text",
   "computer_press_key",
@@ -263,6 +290,9 @@ const LEGACY_FAIL_CLOSED_TOOLS = new Set([
   // would otherwise fall all the way through to "Unknown tool" instead of
   // this clear, correctly-attributed error.
   "email_prepare_draft",
+  // browser_tab_close (docs/PI_BROWSER_TAB_CONTROL_BRIEF.md PR 3) — same
+  // reasoning: high-risk, requires user confirmation, no legacy fallback.
+  "browser_tab_close",
 ]);
 
 // Adapt a Python ToolExecutionResponse into the legacy {ok, artifact, ...}
@@ -778,6 +808,11 @@ registerIpcHandlers({
   // kill-switch path as Ctrl+Alt+K: forces display mode + forwards app:kill-switch
   // to the main window (whose runKillSwitch tears down voice + cancels backend tools).
   "companion:stop": triggerKillSwitch,
+  // C0: Browser Bridge — pairing and status (thin IPC, no business logic)
+  "browser-bridge:status": handleBrowserBridgeStatus,
+  "browser-bridge:pairing-start": handleBrowserPairingStart,
+  "browser-bridge:pairing-status": handleBrowserPairingStatus,
+  "browser-bridge:pairing-cancel": handleBrowserPairingCancel,
 });
 
 // FAZA S-4: global kill-switch hotkey. Ctrl+Alt+K only — F10/F11 were dropped
