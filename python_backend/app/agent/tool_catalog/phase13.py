@@ -22,6 +22,7 @@ def register_phase13_tools(registry: ToolRegistry) -> None:
     from app.tools.system.browser import make_handler as make_browser_handler
     from app.tools.system.browser_tabs import make_handler as make_browser_tabs_handler
     from app.tools.system.browser_tabs import make_close_handler as make_browser_tab_close_handler
+    from app.tools.system.browser_tabs import make_open_handler as make_browser_tab_open_handler
 
     handlers = make_computer_handlers()
 
@@ -211,4 +212,25 @@ def register_phase13_tools(registry: ToolRegistry) -> None:
             timeout_ms=15000,
         ),
         make_browser_tab_close_handler(),
+    )
+
+    registry.register(
+        _def(
+            "browser_tab_open",
+            "Open a URL as a new tab in a specific connected browser profile. URL must be an absolute HTTP(S) address — never pass 'about:blank' or arbitrary schemes. The tab opens in the browser/profile specified; if no profile_id is given, the last connected profile of that browser is used. Use after browser_tabs(list) to discover available profiles. For opening a browser that isn't open yet, use browser_open instead.",
+            {
+                "type": "object",
+                "properties": {
+                    "browser": {"type": "string", "enum": ["brave", "brejv", "chrome"], "description": "Target browser."},
+                    "profile_id": {"type": "string", "description": "Stable profile ID from a list snapshot. Routes to the correct profile."},
+                    "url": {"type": "string", "description": "Absolute HTTP(S) URL to open."},
+                    "activate": {"type": "boolean", "description": "Whether to activate (focus) the new tab. Default: true."},
+                },
+                "required": ["url"],
+                "additionalProperties": False,
+            },
+            risk="medium",
+            timeout_ms=15000,
+        ),
+        make_browser_tab_open_handler(),
     )

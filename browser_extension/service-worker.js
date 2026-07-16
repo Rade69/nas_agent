@@ -281,6 +281,11 @@ async function handleMessage(msg) {
       break;
     }
 
+    case "open_tab": {
+      await handleOpenTab(request_id, payload);
+      break;
+    }
+
     case "ping": {
       sendMessage({ type: "pong", request_id });
       break;
@@ -373,6 +378,32 @@ async function handleCloseTab(requestId, { tab_id }) {
       request_id: requestId,
       code: "TAB_CLOSE_FAILED",
       message: `Failed to close tab: ${err.message}`,
+    });
+  }
+}
+
+async function handleOpenTab(requestId, { url, activate }) {
+  if (requestId && STATE.processedRequestIds.has(requestId)) return;
+  if (requestId) STATE.processedRequestIds.add(requestId);
+
+  try {
+    const tab = await chrome.tabs.create({
+      url: url || "about:blank",
+      active: activate !== false,
+    });
+    sendMessage({
+      type: "tab_opened",
+      request_id: requestId,
+      tab_id: String(tab.id),
+      title: tab.title || "",
+      url: tab.url || url,
+    });
+  } catch (err) {
+    sendMessage({
+      type: "error",
+      request_id: requestId,
+      code: "TAB_OPEN_FAILED",
+      message: `Failed to open tab: ${err.message}`,
     });
   }
 }

@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from app.core.errors import AppError
 from app.services.browser_extension_broker import get_broker
+from app.services.chromium_discovery import discover_browsers, normalize_browser
 
 router = APIRouter(tags=["browser-bridge"])
 
@@ -59,6 +60,17 @@ class PairingSessionStatus(BaseModel):
 
 class RenameProfileRequest(BaseModel):
     profile_label: str
+
+
+class BrowserInfo(BaseModel):
+    browser_kind: str
+    display_name: str
+    installed: bool
+    profile_dirs: list[str]
+
+
+class BrowsersListResponse(BaseModel):
+    browsers: list[BrowserInfo]
 
 
 # --- Endpoints ---
@@ -117,7 +129,12 @@ def cancel_pairing_session(pairing_id: str, request: Request) -> dict:
     raise AppError("PAIRING_SESSION_NOT_FOUND", "Not found or already consumed.", status_code=404)
 
 
-@router.post("/browser-bridge/connections/{profile_id}/revoke")
+@router.get("/browser-bridge/browsers", response_model=BrowsersListResponse)
+def list_browsers(request: Request) -> BrowsersListResponse:
+    discovered = discover_browsers()
+    return BrowsersListResponse(
+        browsers=[BrowserInfo(**b) for b in discovered],
+    )
 def revoke_connection(profile_id: str, request: Request) -> dict:
     broker = get_broker()
     if broker.revoke_connection(profile_id):

@@ -260,6 +260,7 @@ const PHASE11_DELEGATED_TOOLS = new Set([
   "browser_open",
   "browser_tabs",
   "browser_tab_close",
+  "browser_tab_open",
   "computer_open_app",
   "computer_type_text",
   "computer_press_key",

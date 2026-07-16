@@ -414,6 +414,23 @@ const toolSpecs = [
   },
   {
     type: "function",
+    name: "browser_tab_open",
+    risk: "medium",
+    description: "Open a URL as a new tab in a connected Brave/Chrome/Edge profile. URL must be absolute HTTP(S). Use after browser_tabs(list) to see available profiles. For a cold browser, use browser_open instead.",
+    parameters: {
+      type: "object",
+      properties: {
+        browser: { type: "string", enum: ["brave", "brejv", "chrome"] },
+        profile_id: { type: "string", description: "Stable profile ID from a snapshot." },
+        url: { type: "string", description: "Absolute HTTP(S) URL to open." },
+        activate: { type: "boolean", description: "Activate the new tab. Default true." },
+      },
+      required: ["url"],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: "function",
     name: "screen_snapshot",
     risk: "low",
     reads_external_content: true,

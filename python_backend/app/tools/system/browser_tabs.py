@@ -188,3 +188,49 @@ def make_handler():
 def make_close_handler():
     """Return the browser_tab_close handler for ToolRegistry."""
     return _handle_browser_tab_close
+
+
+def make_open_handler():
+    """Return the browser_tab_open handler for ToolRegistry."""
+    return _handle_browser_tab_open
+
+
+# ---------------------------------------------------------------------------
+# browser_tab_open — open URL in a connected profile (C2)
+# ---------------------------------------------------------------------------
+
+
+def _handle_browser_tab_open(arguments: dict[str, Any]) -> dict[str, Any]:
+    """Open a URL as a new tab in a specific connected browser profile.
+
+    Uses the extension's chrome.tabs.create API. Only absolute HTTP(S)
+    URLs are allowed. The new tab is opened in the specified browser/profile;
+    if no profile_id is given, the broker routes to the matching connection.
+    """
+    import asyncio
+    from urllib.parse import urlparse
+
+    raw_browser = str(arguments.get("browser", "brave")).strip().lower() or "brave"
+    browser = _normalize_browser(raw_browser)
+    _validate_browser(browser)
+
+    url = str(arguments.get("url", "")).strip()
+    if not url:
+        url = "about:blank"  # Internal only — model cannot pass this
+    else:
+        # Strict HTTP(S) validation
+        parsed = urlparse(url)
+        if parsed.scheme.lower() not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("url must be an absolute http:// or https:// URL.")
+        if parsed.username is not None or parsed.password is not None:
+            raise ValueError("url must not contain embedded credentials.")
+
+    activate = bool(arguments.get("activate", True))
+    profile_id = str(arguments.get("profile_id", "")).strip() or None
+
+    broker = _get_broker()
+    result = asyncio.run(broker.open_tab(
+        url=url, activate=activate,
+        browser=browser, profile_id=profile_id,
+    ))
+    return result

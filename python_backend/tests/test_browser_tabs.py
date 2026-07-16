@@ -1288,3 +1288,98 @@ def test_rename_profile_updates_label() -> None:
 
         assert broker.rename_profile("p-1", "Personal") is True
         assert inst.profile_label == "Personal"
+
+
+# ---------------------------------------------------------------------------
+# C2: browser_tab_open + discovery tests
+# ---------------------------------------------------------------------------
+
+
+def test_browser_tab_open_is_listed(client: TestClient) -> None:
+    """browser_tab_open is registered with medium risk."""
+    tools = {tool["name"]: tool for tool in client.get("/tools").json()["tools"]}
+    tool = tools["browser_tab_open"]
+    assert tool["risk"] == "medium"
+    assert tool["requires_confirmation"] is False
+    assert tool["requires_computer_mode"] is True
+
+
+def test_browser_tab_open_rejects_unsafe_url(client: TestClient) -> None:
+    """Non-HTTP(S) URLs are rejected."""
+    body = client.post("/tools/execute", json={
+        "tool_name": "browser_tab_open",
+        "arguments": {"browser": "brave", "url": "file:///C:/evil.exe"},
+        "context": {"computer_mode": True},
+    }).json()
+    assert body["ok"] is False
+    assert body["error"]["code"] == "INVALID_ARGUMENTS"
+
+
+def test_browser_tab_open_rejects_embedded_credentials(client: TestClient) -> None:
+    body = client.post("/tools/execute", json={
+        "tool_name": "browser_tab_open",
+        "arguments": {"browser": "brave", "url": "https://user:pass@evil.com"},
+        "context": {"computer_mode": True},
+    }).json()
+    assert body["ok"] is False
+    assert body["error"]["code"] == "INVALID_ARGUMENTS"
+
+
+def test_browser_tab_open_succeeds_with_mock(client: TestClient) -> None:
+    """browser_tab_open calls broker.open_tab with correct params."""
+    mock_broker = MagicMock()
+    mock_broker.open_tab = AsyncMock(return_value={
+        "ok": True,
+        "browser": "brave",
+        "profile_id": "p-brave",
+        "profile_label": "Default",
+        "url": "https://youtube.com",
+        "tab_id": "t-new",
+        "title": "YouTube",
+        "message": "Opened new tab in brave/Default: https://youtube.com",
+    })
+
+    with patch(
+        "app.tools.system.browser_tabs._get_broker",
+        return_value=mock_broker,
+    ):
+        body = client.post("/tools/execute", json={
+            "tool_name": "browser_tab_open",
+            "arguments": {
+                "browser": "brave",
+                "url": "https://youtube.com",
+                "profile_id": "p-brave",
+            },
+            "context": {"computer_mode": True},
+        }).json()
+
+    assert body["ok"] is True
+    mock_broker.open_tab.assert_awaited_once_with(
+        url="https://youtube.com", activate=True,
+        browser="brave", profile_id="p-brave",
+    )
+
+
+def test_browser_discovery_returns_known_browsers() -> None:
+    """discover_browsers returns entries for all Tier 1 browsers."""
+    from app.services.chromium_discovery import discover_browsers
+    import sys
+    if sys.platform != "win32":
+        import pytest
+        pytest.skip("Browser discovery only works on Windows")
+
+    browsers = discover_browsers()
+    kinds = {b["browser_kind"] for b in browsers}
+    for tier1 in ("chrome", "edge", "brave"):
+        assert tier1 in kinds
+
+
+def test_browser_normalize_aliases() -> None:
+    """Speech-to-text aliases normalize correctly."""
+    from app.services.chromium_discovery import normalize_browser
+    assert normalize_browser("brejv") == "brave"
+    assert normalize_browser("edž") == "edge"
+    assert normalize_browser("hrom") == "chrome"
+    assert normalize_browser("opera gx") == "opera_gx"
+    assert normalize_browser("opera ge-iks") == "opera_gx"
+    assert normalize_browser("chrome") == "chrome"  # unchanged

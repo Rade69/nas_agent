@@ -764,6 +764,35 @@ class BrowserExtensionBroker:
             "title": tab.get("title", ""),
         }
 
+    async def open_tab(
+        self, url: str, activate: bool = True,
+        browser: str | None = None, profile_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Open a new tab with the given URL in the specified profile."""
+        conn = self._resolve_profile(browser=browser, profile_id=profile_id)
+        result = await self._send_and_wait({
+            "type": "open_tab",
+            "url": url,
+            "activate": activate,
+        }, conn)
+
+        if result.get("type") == "error":
+            raise AppError(
+                result.get("code", "TAB_ACTION_FAILED"),
+                result.get("message", "Failed to open tab."),
+            )
+
+        return {
+            "ok": True,
+            "browser": conn.install.browser_kind,
+            "profile_id": conn.install.profile_id,
+            "profile_label": conn.install.profile_label,
+            "url": url,
+            "tab_id": result.get("tab_id"),
+            "title": result.get("title", ""),
+            "message": f"Opened new tab in {conn.install.browser_kind}/{conn.install.profile_label}: {url}",
+        }
+
 
 # ---------------------------------------------------------------------------
 # Helpers
