@@ -176,7 +176,7 @@ def register_phase13_tools(registry: ToolRegistry) -> None:
                 "type": "object",
                 "properties": {
                     "action": {"type": "string", "enum": ["list", "activate"], "description": "What to do with the tabs."},
-                    "browser": {"type": "string", "enum": ["brave", "brejv", "chrome"], "description": "Target browser. 'brejv' normalizes to 'brave'."},
+                    "browser": {"type": "string", "enum": ["brave", "brejv", "chrome", "edge", "vivaldi", "opera", "opera_gx", "chromium"], "description": "Target browser. 'brejv' normalizes to 'brave', 'edž' to 'edge'."},
                     "scope": {"type": "string", "enum": ["current_window", "all_windows"], "description": "Tab scope. Default is current_window."},
                     "profile_id": {"type": "string", "description": "Optional stable profile ID from the snapshot. Use when multiple profiles of the same browser are connected."},
                     "snapshot_id": {"type": "string", "description": "REQUIRED for activate. The snapshot_id from the most recent list result."},
@@ -195,11 +195,11 @@ def register_phase13_tools(registry: ToolRegistry) -> None:
     registry.register(
         _def(
             "browser_tab_close",
-            "Close a Brave or Chrome browser tab by its 1-based position from a snapshot. This tool requires explicit user confirmation — the user will see a confirmation dialog before the tab is closed. Always call browser_tabs(action=\"list\") first to get a fresh snapshot_id, profile_id, and current positions. Pass the profile_id from the snapshot to ensure the close targets the correct browser profile. Never guess tab numbers. On TAB_SNAPSHOT_STALE or TAB_PROFILE_MISMATCH, re-list and try again. Serbian 'Brejv' = Brave.",
+            "Close a Brave/Chrome/Edge/Vivaldi/Opera/Opera GX/Chromium browser tab by its 1-based position from a snapshot. This tool requires explicit user confirmation — the user will see a confirmation dialog before the tab is closed. Always call browser_tabs(action=\"list\") first to get a fresh snapshot_id, profile_id, and current positions. Pass the profile_id from the snapshot to ensure the close targets the correct browser profile. Never guess tab numbers. On TAB_SNAPSHOT_STALE or TAB_PROFILE_MISMATCH, re-list and try again. Serbian 'Brejv' = Brave.",
             {
                 "type": "object",
                 "properties": {
-                    "browser": {"type": "string", "enum": ["brave", "brejv", "chrome"], "description": "Target browser."},
+                    "browser": {"type": "string", "enum": ["brave", "brejv", "chrome", "edge", "vivaldi", "opera", "opera_gx", "chromium"], "description": "Target browser."},
                     "profile_id": {"type": "string", "description": "Stable profile ID from the list snapshot. Ensures close targets the right profile."},
                     "snapshot_id": {"type": "string", "description": "The snapshot_id from the most recent browser_tabs list call."},
                     "position": {"type": "number", "minimum": 1, "description": "1-based position of the tab to close."},
@@ -221,7 +221,7 @@ def register_phase13_tools(registry: ToolRegistry) -> None:
             {
                 "type": "object",
                 "properties": {
-                    "browser": {"type": "string", "enum": ["brave", "brejv", "chrome"], "description": "Target browser."},
+                    "browser": {"type": "string", "enum": ["brave", "brejv", "chrome", "edge", "vivaldi", "opera", "opera_gx", "chromium"], "description": "Target browser."},
                     "profile_id": {"type": "string", "description": "Stable profile ID from a list snapshot. Routes to the correct profile."},
                     "url": {"type": "string", "description": "Absolute HTTP(S) URL to open."},
                     "activate": {"type": "boolean", "description": "Whether to activate (focus) the new tab. Default: true."},

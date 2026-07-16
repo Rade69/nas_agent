@@ -34,9 +34,9 @@ def _normalize_browser(raw: str) -> str:
 
 def _validate_browser(browser: str) -> str:
     """Validate browser is an allowed value."""
-    allowed = {"brave", "chrome"}
+    allowed = {"brave", "chrome", "edge", "vivaldi", "opera", "opera_gx", "chromium"}
     if browser not in allowed:
-        raise ValueError("browser must be one of: brave, brejv, chrome.")
+        raise ValueError(f"browser must be one of: {', '.join(sorted(allowed))}.")
     return browser
 
 

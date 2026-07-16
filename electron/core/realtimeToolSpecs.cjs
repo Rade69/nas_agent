@@ -385,7 +385,7 @@ const toolSpecs = [
       type: "object",
       properties: {
         action: { type: "string", enum: ["list", "activate"] },
-        browser: { type: "string", enum: ["brave", "brejv", "chrome"] },
+        browser: { type: "string", enum: ["brave", "brejv", "chrome", "edge", "vivaldi", "opera", "opera_gx", "chromium"] },
         scope: { type: "string", enum: ["current_window", "all_windows"] },
         profile_id: { type: "string", description: "Optional stable profile ID. Use when multiple profiles of the same browser are connected." },
         snapshot_id: { type: "string", description: "Required for activate. The snapshot_id from the most recent list call." },
@@ -403,7 +403,7 @@ const toolSpecs = [
     parameters: {
       type: "object",
       properties: {
-        browser: { type: "string", enum: ["brave", "brejv", "chrome"] },
+        browser: { type: "string", enum: ["brave", "brejv", "chrome", "edge", "vivaldi", "opera", "opera_gx", "chromium"] },
         profile_id: { type: "string", description: "Stable profile ID from the snapshot. Ensures close targets the right profile." },
         snapshot_id: { type: "string", description: "The snapshot_id from the most recent browser_tabs list call." },
         position: { type: "number", minimum: 1, description: "1-based position of the tab to close." },
@@ -420,7 +420,7 @@ const toolSpecs = [
     parameters: {
       type: "object",
       properties: {
-        browser: { type: "string", enum: ["brave", "brejv", "chrome"] },
+        browser: { type: "string", enum: ["brave", "brejv", "chrome", "edge", "vivaldi", "opera", "opera_gx", "chromium"] },
         profile_id: { type: "string", description: "Stable profile ID from a snapshot." },
         url: { type: "string", description: "Absolute HTTP(S) URL to open." },
         activate: { type: "boolean", description: "Activate the new tab. Default true." },

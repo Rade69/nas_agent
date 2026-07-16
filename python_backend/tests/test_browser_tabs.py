@@ -140,6 +140,19 @@ def test_rejects_unknown_browser(client: TestClient) -> None:
     assert body["error"]["code"] == "INVALID_ARGUMENTS"
 
 
+def test_all_tier_browsers_accepted(client: TestClient) -> None:
+    """All Tier 1 + Tier 2 browsers pass validation."""
+    tier_browsers = ["brave", "chrome", "edge", "vivaldi", "opera", "opera_gx", "chromium"]
+    with patch(
+        "app.tools.system.browser_tabs._get_broker_imported",
+        side_effect=RuntimeError("not initialized"),
+    ):
+        for browser in tier_browsers:
+            body = _execute(client, {"action": "list", "browser": browser})
+            assert body["error"]["code"] == "BROWSER_EXTENSION_NOT_CONNECTED", \
+                f"Browser '{browser}' should be accepted but validation failed"
+
+
 # ---------------------------------------------------------------------------
 # Snapshot / positional argument validation (activate/close stubs)
 # ---------------------------------------------------------------------------
