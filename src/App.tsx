@@ -97,6 +97,8 @@ export default function App() {
   const [pendingConfirmation, setPendingConfirmation] = useState<Confirmation | null>(null);
   const [confirmationBusy, setConfirmationBusy] = useState(false);
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(false);
+  const [plansError, setPlansError] = useState<string | null>(null);
   const [busyPlanId, setBusyPlanId] = useState<string | null>(null);
   const [busyStepId, setBusyStepId] = useState<string | null>(null);
   const [screen, setScreen] = useState<ScreenState>("home");
@@ -484,20 +486,24 @@ export default function App() {
   }
 
   async function refreshPlans() {
+    setPlansLoading(true);
+    setPlansError(null);
     try {
       const response = await window.ricky.listPlans();
       setPlans(response?.plans ?? []);
-    } catch {
-      /* silent */
+    } catch (err: any) {
+      setPlansError(err?.message || i18n.t("plans.loadError"));
+    } finally {
+      setPlansLoading(false);
     }
   }
 
-  async function handleCreatePlan() {
+  async function handleCreatePlan(title: string) {
     try {
-      const created = await window.ricky.createPlan({ title: "Novi plan" });
+      const created = await window.ricky.createPlan({ title });
       if (created) setPlans((list) => [created, ...list]);
     } catch {
-      /* silent */
+      /* silent — don't block the UI */
     }
   }
 
@@ -669,6 +675,8 @@ export default function App() {
         activityEvents={activityEvents}
         transcript={transcript}
         plans={plans}
+        plansLoading={plansLoading}
+        plansError={plansError}
         activeDrawer={activeDrawer}
         backendConnected={backendConnected}
         busyPlanId={busyPlanId}

@@ -32,6 +32,8 @@ export function PixelMockupBoard({
   activityEvents,
   transcript,
   plans,
+  plansLoading,
+  plansError,
   activeDrawer,
   backendConnected,
   busyPlanId,
@@ -80,6 +82,8 @@ export function PixelMockupBoard({
   activityEvents: ActivityEvent[];
   transcript: TranscriptEntry[];
   plans: Plan[];
+  plansLoading: boolean;
+  plansError: string | null;
   activeDrawer: DrawerState;
   backendConnected: boolean;
   busyPlanId: string | null;
@@ -112,7 +116,7 @@ export function PixelMockupBoard({
   onCloseDrawer: () => void;
   onUpdatePlanStatus: (planId: string, status: string) => Promise<void>;
   onUpdateStepStatus: (planId: string, stepId: string, status: string) => Promise<void>;
-  onCreatePlan: () => Promise<void>;
+  onCreatePlan: (title: string) => Promise<void>;
 }) {
   const { t } = useTranslation();
   return (
@@ -197,6 +201,8 @@ export function PixelMockupBoard({
                     <PlansPanel
                       visible={true}
                       plans={plans}
+                      loading={plansLoading}
+                      error={plansError}
                       busyPlanId={busyPlanId}
                       busyStepId={busyStepId}
                       onUpdatePlanStatus={onUpdatePlanStatus}

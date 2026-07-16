@@ -3,7 +3,7 @@
  *  actions. Localized via i18next (Localization PR-2).
  *  Context: agent_reports/2026-07-11_gui-localization-pr2.md */
 import { useState } from "react";
-import { Check } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import type { Plan, PlanStatus, PlanStep, PlanStepStatus } from "../vite-env";
@@ -14,11 +14,13 @@ import IconError from "../../assets/brending/icons/status/icon-status-error.svg?
 type PlansPanelProps = {
   visible: boolean;
   plans: Plan[];
+  loading: boolean;
+  error: string | null;
   busyPlanId: string | null;
   busyStepId: string | null;
   onUpdatePlanStatus: (planId: string, status: Plan["status"]) => void;
   onUpdateStepStatus: (planId: string, stepId: string, status: PlanStepStatus) => void;
-  onCreatePlan: () => void;
+  onCreatePlan: (title: string) => void;
 };
 
 const STEP_STATUS_NEXT: Record<PlanStepStatus, PlanStepStatus | null> = {
@@ -92,6 +94,8 @@ function statusIcon(status: PlanStatus) {
 export function PlansPanel({
   visible,
   plans,
+  loading,
+  error,
   busyPlanId,
   busyStepId,
   onUpdatePlanStatus,
@@ -100,9 +104,27 @@ export function PlansPanel({
 }: PlansPanelProps) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<PlanTab>("aktivni");
+  // P0: inline creation form — user names the plan before creating
+  const [isCreating, setIsCreating] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
   if (!visible) return null;
 
   const filteredPlans = plans.filter((plan) => TAB_STATUSES[tab].includes(plan.status));
+
+  // P0: per-tab empty state descriptions (more concrete than generic "empty")
+  const emptyDescriptions: Record<PlanTab, string> = {
+    aktivni: t("plans.emptyActive"),
+    predlozeni: t("plans.emptyProposed"),
+    zavrseni: t("plans.emptyCompleted"),
+  };
+
+  const handleSubmitNewPlan = () => {
+    const trimmed = newTitle.trim();
+    if (!trimmed) return;
+    onCreatePlan(trimmed);
+    setNewTitle("");
+    setIsCreating(false);
+  };
 
   return (
     <section className="plans-panel" aria-label="Ricky plans and proposals">
@@ -119,8 +141,19 @@ export function PlansPanel({
       </div>
 
       <div className="plans-list">
-        {filteredPlans.length === 0 ? (
-          <p className="plans-empty">{t("plans.empty")}</p>
+        {loading ? (
+          <div className="plans-status">
+            <Loader2 size={18} className="plans-spinner" />
+            <span>{t("plans.loading")}</span>
+          </div>
+        ) : error ? (
+          <div className="plans-status plans-status-error">
+            <span>{error}</span>
+          </div>
+        ) : filteredPlans.length === 0 ? (
+          <div className="plans-empty-container">
+            <p className="plans-empty">{emptyDescriptions[tab]}</p>
+          </div>
         ) : (
           filteredPlans.map((plan) => {
             const badge = statusBadge(plan.status);
@@ -208,9 +241,38 @@ export function PlansPanel({
         )}
       </div>
 
-      <button className="plans-new-btn" onClick={onCreatePlan}>
-        {t("previews.newPlan")}
-      </button>
+      {/* P0: inline creation form or new-plan button */}
+      {isCreating ? (
+        <div className="plans-create-form">
+          <input
+            className="plans-create-input"
+            type="text"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSubmitNewPlan();
+              if (e.key === "Escape") { setIsCreating(false); setNewTitle(""); }
+            }}
+            placeholder={t("plans.newPlanPlaceholder")}
+            autoFocus
+          />
+          <div className="plans-create-actions">
+            <button className="pixel-primary" onClick={handleSubmitNewPlan} disabled={!newTitle.trim()}>
+              {t("plans.create")}
+            </button>
+            <button
+              className="pixel-secondary"
+              onClick={() => { setIsCreating(false); setNewTitle(""); }}
+            >
+              {t("plans.cancel")}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button className="plans-new-btn" onClick={() => setIsCreating(true)}>
+          {t("previews.newPlan")}
+        </button>
+      )}
     </section>
   );
 }
