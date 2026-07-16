@@ -63,8 +63,13 @@ const toolSpecs = [
         summary: { type: "string", description: "Brief description." },
         steps: {
           type: "array",
-          description: "Ordered step titles.",
-          items: { type: "object", properties: { title: { type: "string" } }, required: ["title"] },
+          description: "Ordered step titles. Each item may be a string or an object with a title field.",
+          items: {
+            oneOf: [
+              { type: "string" },
+              { type: "object", properties: { title: { type: "string" } }, required: ["title"] },
+            ],
+          },
         },
       },
       required: ["title"],

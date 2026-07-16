@@ -79,6 +79,6 @@ def create_default_registry(services: dict[str, Any] | None = None) -> ToolRegis
     )
     if services is not None:
         register_phase11_tools(registry, services)
-        register_phase13_tools(registry)
+        register_phase13_tools(registry, services)
         register_phase14_tools(registry)
     return registry

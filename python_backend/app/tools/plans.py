@@ -8,12 +8,13 @@ from __future__ import annotations
 
 from typing import Any
 
+from collections.abc import Callable
+
 from app.core.errors import AppError
+from app.services.plan_service import PlanService
 
 
-def _handle_create_plan(arguments: dict[str, Any]) -> dict[str, Any]:
-    from app.main import app
-    plan_service = app.state.plan_service
+def _create_plan(plan_service: PlanService, arguments: dict[str, Any]) -> dict[str, Any]:
     if plan_service is None:
         raise AppError("PLANS_UNAVAILABLE", "Plan service is not initialized.")
 
@@ -52,5 +53,5 @@ def _handle_create_plan(arguments: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def make_handler():
-    return _handle_create_plan
+def make_handler(plan_service: PlanService) -> Callable[[dict[str, Any]], dict[str, Any]]:
+    return lambda arguments: _create_plan(plan_service, arguments)

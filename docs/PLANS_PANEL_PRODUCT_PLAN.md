@@ -292,7 +292,7 @@ Acceptance:
 - korak moze preci pending -> running -> done;
 - blokiran korak jasno prikazuje razlog.
 
-### P2 — agent proposed plans
+### P2 — agent proposed plans — završeno
 
 - Agent predlaze plan za visekoracne zadatke.
 - Plan ulazi u Predlozeni.
@@ -304,6 +304,12 @@ Acceptance:
 - korisnik kaze "povezi browsere i testiraj";
 - agent napravi predlozeni plan;
 - nakon prihvatanja plan prelazi u Aktivni.
+
+Status 2026-07-16:
+
+- create_plan je registrovan kao backend tool i dostupan agentu kroz Realtime tool spec;
+- alat kreira plan u Predloženi tab bez computer-mode zahtjeva;
+- dodani su regression testovi za registry i `/tools/execute` tok.
 
 ### P3 — confirmations + plans binding
 

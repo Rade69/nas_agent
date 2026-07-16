@@ -137,6 +137,7 @@ def create_app() -> FastAPI:
         # email_draft_stage/email_prepare_draft (docs/EMAIL_COMPOSE_TOOL_PLAN_
         # V2_GMAIL.md Faza B) — process-local, never persisted to disk.
         "email_draft_store": EmailDraftStore(),
+        "plan_service": app.state.plan_service,
     }
     app.state.tool_registry = create_default_registry(services=phase11_services)
     # Emit backend.ready so the UI knows the event bridge is live.

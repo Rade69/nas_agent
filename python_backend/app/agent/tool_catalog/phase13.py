@@ -12,7 +12,7 @@ from app.agent.permission_engine import DEFAULT_BLOCKED_APPS
 from app.schemas.tool import ToolDefinition
 
 """FAZA 13 tool catalog: coordinate-based computer-use tools."""
-def register_phase13_tools(registry: ToolRegistry) -> None:
+def register_phase13_tools(registry: ToolRegistry, services: dict[str, Any] | None = None) -> None:
     """Register FAZA 13 computer-use tools (coordinate-based).
 
     These are 1:1 Python replacements for the legacy PowerShell computer_*
@@ -25,6 +25,7 @@ def register_phase13_tools(registry: ToolRegistry) -> None:
     from app.tools.system.browser_tabs import make_open_handler as make_browser_tab_open_handler
     from app.tools.plans import make_handler as make_create_plan_handler
 
+    services = services or {}
     handlers = make_computer_handlers()
 
     def _def(
@@ -247,8 +248,13 @@ def register_phase13_tools(registry: ToolRegistry) -> None:
                     "summary": {"type": "string", "description": "Brief description of what the plan will accomplish."},
                     "steps": {
                         "type": "array",
-                        "description": "Ordered list of step titles.",
-                        "items": {"type": "object", "properties": {"title": {"type": "string"}}, "required": ["title"]},
+                        "description": "Ordered list of step titles. Each item may be a string or an object with a title field.",
+                        "items": {
+                            "oneOf": [
+                                {"type": "string"},
+                                {"type": "object", "properties": {"title": {"type": "string"}}, "required": ["title"]},
+                            ]
+                        },
                     },
                 },
                 "required": ["title"],
@@ -256,7 +262,8 @@ def register_phase13_tools(registry: ToolRegistry) -> None:
             },
             risk="low",
             requires_confirmation=False,
+            requires_computer_mode=False,
             timeout_ms=10000,
         ),
-        make_create_plan_handler(),
+        make_create_plan_handler(services.get("plan_service")),
     )

@@ -30,3 +30,16 @@
 ## Provjere
 - node --check OK, tsc čist, build OK
 - Python import OK
+
+## Dopuna — završni P2 hardening (Codex)
+
+- create_plan više ne zahtijeva computer mode; alat je namjerno low-risk i bez confirmation-a.
+- create_plan handler sada dobija PlanService kroz registry services, pa test/app instanca i produkcijska instanca koriste isti storage kontekst.
+- Schema za steps je usklađena između Python tool catalog-a i Realtime tool spec-a: prihvata string korake i `{title: "..."}` objekte.
+- Dodani regression testovi:
+  - create_plan je registrovan u `/tools` sa očekivanim safety flagovima;
+  - `/tools/execute` kreira `proposed` plan i plan se vidi kroz `/plans`.
+- Verifikacija završne dopune:
+  - `python -m pytest -q tests\test_plans.py --basetemp=.tmp-tests\pytest-plans-p2-hardening` → 9 passed
+  - `npm run typecheck` → passed
+  - `npm run check` → passed

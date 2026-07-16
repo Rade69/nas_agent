@@ -102,3 +102,48 @@ def test_update_unknown_step_returns_404(client: TestClient) -> None:
     )
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "PLAN_STEP_NOT_FOUND"
+
+
+def test_create_plan_tool_is_registered(client: TestClient) -> None:
+    response = client.get("/tools")
+    assert response.status_code == 200
+
+    tools = {tool["name"]: tool for tool in response.json()["tools"]}
+    tool = tools["create_plan"]
+    assert tool["risk"] == "low"
+    assert tool["requires_confirmation"] is False
+    assert tool["requires_computer_mode"] is False
+    assert tool["input_schema"]["required"] == ["title"]
+
+
+def test_create_plan_tool_creates_proposed_plan(client: TestClient) -> None:
+    response = client.post(
+        "/tools/execute",
+        json={
+            "tool_name": "create_plan",
+            "arguments": {
+                "title": "Test browser bridge",
+                "summary": "Verify connected browsers.",
+                "steps": [
+                    {"title": "List connected profiles"},
+                    {"title": "Open a test tab"},
+                    "Confirm tab count",
+                ],
+            },
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True
+    assert body["result"]["status"] == "proposed"
+    assert body["result"]["steps_count"] == 3
+
+    plans = client.get("/plans").json()["plans"]
+    created = next(plan for plan in plans if plan["id"] == body["result"]["plan_id"])
+    assert created["title"] == "Test browser bridge"
+    assert created["status"] == "proposed"
+    assert [step["title"] for step in created["steps"]] == [
+        "List connected profiles",
+        "Open a test tab",
+        "Confirm tab count",
+    ]
