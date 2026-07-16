@@ -35,6 +35,13 @@
       "error": "Fehler"
     }
   },
+  "a11y": {
+    "announcer": {
+      "connecting": "Verbinde…",
+      "reconnectFailed": "Fehler — erneute Verbindung fehlgeschlagen",
+      "error": "Fehler"
+    }
+  },
   "dashboard": {
     "readyTitle": "BEREIT",
     "readyDescription": "Ruhezustand. Fokus auf Mikrofon und letzte Aktivität. Alles andere bei Bedarf verfügbar.",

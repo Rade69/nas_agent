@@ -35,6 +35,13 @@
       "error": "Erreur"
     }
   },
+  "a11y": {
+    "announcer": {
+      "connecting": "Connexion…",
+      "reconnectFailed": "Erreur — échec de la reconnexion",
+      "error": "Erreur"
+    }
+  },
   "dashboard": {
     "readyTitle": "PRÊT",
     "readyDescription": "État calme. Focus sur le microphone et l'activité récente. Tout le reste disponible à la demande.",

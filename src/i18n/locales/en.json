@@ -35,6 +35,13 @@
       "error": "Error"
     }
   },
+  "a11y": {
+    "announcer": {
+      "connecting": "Connecting…",
+      "reconnectFailed": "Error — reconnection failed",
+      "error": "Error"
+    }
+  },
   "dashboard": {
     "readyTitle": "READY",
     "readyDescription": "Calm state. Focus on the microphone and recent activity. Everything else available on demand.",

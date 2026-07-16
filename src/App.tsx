@@ -25,6 +25,7 @@ import { IdleScreen } from "./components/pixel/IdleScreen";
 import { PixelMockupBoard } from "./components/pixel/PixelMockupBoard";
 import { categoryForActivity } from "./lib/activityIcons";
 import { voiceStateLabel } from "./lib/voiceState";
+import { StatusAnnouncer } from "./components/StatusAnnouncer";
 import IconCalendar from "../assets/brending/icons/actions/icon-calendar.svg?react";
 import IconOpenApp from "../assets/brending/icons/actions/icon-open-app.svg?react";
 import IconScreenshot from "../assets/brending/icons/actions/icon-screenshot.svg?react";
@@ -645,6 +646,11 @@ export default function App() {
 
   return (
     <main className="pixel-app-shell pixel-board-shell">
+      <StatusAnnouncer
+        voiceState={voiceState}
+        status={status}
+        connectionState={connectionState}
+      />
       {killFlash ? (
         <div className="kill-switch-flash" role="status">⛔ Zaustavljeno — glas i mikrofon isključeni</div>
       ) : null}

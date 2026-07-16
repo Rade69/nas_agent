@@ -35,6 +35,13 @@
       "error": "Greška"
     }
   },
+  "a11y": {
+    "announcer": {
+      "connecting": "Povezujem se…",
+      "reconnectFailed": "Greška — ponovno povezivanje nije uspjelo",
+      "error": "Greška"
+    }
+  },
   "dashboard": {
     "readyTitle": "SPREMAN",
     "readyDescription": "Mirno stanje. Fokus na mikrofon i zadnju aktivnost. Sve ostalo dostupno po potrebi.",
