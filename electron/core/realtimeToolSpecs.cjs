@@ -53,6 +53,26 @@ const toolSpecs = [
   },
   {
     type: "function",
+    name: "create_plan",
+    risk: "low",
+    description: "Propose a multi-step plan. Use for tasks with 3+ steps, external apps/browsers/files/email, or high-risk tools. The plan appears in Predloženi tab — user must approve before any action. Never execute action steps until the plan is approved.",
+    parameters: {
+      type: "object",
+      properties: {
+        title: { type: "string", description: "Short plan title." },
+        summary: { type: "string", description: "Brief description." },
+        steps: {
+          type: "array",
+          description: "Ordered step titles.",
+          items: { type: "object", properties: { title: { type: "string" } }, required: ["title"] },
+        },
+      },
+      required: ["title"],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: "function",
     name: "show_menu",
     description: "Show Ricky's capability menu in the artifact panel. Call this when the user asks 'show me the menu', 'show me what I can do', or asks what Ricky can do.",
     parameters: {
