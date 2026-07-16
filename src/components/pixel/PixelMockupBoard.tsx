@@ -249,7 +249,7 @@ export function PixelMockupBoard({
         title={t("dashboard.plansTitle")}
         description={t("dashboard.plansDescription")}
       >
-        <PlansDrawerPreview plans={plans} />
+        <PlansDrawerPreview plans={plans} onOpenPlans={onOpenPlans} />
       </MockupSection>
 
     </div>

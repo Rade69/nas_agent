@@ -1,6 +1,7 @@
 /** Pixel mockup drawer previews — confirmation / activity / plans empty states.
  *  Verbatim move from App.tsx (R3 refactor). Later localized (Localization
  *  PR-1, docs/RICKY_GUI_LOCALIZATION_PLAN.md). */
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "../../i18n";
 import IconWarning from "../../../assets/brending/icons/safety/icon-warning.svg?react";
@@ -8,7 +9,7 @@ import IconSuccess from "../../../assets/brending/icons/status/icon-status-succe
 import IconBackend from "../../../assets/brending/icons/system/icon-backend.svg?react";
 import { categoryForActivity } from "../../lib/activityIcons";
 import type { ActivityEvent } from "../../lib/realtime";
-import type { Confirmation, Plan } from "../../vite-env";
+import type { Confirmation, Plan, PlanStatus } from "../../vite-env";
 
 // Was previously hardcoded example content (fake "Pošalji email" card) shown
 // unconditionally regardless of real state — that caused a real confirmation
@@ -95,21 +96,37 @@ export function ActivityDrawerPreview({ activityEvents }: { activityEvents: Acti
   );
 }
 
-export function PlansDrawerPreview({ plans }: { plans: Plan[] }) {
+type PlanPreviewTab = "active" | "proposed" | "completed";
+
+const PLAN_PREVIEW_TAB_STATUSES: Record<PlanPreviewTab, PlanStatus[]> = {
+  active: ["approved", "running"],
+  proposed: ["draft", "proposed"],
+  completed: ["completed", "rejected", "cancelled"],
+};
+
+export function PlansDrawerPreview({ plans, onOpenPlans }: { plans: Plan[]; onOpenPlans: () => void }) {
   const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState<PlanPreviewTab>("active");
+  const visiblePlans = plans.filter((plan) => PLAN_PREVIEW_TAB_STATUSES[activeTab].includes(plan.status));
   return (
     <aside className="pixel-preview-drawer pixel-preview-plans">
       <header>
         <strong>{t("tabs.plans")}</strong>
       </header>
       <div className="pixel-plan-tabs">
-        <button className="active">{t("previews.tabActive")}</button>
-        <button>{t("previews.tabProposed")}</button>
-        <button>{t("previews.tabCompleted")}</button>
+        <button className={activeTab === "active" ? "active" : ""} onClick={() => setActiveTab("active")}>
+          {t("previews.tabActive")}
+        </button>
+        <button className={activeTab === "proposed" ? "active" : ""} onClick={() => setActiveTab("proposed")}>
+          {t("previews.tabProposed")}
+        </button>
+        <button className={activeTab === "completed" ? "active" : ""} onClick={() => setActiveTab("completed")}>
+          {t("previews.tabCompleted")}
+        </button>
       </div>
       <div className="pixel-preview-list">
-        {plans.length > 0 ? (
-          plans.slice(0, 4).map((plan) => {
+        {visiblePlans.length > 0 ? (
+          visiblePlans.slice(0, 4).map((plan) => {
             const status = planStatusLabel(plan.status);
             return (
               <article className="pixel-plan-row" key={plan.id}>
@@ -128,7 +145,9 @@ export function PlansDrawerPreview({ plans }: { plans: Plan[] }) {
           <EmptyPreviewState title={t("previews.noPlans")} detail={t("previews.noPlansDetail")} />
         )}
       </div>
-      <button className="pixel-full-history">{t("previews.newPlan")}</button>
+      <button className="pixel-full-history" onClick={onOpenPlans}>
+        {t("previews.newPlan")}
+      </button>
     </aside>
   );
 }
