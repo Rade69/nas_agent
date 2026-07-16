@@ -10,7 +10,7 @@ Windows port aplikacije RileyJarvis (originalno macOS-only Electron AI companion
 React UI -> Electron (tanak shell/IPC) -> Python backend (agent, tools, storage, automation) -> SQLite
 ```
 
-Trenutno stanje (2026-07-04): kopija baseline-a iz `RileyJarvis-Windows` repo-a, FAZA 0 i FAZA 1 iz plana su urađene (git baseline + docs). Python backend još ne postoji — sve computer-use funkcionalnosti su i dalje u `electron/main.cjs` preko PowerShell-a.
+Za trenutni status **ne oslanjaj se na ovaj fajl** — status se mijenja brže od njega, a datestamped tvrdnja ovdje bi zastarjela (vidi memoriju `feedback_verify_before_status_claims`). Jedini izvor istine za status faza je `docs/MIGRATION_PLAN.md` tracker; najsvježiji snapshot je [docs/PROJECT_OVERVIEW.md](./docs/PROJECT_OVERVIEW.md). Hibridna arhitektura je uveliko realizovana: Python backend postoji sa punim agent runtime-om, tool registry-jem, permission/confirmation engine-om i SQLite storage-om; legacy PowerShell put ostaje samo kao fallback iza feature flag-a.
 
 ## Jezik
 
@@ -20,7 +20,7 @@ Komunikacija sa korisnikom i sadržaj dokumenata/izvještaja: srpski/bosanski, l
 
 - React/Electron renderer = UI sloj.
 - `electron/main.cjs` (i njegovi budući moduli) = samo app shell, IPC, Python process manager. **Nikad** nova poslovna/agent/computer-use/storage/AI logika direktno u `electron/main.cjs`.
-- Python backend (kad se doda, FAZA 4+) = agent runtime, tool registry, automation, storage, AI integracije.
+- Python backend = agent runtime, tool registry, automation, storage, AI integracije.
 - Detalji: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md), [docs/SECURITY_MODEL.md](./docs/SECURITY_MODEL.md), [docs/TOOL_CONTRACTS.md](./docs/TOOL_CONTRACTS.md).
 
 ## Rad po fazama
