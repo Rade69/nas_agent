@@ -50,7 +50,7 @@
     "noScreenshots": "No screenshots."
   },
   "idle": {
-    "ready": "Ricky is ready",
+    "ready": "{{agentName}} is ready",
     "hint": "Click the microphone or say \"Ricky\"",
     "stop": "Stop",
     "disconnect": "Disconnect",

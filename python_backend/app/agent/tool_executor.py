@@ -157,6 +157,20 @@ class ToolExecutor:
 
         try:
             result = tool.handler(request.arguments)
+        except AppError as exc:
+            if self._cancellations:
+                self._cancellations.set_state(execution_id, "failed")
+            response = self._error_response(
+                request.tool_name,
+                action_log_id,
+                started,
+                exc.code,
+                exc.message,
+                execution_id=execution_id,
+                tool_state="failed",
+            )
+            self._log(request=request, response=response, tool=tool)
+            return response
         except ValueError as exc:
             if self._cancellations:
                 self._cancellations.set_state(execution_id, "failed")

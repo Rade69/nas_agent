@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ricky Browser Bridge — Settings</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 420px;
+      margin: 24px auto;
+      padding: 0 16px;
+      color: #e0e0e0;
+      background: #1a1a2e;
+    }
+    h1 { font-size: 1.3rem; margin-bottom: 4px; }
+    .subtitle { color: #888; font-size: 0.85rem; margin-top: 0; margin-bottom: 20px; }
+    label { display: block; font-size: 0.85rem; margin-bottom: 4px; color: #aaa; }
+    input[type="text"], input[type="password"] {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #444;
+      border-radius: 6px;
+      background: #16213e;
+      color: #e0e0e0;
+      font-size: 0.9rem;
+      box-sizing: border-box;
+      margin-bottom: 12px;
+    }
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      background: #0f3460;
+      color: #e0e0e0;
+      font-size: 0.9rem;
+      cursor: pointer;
+      margin-right: 8px;
+      margin-bottom: 8px;
+    }
+    button:hover { background: #1a508b; }
+    button.primary { background: #4CAF50; }
+    button.primary:hover { background: #43A047; }
+    .status {
+      padding: 10px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      margin-bottom: 16px;
+    }
+    .status.connected { background: #1b4332; border: 1px solid #2d6a4f; }
+    .status.disconnected { background: #3e1a1a; border: 1px solid #6b2c2c; }
+    .status.auth-failed { background: #4a3000; border: 1px solid #8b6914; }
+    .help {
+      font-size: 0.78rem;
+      color: #777;
+      margin-top: 20px;
+      line-height: 1.5;
+    }
+    .help code {
+      background: #16213e;
+      padding: 1px 4px;
+      border-radius: 3px;
+      font-size: 0.78rem;
+    }
+    #save-status { font-size: 0.82rem; margin-top: 4px; min-height: 1.2em; }
+  </style>
+</head>
+<body>
+  <h1>🔄 Ricky Browser Bridge</h1>
+  <p class="subtitle">Pair this extension with the Ricky desktop companion</p>
+
+  <div id="connection-status" class="status disconnected">
+    Checking connection...
+  </div>
+
+  <label for="pairing-secret">Pairing Secret</label>
+  <div style="display: flex; gap: 8px;">
+    <input type="password" id="pairing-secret" placeholder="Paste the pairing secret from Ricky's settings..." style="flex:1">
+    <button id="toggle-visibility" style="flex-shrink:0">👁</button>
+  </div>
+  <button id="save-secret" class="primary">Save &amp; Connect</button>
+  <span id="save-status"></span>
+
+  <label for="broker-url" style="margin-top: 16px;">Broker URL</label>
+  <input type="text" id="broker-url" placeholder="ws://127.0.0.1:9119">
+  <button id="save-url">Save URL</button>
+
+  <button id="reconnect-btn">⟳ Reconnect</button>
+
+  <div class="help">
+    <strong>How to pair:</strong>
+    <ol>
+      <li>Open Ricky's Settings panel</li>
+      <li>Find "Browser Bridge" and copy the pairing secret</li>
+      <li>Paste it here and click <strong>Save &amp; Connect</strong></li>
+      <li>A green "ON" badge on the extension means it's connected</li>
+    </ol>
+    <p>The default broker is <code>ws://127.0.0.1:9119</code> — change it only if Ricky's backend runs on a different port.</p>
+    <p><strong>Privacy:</strong> This extension only reads tab titles and URLs for listing. It never reads page content, doesn't inject scripts, and doesn't track your browsing.</p>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

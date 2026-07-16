@@ -287,9 +287,23 @@ const toolSpecs = [
   },
   {
     type: "function",
+    name: "browser_open",
+    risk: "medium",
+    description: "Open a web browser precisely. Use this tool instead of computer_open_app for Brave, Chrome, Edge, Firefox, or the Windows default browser. Serbian/Bosnian/Croatian 'Brejv' means Brave; pass brave or brejv. An optional URL must be an absolute http:// or https:// URL. Requires computer mode. Do not claim the browser opened unless the tool returns ok=true.",
+    parameters: {
+      type: "object",
+      properties: {
+        browser: { type: "string", enum: ["default", "brave", "brejv", "chrome", "edge", "firefox"] },
+        url: { type: "string" },
+      },
+      additionalProperties: false,
+    },
+  },
+  {
+    type: "function",
     name: "computer_open_app",
     risk: "medium",
-    description: "Open a Windows app by name (must be in PATH or have an App Execution Alias, e.g. notepad, calc, mspaint, chrome). Requires computer mode.",
+    description: "Open a non-browser Windows app by name. For any web browser, always use browser_open instead. Requires computer mode.",
     parameters: {
       type: "object",
       properties: {
@@ -359,6 +373,24 @@ const toolSpecs = [
         amount: { type: "number", minimum: 1, maximum: 20 },
       },
       required: ["direction"],
+      additionalProperties: false,
+    },
+  },
+  {
+    type: "function",
+    name: "browser_tabs",
+    risk: "medium",
+    description: "List, activate, or close tabs in an already-open Brave or Chrome window. Always call \"list\" FIRST before any ordinal action — never guess tab numbers or titles. \"activate\" switches to an existing tab by its 1-based position in the most recent snapshot. The user's 'open the fifth tab' means ACTIVATE (switch to) tab #5, NOT create a new tab. After success, say exactly: 'Aktivirao sam peti tab: YouTube.' On TAB_SNAPSHOT_STALE, re-list and confirm the target. If the extension is not connected (BROWSER_EXTENSION_NOT_CONNECTED), tell the user and do NOT try keyboard shortcuts. Serbian 'Brejv' = Brave.",
+    parameters: {
+      type: "object",
+      properties: {
+        action: { type: "string", enum: ["list", "activate", "close"] },
+        browser: { type: "string", enum: ["brave", "brejv", "chrome"] },
+        scope: { type: "string", enum: ["current_window", "all_windows"] },
+        snapshot_id: { type: "string", description: "Required for activate/close. The snapshot_id from the most recent list call." },
+        position: { type: "number", minimum: 1, description: "1-based tab position in the snapshot. Required for activate/close." },
+      },
+      required: ["action"],
       additionalProperties: false,
     },
   },

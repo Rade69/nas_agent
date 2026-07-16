@@ -231,6 +231,8 @@ const PHASE11_DELEGATED_TOOLS = new Set([
   "email_draft_stage",
   "email_prepare_draft",
   // FAZA 13: computer-use tools now have Python equivalents (ctypes + Win32 API).
+  "browser_open",
+  "browser_tabs",
   "computer_open_app",
   "computer_type_text",
   "computer_press_key",
@@ -736,6 +738,22 @@ registerIpcHandlers({
   "confirmations:pending": handleConfirmationsPending,
   "confirmations:create": handleConfirmationCreate,
   "confirmations:approve": handleConfirmationApprove,
+  // Computer Mode approval can happen in the separate mini renderer while the
+  // live Realtime client remains in the hidden main renderer. This is IPC
+  // transport only: forward the minimal retry outcome to the session owner.
+  "confirmations:retry-result": (_event, payload = {}) => {
+    const main = getMainWindow && getMainWindow();
+    if (main && !main.isDestroyed()) {
+      main.webContents.send("confirmations:retry-result", {
+        toolName: String(payload.toolName || "unknown_tool"),
+        result: {
+          ok: payload.result?.ok !== false,
+          ...(typeof payload.result?.errorCode === "string" ? { errorCode: payload.result.errorCode } : {}),
+        },
+      });
+    }
+    return { ok: true };
+  },
   "confirmations:reject": handleConfirmationReject,
   "confirmations:cancel": handleConfirmationCancel,
   "plans:list": handlePlansList,

@@ -201,6 +201,14 @@ declare global {
         tool_name?: string | null;
       }) => Promise<Confirmation>;
       approveConfirmation: (confirmationId: string) => Promise<ConfirmationDecisionResponse>;
+      publishConfirmationResult: (payload: {
+        toolName: string;
+        result: { ok: boolean; errorCode?: string };
+      }) => Promise<{ ok: boolean }>;
+      onConfirmationResult: (handler: (payload: {
+        toolName: string;
+        result: { ok: boolean; errorCode?: string };
+      }) => void) => () => void;
       rejectConfirmation: (confirmationId: string) => Promise<ConfirmationDecisionResponse>;
       cancelConfirmation: (confirmationId: string) => Promise<ConfirmationDecisionResponse>;
       listPlans: () => Promise<PlanListResponse>;

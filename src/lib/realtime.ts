@@ -610,6 +610,38 @@ export class RickyRealtimeClient {
     this.sendEvent({ type: "response.create" });
   }
 
+  /**
+   * Tell the active Realtime model how a confirmation-gated retry finished.
+   * The retry itself is owned by App.tsx after the user approves the dialog,
+   * so without this bridge the model only remembers the earlier
+   * `waiting_confirmation` tool output and never learns the final outcome.
+   */
+  notifyConfirmationResult(toolName: string, result: RickyToolResult): void {
+    if (!this.dc || this.dc.readyState !== "open" || this.manualDisconnectRequested) return;
+
+    const outcome = {
+      tool_name: toolName,
+      approved: true,
+      execution_ok: result.ok !== false,
+      error_code: typeof result.errorCode === "string" ? result.errorCode : undefined,
+    };
+    this.callbacks.onVoiceState("thinking");
+    this.sendEvent({
+      type: "conversation.item.create",
+      item: {
+        type: "message",
+        role: "user",
+        content: [
+          {
+            type: "input_text",
+            text: `[SYSTEM EVENT — not a new user request] The user clicked Approve and authorized the pending action. Confirmation retry result: ${JSON.stringify(outcome)}. Explicitly acknowledge that the approval was received, then briefly state whether the authorized action succeeded or failed. Do not request approval again for this completed retry.`,
+          },
+        ],
+      },
+    });
+    this.sendEvent({ type: "response.create" });
+  }
+
   // Dictation Mode (docs/RICKY_GUI_LOCALIZATION_PLAN.md "Cloud STT" backlog,
   // Phase 1): reuses the already-open Realtime session's built-in speech
   // transcription instead of a separate transcribe-only call or a second mic

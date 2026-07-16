@@ -50,7 +50,7 @@
     "noScreenshots": "Sin capturas de pantalla."
   },
   "idle": {
-    "ready": "Ricky está listo",
+    "ready": "{{agentName}} está listo",
     "hint": "Haz clic en el micrófono o di \"Ricky\"",
     "stop": "Detener",
     "disconnect": "Desconectar",

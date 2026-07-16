@@ -19,6 +19,7 @@ import { EmptyPreviewState } from "./Previews";
 import type { ActivityEvent, VoiceState } from "../../lib/realtime";
 
 export function IdleScreen({
+  agentName,
   voiceState,
   status,
   isActive,
@@ -33,6 +34,7 @@ export function IdleScreen({
   onOpenActivity,
   onQuickCommand,
 }: {
+  agentName: string;
   voiceState: VoiceState;
   status: string;
   isActive: boolean;
@@ -58,7 +60,7 @@ export function IdleScreen({
   // spreman"). Header stays the short machine-state label; this is the
   // human-friendly, live counterpart — deliberately different wording, not
   // a copy of the header text. Context: agent_reports/2026-07-12_hero-text-state-aware.md
-  const heroTitle = voiceState === "idle" ? t("idle.ready") : t(`idle.state.${voiceState}.title`);
+  const heroTitle = voiceState === "idle" ? t("idle.ready", { agentName }) : t(`idle.state.${voiceState}.title`);
   const heroHint = voiceState === "idle" ? t("idle.hint") : t(`idle.state.${voiceState}.hint`);
   return (
     <div className="pixel-idle">

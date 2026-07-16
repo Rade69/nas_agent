@@ -13,6 +13,7 @@ from app.agent.runtime import LocalDesktopAssistant
 from app.agent.tool_executor import ToolExecutor
 from app.agent.tool_registry import create_default_registry
 from app.api.agent import router as agent_router
+from app.api.browser_bridge import router as browser_bridge_router
 from app.api.confirmations import router as confirmations_router
 from app.api.events import router as events_router
 from app.api.health import router as health_router
@@ -30,6 +31,7 @@ from app.core.errors import register_error_handlers
 from app.core.logging import configure_logging
 from app.services.action_log import ActionLogService
 from app.services.artifact_service import ArtifactService
+from app.services.browser_extension_broker import get_broker, init_broker
 from app.services.confirmation_service import ConfirmationService
 from app.services.email_draft_store import EmailDraftStore
 from app.services.event_bus import EventBus
@@ -62,6 +64,11 @@ def create_app() -> FastAPI:
     # never appear verbatim in log output.
     configure_logging(secrets=[settings.openai_api_key, settings.local_token, settings.exa_api_key])
     initialize_database(settings)
+
+    # Browser extension broker — starts the localhost WebSocket for the
+    # Brave/Chrome MV3 extension to connect. Generates or loads the pairing
+    # secret at startup.
+    _broker = init_broker(settings.data_dir)
 
     # Security PR-1: local session token enforced on every route (fails open
     # only if settings.local_token is unset — see app/core/auth.py docstring).
@@ -160,11 +167,18 @@ def create_app() -> FastAPI:
     # Context: agent_reports/2026-07-11_dictation-rewrite-menu.md
     app.state.text_model_client = OpenAIModelClient(settings.openai_api_key)
 
+    # Browser extension WebSocket endpoint (PR 1: browser_tabs tool).
+    # Binds only to 127.0.0.1 — the local extension connects here.
+    @app.websocket("/browser-bridge")
+    async def browser_bridge_ws(websocket):
+        await _broker.handle_ws(websocket)
+
     register_error_handlers(app)
     app.include_router(health_router)
     app.include_router(tools_router)
     app.include_router(realtime_router)
     app.include_router(confirmations_router)
+    app.include_router(browser_bridge_router)
     app.include_router(plans_router)
     app.include_router(events_router)
     app.include_router(agent_router)

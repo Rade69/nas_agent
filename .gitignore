@@ -17,6 +17,7 @@ yarn-error.log*
 pnpm-debug.log*
 python_backend/.venv/
 python_backend/.pytest_cache/
+python_backend/.tmp-test-data/
 python_backend/**/*.pyc
 python_backend/**/__pycache__/
 python_backend/*.egg-info/

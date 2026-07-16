@@ -994,6 +994,29 @@ describe("RickyRealtimeClient — R3 tool lifecycle", () => {
     vi.restoreAllMocks();
   });
 
+  it("notifies the model after an approved confirmation retry", async () => {
+    const ricky = mockWindowRicky();
+    const cbs = noopCallbacks();
+    const { deps, dcInstance } = dcSpyDeps();
+    const client = new RickyRealtimeClient(cbs, deps);
+
+    ricky.createRealtimeToken.mockResolvedValue({ value: "t", sttLanguageHint: "sr" });
+    await client.connect();
+    const dc = dcInstance() as FakeDataChannel;
+    dc._sent.length = 0;
+
+    client.notifyConfirmationResult("computer_open_app", { ok: true, message: "Opened chrome." });
+
+    const sent = dc._sent.join("\n");
+    expect(sent).toContain("SYSTEM EVENT");
+    expect(sent).toContain("user clicked Approve");
+    expect(sent).toContain("Explicitly acknowledge");
+    expect(sent).toContain("computer_open_app");
+    expect(sent).toContain("\\\"execution_ok\\\":true");
+    expect(sent).toContain("response.create");
+    expect(cbs.onVoiceState).toHaveBeenCalledWith("thinking");
+  });
+
   it("active tool call is tracked and cleaned up after completion", async () => {
     const ricky = mockWindowRicky();
     const cbs = noopCallbacks();

@@ -50,7 +50,7 @@
     "noScreenshots": "Nema snimaka ekrana."
   },
   "idle": {
-    "ready": "Ricky je spreman",
+    "ready": "{{agentName}} je spreman",
     "hint": "Klikni mikrofon ili reci \"Ricky\"",
     "stop": "Stop",
     "disconnect": "Prekini vezu",

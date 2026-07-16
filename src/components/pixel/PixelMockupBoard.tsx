@@ -28,6 +28,7 @@ export function PixelMockupBoard({
   dictationText,
   recentActivity,
   quickCommands,
+  agentName,
   activityEvents,
   transcript,
   plans,
@@ -39,6 +40,7 @@ export function PixelMockupBoard({
   onToggleMode,
   onOpenPlans,
   onQuickCommandsChange,
+  onAgentNameChange,
   onSidebarChange,
   onTextPromptChange,
   onSendTextPrompt,
@@ -74,6 +76,7 @@ export function PixelMockupBoard({
   dictationText: string;
   recentActivity: ActivityEvent[];
   quickCommands: string[];
+  agentName: string;
   activityEvents: ActivityEvent[];
   transcript: TranscriptEntry[];
   plans: Plan[];
@@ -85,6 +88,7 @@ export function PixelMockupBoard({
   onToggleMode: () => void;
   onOpenPlans: () => void;
   onQuickCommandsChange: (commands: string[]) => void;
+  onAgentNameChange: (name: string) => void;
   onSidebarChange: (id: string) => void;
   onTextPromptChange: (value: string) => void;
   onSendTextPrompt: () => void;
@@ -169,6 +173,7 @@ export function PixelMockupBoard({
             <Sidebar activeTab={activeDrawer ?? screen} onTabChange={onSidebarChange} backendConnected={backendConnected} />
             <section className="pixel-main">
               <IdleScreen
+                agentName={agentName}
                 voiceState={voiceState}
                 status={status}
                 isActive={isActive}
@@ -201,7 +206,12 @@ export function PixelMockupBoard({
                   ) : null}
                   {activeDrawer === "memory" ? <p className="drawer-placeholder-text">{t("dashboard.noMemory")}</p> : null}
                   {activeDrawer === "screens" ? <ScreenshotsGallery /> : null}
-                  {activeDrawer === "settings" ? <SettingsPanel onQuickCommandsChange={onQuickCommandsChange} /> : null}
+                  {activeDrawer === "settings" ? (
+                    <SettingsPanel
+                      onQuickCommandsChange={onQuickCommandsChange}
+                      onAgentNameChange={onAgentNameChange}
+                    />
+                  ) : null}
                 </Drawer>
               ) : null}
             </section>

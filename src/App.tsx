@@ -118,6 +118,7 @@ export default function App() {
   // Empty = IdleScreen falls back to its 4 built-in localized defaults.
   // Context: agent_reports/2026-07-12_custom-quick-commands.md
   const [quickCommands, setQuickCommands] = useState<string[]>([]);
+  const [agentName, setAgentName] = useState("Ricky");
   // Fetch interface_language once at mount so dictation trigger/exit phrases
   // match the user's chosen language. Fail-open: if the fetch fails, stays
   // on default "sr-Latn" — same principle as user_name in realtime.cjs. Also
@@ -131,6 +132,7 @@ export default function App() {
       .then((s) => {
         setInterfaceLanguage(s.interface_language);
         setQuickCommands(s.quick_commands ?? []);
+        setAgentName(s.agent_name ?? "Ricky");
         void i18n.changeLanguage(s.interface_language);
       })
       .catch(() => {});
@@ -377,6 +379,16 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isConnected]);
 
+  // Approval can be clicked in the separate Computer Mode mini renderer.
+  // Main receives its IPC-forwarded result because it owns the live voice
+  // session; mini must never try to notify its disconnected local client.
+  useEffect(() => {
+    if (isMini) return;
+    return window.ricky.onConfirmationResult?.(({ toolName, result }) => {
+      clientRef.current?.notifyConfirmationResult(toolName, result);
+    });
+  }, [isMini]);
+
   function disconnect() {
     clientRef.current?.disconnect();
   }
@@ -518,7 +530,18 @@ export default function App() {
             }
             addActivityEvent(createActivityEvent("tool", `Ponovo izvršen alat ${approved.tool_name}`, `Potvrda ${confirmationId}`));
           }
+          void window.ricky.publishConfirmationResult({
+            toolName: approved.tool_name,
+            result: {
+              ok: retryResultObj.ok !== false,
+              ...(typeof retryResultObj.errorCode === "string" ? { errorCode: retryResultObj.errorCode } : {}),
+            },
+          });
         } catch (retryErr) {
+          void window.ricky.publishConfirmationResult({
+            toolName: approved.tool_name,
+            result: { ok: false, errorCode: "CONFIRMATION_RETRY_FAILED" },
+          });
           addActivityEvent(createActivityEvent("error", "Ponovno izvršenje nije uspjelo", retryErr instanceof Error ? retryErr.message : String(retryErr)));
         }
       }
@@ -636,6 +659,7 @@ export default function App() {
         dictationText={dictationText}
         recentActivity={recentActivity}
         quickCommands={quickCommands}
+        agentName={agentName}
         activityEvents={activityEvents}
         transcript={transcript}
         plans={plans}
@@ -650,6 +674,7 @@ export default function App() {
         }}
         onOpenPlans={() => openDrawer("plans")}
         onQuickCommandsChange={setQuickCommands}
+        onAgentNameChange={setAgentName}
         onSidebarChange={handleSidebarChange}
         onTextPromptChange={setTextPrompt}
         onSendTextPrompt={sendTextPrompt}

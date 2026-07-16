@@ -19,6 +19,8 @@ def register_phase13_tools(registry: ToolRegistry) -> None:
     tools. All require computer_mode; click and type_text are high risk.
     """
     from app.tools.system.computer import make_handlers as make_computer_handlers
+    from app.tools.system.browser import make_handler as make_browser_handler
+    from app.tools.system.browser_tabs import make_handler as make_browser_tabs_handler
 
     handlers = make_computer_handlers()
 
@@ -50,6 +52,22 @@ def register_phase13_tools(registry: ToolRegistry) -> None:
             implemented_by="python",
             enabled=True,
         )
+
+    registry.register(
+        _def(
+            "browser_open",
+            "Open the default browser or an explicitly selected installed browser, optionally at an absolute HTTP(S) URL. Use this instead of computer_open_app for browsers. Serbian/Bosnian/Croatian speech 'Brejv' means Brave and may be passed as browser='brejv'. Never claim success unless this tool returns ok=true.",
+            {
+                "type": "object",
+                "properties": {
+                    "browser": {"type": "string", "enum": ["default", "brave", "brejv", "chrome", "edge", "firefox"]},
+                    "url": {"type": "string"},
+                },
+                "additionalProperties": False,
+            },
+        ),
+        make_browser_handler(),
+    )
 
     registry.register(
         _def(
@@ -148,3 +166,25 @@ def register_phase13_tools(registry: ToolRegistry) -> None:
         handlers["computer_scroll"],
     )
 
+    registry.register(
+        _def(
+            "browser_tabs",
+            "List, activate, or close browser tabs in an already-open Brave or Chrome window. Always call action=\"list\" FIRST — never guess tab numbers or titles. action=\"activate\" switches to an existing tab by its 1-based position from the most recent snapshot (use the snapshot_id from the list result). 'Open the fifth tab' means ACTIVATE tab #5, not create a new tab. After success say exactly: 'Aktivirao sam N. tab: Title.' On TAB_SNAPSHOT_STALE, re-list and confirm the target. If BROWSER_EXTENSION_NOT_CONNECTED, tell the user and do NOT try keyboard shortcuts. Serbian 'Brejv' = Brave.",
+            {
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ["list", "activate", "close"], "description": "What to do with the tabs."},
+                    "browser": {"type": "string", "enum": ["brave", "brejv", "chrome"], "description": "Target browser. 'brejv' normalizes to 'brave'."},
+                    "scope": {"type": "string", "enum": ["current_window", "all_windows"], "description": "Tab scope. Default is current_window."},
+                    "snapshot_id": {"type": "string", "description": "REQUIRED for activate/close. The snapshot_id from the most recent list result."},
+                    "position": {"type": "number", "minimum": 1, "description": "REQUIRED for activate/close. 1-based tab position in the snapshot."},
+                },
+                "required": ["action"],
+                "additionalProperties": False,
+            },
+            risk="medium",
+            requires_confirmation=False,
+            timeout_ms=15000,
+        ),
+        make_browser_tabs_handler(),
+    )

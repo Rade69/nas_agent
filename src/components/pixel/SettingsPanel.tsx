@@ -17,11 +17,13 @@ type SaveStatus = "loading" | "idle" | "saving" | "saved" | "error";
 
 export function SettingsPanel({
   onQuickCommandsChange,
+  onAgentNameChange,
 }: {
   // App.tsx owns the IdleScreen-facing quickCommands state — this applies a
   // save immediately, no app restart, same principle as i18n.changeLanguage()
   // below. Optional since nothing else currently mounts SettingsPanel.
   onQuickCommandsChange?: (commands: string[]) => void;
+  onAgentNameChange?: (name: string) => void;
 }) {
   const { t } = useTranslation();
   const [settings, setSettings] = useState<UserSettings | null>(null);
@@ -84,6 +86,7 @@ export function SettingsPanel({
       const updated = await window.ricky.updateSettings({ agent_name: trimmed || "Ricky" });
       setSettings(updated);
       setAgentNameInput(updated.agent_name ?? "Ricky");
+      onAgentNameChange?.(updated.agent_name ?? "Ricky");
       setAgentNameStatus("saved");
       window.setTimeout(() => setAgentNameStatus((current) => (current === "saved" ? "idle" : current)), 2000);
     } catch {

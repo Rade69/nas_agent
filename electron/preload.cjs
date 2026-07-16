@@ -38,6 +38,12 @@ contextBridge.exposeInMainWorld("ricky", {
   listPendingConfirmations: () => ipcRenderer.invoke("confirmations:pending"),
   createConfirmation: (payload) => ipcRenderer.invoke("confirmations:create", payload),
   approveConfirmation: (confirmationId) => ipcRenderer.invoke("confirmations:approve", confirmationId),
+  publishConfirmationResult: (payload) => ipcRenderer.invoke("confirmations:retry-result", payload),
+  onConfirmationResult: (handler) => {
+    const listener = (_event, payload) => handler(payload);
+    ipcRenderer.on("confirmations:retry-result", listener);
+    return () => ipcRenderer.removeListener("confirmations:retry-result", listener);
+  },
   rejectConfirmation: (confirmationId) => ipcRenderer.invoke("confirmations:reject", confirmationId),
   cancelConfirmation: (confirmationId) => ipcRenderer.invoke("confirmations:cancel", confirmationId),
   listPlans: () => ipcRenderer.invoke("plans:list"),
