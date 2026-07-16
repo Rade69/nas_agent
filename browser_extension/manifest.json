@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Ricky Browser Bridge",
   "version": "1.0.0",
-  "description": "Lets Ricky (the desktop companion) safely list, activate, and close browser tabs. Never reads page content.",
+  "description": "Lets Ricky (the desktop companion) safely list, activate, open, and close browser tabs. Never reads page content, history, or cookies. Only communicates with the local Ricky app via secure localhost WebSocket.",
   "permissions": ["tabs", "storage"],
   "host_permissions": [],
   "background": {

@@ -90,4 +90,10 @@ BROWSER_TAB_ERROR_CODES = {
     "TAB_ACTION_TIMEOUT": "The requested action timed out. The browser extension may be unresponsive.",
     "TAB_ACTION_FAILED": "The browser tab action failed.",
     "INCOGNITO_NOT_ALLOWED": "Incognito tabs are excluded by default.",
+    # C1 + C4
+    "TAB_PROFILE_MISMATCH": "This snapshot belongs to a different browser profile.",
+    "BROWSER_PROFILE_AMBIGUOUS": "Multiple profiles match. Specify which one.",
+    "BROWSER_EXTENSION_VERSION_UNSUPPORTED": "The extension version is too old. Please update the Ricky Browser Bridge extension.",
+    "PAIRING_RATE_LIMITED": "Too many pairing attempts. Wait a moment and try again.",
+    "PAIRING_BROWSER_MISMATCH": "The pairing code was created for a different browser.",
 }

@@ -1036,6 +1036,11 @@ def test_browser_tab_error_codes_have_all_required() -> None:
         "TAB_ACTION_TIMEOUT",
         "TAB_ACTION_FAILED",
         "INCOGNITO_NOT_ALLOWED",
+        "TAB_PROFILE_MISMATCH",
+        "BROWSER_PROFILE_AMBIGUOUS",
+        "BROWSER_EXTENSION_VERSION_UNSUPPORTED",
+        "PAIRING_RATE_LIMITED",
+        "PAIRING_BROWSER_MISMATCH",
     }
     assert set(BROWSER_TAB_ERROR_CODES.keys()) == required
 
@@ -1396,3 +1401,48 @@ def test_browser_normalize_aliases() -> None:
     assert normalize_browser("opera gx") == "opera_gx"
     assert normalize_browser("opera ge-iks") == "opera_gx"
     assert normalize_browser("chrome") == "chrome"  # unchanged
+
+
+def test_pairing_rate_limit_blocks_excessive_attempts() -> None:
+    """Rate limit blocks more than MAX attempts per window."""
+    import tempfile
+    from pathlib import Path
+    from app.services.browser_extension_broker import (
+        BrowserExtensionBroker, PAIRING_RATE_LIMIT_MAX,
+    )
+    from app.core.errors import AppError
+
+    with tempfile.TemporaryDirectory() as tmp:
+        broker = BrowserExtensionBroker(Path(tmp))
+        # Create sessions up to the limit
+        for _ in range(PAIRING_RATE_LIMIT_MAX):
+            result = broker.create_pairing_session("brave")
+            assert "human_code" in result
+
+        # Next attempt should fail
+        try:
+            broker.create_pairing_session("brave")
+            assert False, "Should raise rate limit error"
+        except AppError as e:
+            assert e.code == "PAIRING_RATE_LIMITED"
+
+
+def test_extension_manifest_has_required_permissions() -> None:
+    """Manifest V3 has minimal permissions."""
+    import json
+    import os
+    manifest_path = os.path.join(
+        os.path.dirname(__file__),
+        "..", "..", "browser_extension", "manifest.json",
+    )
+    if not os.path.exists(manifest_path):
+        import pytest
+        pytest.skip("manifest.json not found from test directory")
+    with open(manifest_path) as f:
+        manifest = json.load(f)
+    assert manifest["manifest_version"] == 3
+    assert "tabs" in manifest["permissions"]
+    assert "storage" in manifest["permissions"]
+    assert "host_permissions" in manifest
+    assert len(manifest.get("host_permissions", [])) == 0
+    assert manifest.get("incognito") == "not_allowed"

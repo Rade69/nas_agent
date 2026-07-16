@@ -42,6 +42,9 @@ CREDENTIAL_BYTES = 32
 PAIRING_TOKEN_TTL_SECONDS = 300  # 5 minutes
 HUMAN_CODE_LENGTH = 6
 REPLY_TIMEOUT_SECONDS = 8.0
+SUPPORTED_PROTOCOL_VERSIONS = [1, 2]  # Current: v2
+PAIRING_RATE_LIMIT_WINDOW_SECONDS = 60
+PAIRING_RATE_LIMIT_MAX = 5
 
 
 # ---------------------------------------------------------------------------
@@ -140,6 +143,8 @@ class BrowserExtensionBroker:
         self._human_code_index: dict[str, str] = {}
         # Credentials (installation_id → InstallCredential, survives reconnect)
         self._install_credentials: dict[str, InstallCredential] = {}
+        # Rate limiting: timestamp list for pairing attempts
+        self._pairing_attempts: list[float] = []
 
     # ------------------------------------------------------------------
     # Legacy secret (backward compat)
@@ -170,6 +175,20 @@ class BrowserExtensionBroker:
     # Pairing sessions
     # ------------------------------------------------------------------
     def create_pairing_session(self, browser_kind: str) -> dict[str, Any]:
+        # Rate limit check
+        now = time.monotonic()
+        self._pairing_attempts = [
+            t for t in self._pairing_attempts
+            if now - t < PAIRING_RATE_LIMIT_WINDOW_SECONDS
+        ]
+        if len(self._pairing_attempts) >= PAIRING_RATE_LIMIT_MAX:
+            raise AppError(
+                "PAIRING_RATE_LIMITED",
+                f"Too many pairing attempts. Try again in {PAIRING_RATE_LIMIT_WINDOW_SECONDS}s.",
+                status_code=429,
+            )
+        self._pairing_attempts.append(now)
+
         self._cleanup_expired_sessions()
         pairing_id = f"pair_{uuid4().hex[:12]}"
         human_code = _generate_human_code(self._human_code_index)
@@ -501,6 +520,7 @@ class BrowserExtensionBroker:
                         "credential": install.credential,
                         "browser_kind": install.browser_kind,
                         "profile_label": install.profile_label,
+                        "protocol_version": 2,
                     }))
                     continue
 
@@ -525,6 +545,7 @@ class BrowserExtensionBroker:
                                 "profile_id": stored.profile_id,
                                 "browser_kind": stored.browser_kind,
                                 "profile_label": stored.profile_label,
+                                "protocol_version": 2,
                             }))
                             continue
 

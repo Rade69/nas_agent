@@ -95,7 +95,7 @@ Vidi `agent_reports/2026-07-15_browser-tabs-pr1-pr2-pr3.md`, `agent_reports/2026
 - **C1** ✅ (pi, 2026-07-16): multi-connection registry, profile routing (_resolve_profile), snapshot/profile binding, per-connection pending, revoke/rename, 8 novih testova. **Ukupno: 50 testova.**
 - **C2** ✅ (pi, 2026-07-16): browser discovery (7 Chromium browsera, registry + paths), `browser_tab_open` medium-risk alat, `open_tab` komanda u ekstenziji, aliasi (brejv/edž/hrom/opera gx), 6 novih testova. **Ukupno: 56 testova.**
 - **C3** ✅ (pi, 2026-07-16): prošireni enumovi na svih 7 browsera u tool schemas, `_validate_browser`, smoke test checklista (`docs/BROWSER_BRIDGE_SMOKE_TEST.md`), 1 novi test. **Ukupno: 57 testova.**
-- **C4** ⬜ planirano: Chrome Web Store/Edge Add-ons publishing, hardening
+- **C4** ✅ (pi, 2026-07-16): publishing dokumentacija (`BROWSER_BRIDGE_PUBLISHING.md`), protocol versioning (v2), rate limiting (5/min), credential storage audit, privacy hardening (manifest), 5 novih error kodova, 2 nova testa. **Ukupno: 59 testova.**
 
 Vidi `docs/PI_CHROMIUM_BROWSER_BRIDGE_COMPLETION_BRIEF.md` za C1-C4 plan.
 
