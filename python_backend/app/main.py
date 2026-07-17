@@ -68,7 +68,7 @@ def create_app() -> FastAPI:
     # Browser extension broker — starts the localhost WebSocket for the
     # Brave/Chrome MV3 extension to connect. Generates or loads the pairing
     # secret at startup.
-    _broker = init_broker(settings.data_dir)
+    _broker = init_broker(settings.data_dir, settings.database_path)
 
     # Security PR-1: local session token enforced on every route (fails open
     # only if settings.local_token is unset — see app/core/auth.py docstring).
@@ -170,9 +170,25 @@ def create_app() -> FastAPI:
 
     # Browser extension WebSocket endpoint (PR 1: browser_tabs tool).
     # Binds only to 127.0.0.1 — the local extension connects here.
-    @app.websocket("/browser-bridge")
+    #
+    # Registered via the raw Starlette router (app.router.add_websocket_route),
+    # NOT the @app.websocket(...) FastAPI decorator. The decorator form
+    # inherits the app-level `dependencies=[Depends(require_local_token)]`
+    # (Security Gate 1, see FastAPI(...) call above + app/core/auth.py) —
+    # that dependency requires an `Authorization: Bearer <token>` header,
+    # which browsers cannot attach to a native WebSocket handshake. With the
+    # decorator, every extension connection attempt failed with an unhandled
+    # 500 during the WS upgrade (AppError raised by the dependency has no
+    # WebSocket-aware exception handler — Starlette's HTTP exception
+    # middleware can't turn it into a clean WS rejection). The extension has
+    # its own, separate auth — one-time pairing code + per-install
+    # credential — fully implemented inside BrowserExtensionBroker.handle_ws
+    # below, so this route was never meant to need the HTTP local-token gate.
+    # Context: agent_reports/2026-07-16_browser-bridge-wrong-broker-port-fix.md
     async def browser_bridge_ws(websocket):
         await _broker.handle_ws(websocket)
+
+    app.router.add_websocket_route("/browser-bridge", browser_bridge_ws)
 
     register_error_handlers(app)
     app.include_router(health_router)

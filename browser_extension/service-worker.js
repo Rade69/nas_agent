@@ -7,9 +7,27 @@
 // NEVER sends page content, executes arbitrary JS, or reads the DOM.
 // Only chrome.tabs metadata and chrome.windows focus actions.
 
+function ts() {
+  return new Date().toISOString();
+}
+
 const STATE = {
   connected: false,
   ws: null,
+  // Bug found 2026-07-16 (live log evidence): connect()'s original guard
+  // checked `STATE.ws.readyState` synchronously, but STATE.ws is only
+  // assigned inside an async getBrokerUrl().then() callback. Two
+  // near-simultaneous connect() calls (observed: onStartup's own connect()
+  // racing the keepalive alarm's connect(), which can fire immediately on
+  // startup if chrome.alarms carried over a due firing time from before the
+  // service worker restarted) both saw STATE.ws as not-yet-set and both
+  // proceeded, opening two real WebSocket connections to the backend
+  // (confirmed in the backend log: two [bridge:xxxxxxxx] accept() calls
+  // 20ms apart). Only one completed auth; the other sat open and
+  // authenticated with nobody home. `connecting` is set synchronously,
+  // before anything async happens, so a second call in the same tick (or
+  // before the first's broker-URL lookup resolves) is correctly blocked.
+  connecting: false,
   reconnectTimer: null,
   reconnectAttempts: 0,
   maxReconnectAttempts: 6,
@@ -40,18 +58,12 @@ async function loadStoredState() {
   STATE.browserKind = stored.browserKind || null;
   STATE.profileLabel = stored.profileLabel || null;
   STATE.pairingSecret = stored.pairingSecret || null;
-  console.log("[ricky-bridge] stored state loaded",
-    "installationId:", STATE.installationId ? "set" : "not set",
-    "credential:", STATE.credential ? "set" : "not set",
-    "profileId:", STATE.profileId || "none",
-    "browserKind:", STATE.browserKind || "none");
 }
 
 async function ensureInstallationId() {
   if (STATE.installationId) return STATE.installationId;
   STATE.installationId = "inst_" + crypto.randomUUID().replace(/-/g, "").slice(0, 24);
   await chrome.storage.local.set({ installationId: STATE.installationId });
-  console.log("[ricky-bridge] generated installationId:", STATE.installationId);
   return STATE.installationId;
 }
 
@@ -66,7 +78,6 @@ async function saveCredential(data) {
     browserKind: data.browser_kind,
     profileLabel: data.profile_label,
   });
-  console.log("[ricky-bridge] credential saved for profile:", data.profile_id);
 }
 
 async function saveSecret(secret) {
@@ -76,7 +87,7 @@ async function saveSecret(secret) {
 
 async function getBrokerUrl() {
   const stored = await chrome.storage.local.get("brokerUrl");
-  return stored.brokerUrl || "ws://127.0.0.1:9119";
+  return stored.brokerUrl || "ws://127.0.0.1:8765/browser-bridge";
 }
 
 // ---------------------------------------------------------------------------
@@ -86,19 +97,28 @@ function connect() {
   if (STATE.ws && (STATE.ws.readyState === WebSocket.OPEN || STATE.ws.readyState === WebSocket.CONNECTING)) {
     return;
   }
+  // Synchronous guard against the race described above STATE.connecting's
+  // declaration — must be set before the first `await`/`.then`, not after.
+  if (STATE.connecting) {
+    return;
+  }
+  STATE.connecting = true;
 
   getBrokerUrl().then((url) => {
-    console.log("[ricky-bridge] connecting to", url);
     try {
       STATE.ws = new WebSocket(url);
     } catch (e) {
-      console.error("[ricky-bridge] WebSocket constructor failed:", e);
+      console.error(`[ricky-bridge][${ts()}] WebSocket constructor failed:`, e);
+      STATE.connecting = false;
       scheduleReconnect();
       return;
     }
+    // From here on, STATE.ws.readyState (CONNECTING/OPEN) is an accurate,
+    // race-free guard on its own — this flag's only job was covering the
+    // async gap before STATE.ws existed.
+    STATE.connecting = false;
 
     STATE.ws.onopen = () => {
-      console.log("[ricky-bridge] ws open, sending auth");
       STATE.connected = true;
       STATE.reconnectAttempts = 0;
       STATE.processedRequestIds.clear();
@@ -121,21 +141,34 @@ function connect() {
       try {
         msg = JSON.parse(event.data);
       } catch {
-        console.error("[ricky-bridge] unparseable message");
+        console.error(`[ricky-bridge][${ts()}] unparseable message:`, event.data);
         return;
       }
       handleMessage(msg);
     };
 
-    STATE.ws.onclose = () => {
-      console.log("[ricky-bridge] ws closed");
+    STATE.ws.onclose = (event) => {
       STATE.connected = false;
       STATE.ws = null;
+      // Bug found 2026-07-16 (live log evidence — a reconnect storm firing
+      // every ~1-1.5s, matching scheduleReconnect()'s first-attempt delay
+      // exactly): code 4000 means the BACKEND itself closed this connection
+      // because a newer connection for the same profile already replaced
+      // it (see _register_connection in browser_extension_broker.py).
+      // Blindly reconnecting after that is self-defeating — this instance
+      // is the one that just LOST, and reconnecting immediately just
+      // re-triggers the same replace-and-close on whichever connection is
+      // now current, forever. Only reconnect on close reasons that mean
+      // "the connection genuinely died," not "a newer one is already here."
+      if (event.code === 4000) {
+        console.log(`[ricky-bridge][${ts()}] ws closed (code 4000: replaced by a newer connection) — NOT reconnecting`);
+        return;
+      }
       scheduleReconnect();
     };
 
     STATE.ws.onerror = (e) => {
-      console.error("[ricky-bridge] ws error", e);
+      console.error(`[ricky-bridge][${ts()}] ws error`, e);
     };
   });
 }
@@ -156,12 +189,10 @@ function disconnect() {
 
 function scheduleReconnect() {
   if (STATE.reconnectAttempts >= STATE.maxReconnectAttempts) {
-    console.log("[ricky-bridge] max reconnect attempts reached");
     return;
   }
   const delay = STATE.reconnectBaseMs * Math.pow(2, STATE.reconnectAttempts) + Math.random() * 500;
   STATE.reconnectAttempts++;
-  console.log(`[ricky-bridge] reconnect ${STATE.reconnectAttempts}/${STATE.maxReconnectAttempts} in ${Math.round(delay)}ms`);
   STATE.reconnectTimer = setTimeout(() => {
     STATE.reconnectTimer = null;
     connect();
@@ -176,8 +207,16 @@ async function pairWithCode(code, browserKind, profileLabel) {
 
   return new Promise((resolve) => {
     getBrokerUrl().then((url) => {
-      const ws = new WebSocket(url);
+      let ws;
+      try {
+        ws = new WebSocket(url);
+      } catch (e) {
+        console.error("[ricky-bridge][pair] WebSocket constructor threw:", e);
+        resolve({ ok: false, error: "Invalid broker URL: " + e.message });
+        return;
+      }
       const timeout = setTimeout(() => {
+        console.error("[ricky-bridge][pair] timed out after 15s, readyState =", ws.readyState);
         ws.close();
         resolve({ ok: false, error: "Pairing timed out." });
       }, 15000);
@@ -210,15 +249,26 @@ async function pairWithCode(code, browserKind, profileLabel) {
             profile_label: msg.profile_label,
           });
         } else if (msg.type === "pair_failed") {
+          console.error("[ricky-bridge][pair] pair_failed:", msg.reason);
           ws.close();
           resolve({ ok: false, error: msg.reason || "Pairing failed." });
         } else {
+          console.error("[ricky-bridge][pair] unexpected message type:", msg.type);
           ws.close();
           resolve({ ok: false, error: "Unexpected response." });
         }
       };
 
-      ws.onerror = () => {
+      ws.onclose = (event) => {
+        // The most diagnostic field: a WS close BEFORE onopen fired with
+        // code 1006 means the browser could not even complete the TCP/HTTP
+        // handshake (wrong port, nothing listening, blocked). A close AFTER
+        // onopen with an app-level code (4001/4002/1008) means the backend
+        // accepted the connection but rejected it at the protocol level.
+      };
+
+      ws.onerror = (e) => {
+        console.error("[ricky-bridge][pair] ws error event:", e, "readyState was:", ws.readyState);
         clearTimeout(timeout);
         resolve({ ok: false, error: "Could not connect to Ricky backend." });
       };
@@ -239,8 +289,6 @@ async function handleMessage(msg) {
 
   switch (type) {
     case "auth_ok": {
-      console.log("[ricky-bridge] authenticated",
-        payload.profile_id ? `profile=${payload.profile_id}` : "(legacy)");
       if (payload.profile_id) {
         STATE.profileId = payload.profile_id;
         STATE.browserKind = payload.browser_kind;
@@ -261,7 +309,6 @@ async function handleMessage(msg) {
 
     case "paired": {
       // Handled in pairWithCode — here as fallback if received after reconnect
-      console.log("[ricky-bridge] paired successfully");
       await saveCredential(payload);
       break;
     }
@@ -409,17 +456,54 @@ async function handleOpenTab(requestId, { url, activate }) {
 }
 
 // ---------------------------------------------------------------------------
+// Keep-alive (found 2026-07-16: connection was dropping mid-session during
+// normal pauses — voice round-trips, waiting for user confirmation, deciding
+// which tab to close). Root cause: MV3 service workers are suspended by the
+// browser after ~30s of no activity, which silently kills any open
+// WebSocket and — critically — wipes the whole JS context (STATE, pending
+// reconnect timers, everything), so the existing ws.onclose/scheduleReconnect
+// logic never even gets a chance to run. Only chrome.alarms is guaranteed to
+// wake a fully-suspended service worker back up (setInterval/setTimeout do
+// not survive suspension). ALARM_PERIOD_MINUTES is the Chrome-enforced floor
+// for repeating alarms — this can't be tightened further; the fix is
+// "self-heals within ~1 minute", not "never drops".
+// ---------------------------------------------------------------------------
+const KEEPALIVE_ALARM_NAME = "ricky-bridge-keepalive";
+const ALARM_PERIOD_MINUTES = 1;
+
+function ensureKeepAliveAlarm() {
+  chrome.alarms.create(KEEPALIVE_ALARM_NAME, { periodInMinutes: ALARM_PERIOD_MINUTES });
+}
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name !== KEEPALIVE_ALARM_NAME) return;
+  if (!STATE.ws || STATE.ws.readyState !== WebSocket.OPEN) {
+    connect();
+    return;
+  }
+  // WS is open — send a ping. This both confirms the connection is genuinely
+  // alive (not a stale readyState) and generates traffic that helps keep the
+  // service worker from being judged idle before the next alarm.
+  sendMessage({ type: "ping", request_id: `keepalive_${Date.now()}` });
+});
+
+// ---------------------------------------------------------------------------
 // Extension lifecycle (C0: ensure installation_id on first load)
 // ---------------------------------------------------------------------------
 chrome.runtime.onInstalled.addListener(() => {
-  console.log("[ricky-bridge] installed");
+  ensureKeepAliveAlarm();
   ensureInstallationId().then(() => loadStoredState()).then(() => connect());
 });
 
 chrome.runtime.onStartup.addListener(() => {
-  console.log("[ricky-bridge] startup");
+  ensureKeepAliveAlarm();
   loadStoredState().then(() => connect());
 });
+
+// The service worker can be woken by the alarm alone (browser restart
+// without onInstalled/onStartup firing again in some cases) — re-arm
+// defensively on every fresh script evaluation, not just install/startup.
+ensureKeepAliveAlarm();
 
 // Listen for messages from the options page
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {

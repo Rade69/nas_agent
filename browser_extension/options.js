@@ -17,7 +17,7 @@ const legacySection = document.getElementById("legacy-section");
 async function init() {
   // Load saved broker URL
   const stored = await chrome.storage.local.get(["brokerUrl", "pairingSecret", "browserKind"]);
-  brokerUrlInput.value = stored.brokerUrl || "ws://127.0.0.1:9119";
+  brokerUrlInput.value = stored.brokerUrl || "ws://127.0.0.1:8765/browser-bridge";
   if (stored.pairingSecret) secretInput.value = stored.pairingSecret;
   if (stored.browserKind) browserKindSelect.value = stored.browserKind;
 
@@ -155,3 +155,7 @@ toggleBtn.addEventListener("click", () => {
   secretInput.type = isPassword ? "text" : "password";
   toggleBtn.textContent = isPassword ? "🙈" : "👁";
 });
+
+// Bug fix (2026-07-16): init() was defined but never called — the Broker
+// URL field and connection status never populated on page open.
+init();

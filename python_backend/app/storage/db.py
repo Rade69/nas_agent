@@ -207,6 +207,26 @@ SCHEMA_STATEMENTS = [
         FOREIGN KEY(conversation_id) REFERENCES agent_conversations(id)
     )
     """,
+    # Browser Bridge (C0) install credentials — originally in-memory only by
+    # design (docs/BROWSER_BRIDGE_PUBLISHING.md), which meant every app
+    # restart forced the user through the pairing ritual again. Persisted
+    # 2026-07-16 after real-world use showed that too impractical.
+    # `credential` is a per-install secret (not a user password/API key) —
+    # scoped to local tab list/activate/open/close only.
+    # Context: agent_reports/2026-07-16_browser-bridge-wrong-broker-port-fix.md
+    """
+    CREATE TABLE IF NOT EXISTS browser_bridge_credentials (
+        installation_id TEXT PRIMARY KEY,
+        profile_id TEXT NOT NULL,
+        credential TEXT NOT NULL,
+        browser_kind TEXT NOT NULL,
+        profile_label TEXT NOT NULL,
+        extension_version TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        last_seen_at TEXT,
+        revoked INTEGER NOT NULL DEFAULT 0
+    )
+    """,
 ]
 
 

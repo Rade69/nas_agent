@@ -3,10 +3,13 @@
   "name": "Ricky Browser Bridge",
   "version": "1.0.0",
   "description": "Lets Ricky (the desktop companion) safely list, activate, open, and close browser tabs. Never reads page content, history, or cookies. Only communicates with the local Ricky app via secure localhost WebSocket.",
-  "permissions": ["tabs", "storage"],
+  "permissions": ["tabs", "storage", "alarms"],
   "host_permissions": [],
   "background": {
     "service_worker": "service-worker.js"
+  },
+  "action": {
+    "default_title": "Ricky Browser Bridge"
   },
   "options_ui": {
     "page": "options.html",

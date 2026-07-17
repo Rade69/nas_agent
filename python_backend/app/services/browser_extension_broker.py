@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import secrets
 import time
 from dataclasses import dataclass, field
@@ -31,6 +32,9 @@ from fastapi import WebSocket, WebSocketDisconnect
 from starlette.websockets import WebSocketState
 
 from app.core.errors import AppError
+from app.storage.repositories.browser_bridge_credential_repo import (
+    BrowserBridgeCredentialRepository,
+)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -132,7 +136,7 @@ class BrowserExtensionBroker:
     profile and cannot be used across profiles.
     """
 
-    def __init__(self, data_dir: Path) -> None:
+    def __init__(self, data_dir: Path, database_path: Path | None = None) -> None:
         self._data_dir = data_dir
         self._legacy_secret: str | None = None
         # C1: connection registry (profile_id → ConnectionState)
@@ -141,10 +145,77 @@ class BrowserExtensionBroker:
         # Pairing
         self._pairing_sessions: dict[str, PairingSession] = {}
         self._human_code_index: dict[str, str] = {}
-        # Credentials (installation_id → InstallCredential, survives reconnect)
+        # Credentials (installation_id → InstallCredential, survives reconnect).
+        # Persisted to SQLite when database_path is given (production, via
+        # init_broker) so a normal app restart doesn't force re-pairing.
+        # database_path is optional and defaults to None so existing unit
+        # tests that construct BrowserExtensionBroker(tmp_path) directly keep
+        # working unchanged (in-memory only, no DB needed for those).
         self._install_credentials: dict[str, InstallCredential] = {}
+        self._credential_repo = (
+            BrowserBridgeCredentialRepository(database_path) if database_path else None
+        )
+        if self._credential_repo is not None:
+            self._load_persisted_credentials()
         # Rate limiting: timestamp list for pairing attempts
         self._pairing_attempts: list[float] = []
+
+    def _load_persisted_credentials(self) -> None:
+        assert self._credential_repo is not None
+        for row in self._credential_repo.list():
+            install = InstallCredential(
+                installation_id=row["installation_id"],
+                profile_id=row["profile_id"],
+                credential=row["credential"],
+                browser_kind=row["browser_kind"],
+                profile_label=row["profile_label"],
+                extension_version=row["extension_version"],
+                created_at=datetime.fromisoformat(row["created_at"]),
+                last_seen_at=(
+                    datetime.fromisoformat(row["last_seen_at"]) if row["last_seen_at"] else None
+                ),
+                revoked=bool(row["revoked"]),
+            )
+            self._install_credentials[install.installation_id] = install
+
+    def _persist_credential(self, install: InstallCredential) -> None:
+        """Write-through cache to SQLite — must never break the live connection.
+
+        Found 2026-07-16: this is called synchronously from inside
+        handle_ws()'s message loop (including on every reconnect/auth, not
+        just first pairing). The SQLite file is written concurrently by many
+        other parts of the app (voice turns, tool_runs, activity_events,
+        confirmations) with no WAL mode or busy_timeout configured — a
+        transient "database is locked" here is realistic under real load. If
+        this raised, it propagated out of handle_ws()'s bare `except
+        Exception: pass`, which tore down the otherwise-healthy WebSocket
+        connection (the extension would show connected while the backend's
+        _connections registry had already dropped it, causing
+        BROWSER_EXTENSION_NOT_CONNECTED on every tool call and a reconnect
+        loop). Persistence is a nice-to-have (survives restart); it must
+        never be allowed to kill a working live session.
+        """
+        if self._credential_repo is None:
+            return
+        try:
+            self._credential_repo.upsert(
+                installation_id=install.installation_id,
+                profile_id=install.profile_id,
+                credential=install.credential,
+                browser_kind=install.browser_kind,
+                profile_label=install.profile_label,
+                extension_version=install.extension_version,
+                created_at=install.created_at.isoformat(),
+                last_seen_at=install.last_seen_at.isoformat() if install.last_seen_at else None,
+                revoked=install.revoked,
+            )
+        except Exception:
+            logging.getLogger(__name__).warning(
+                "browser-bridge: failed to persist credential for installation_id=%s "
+                "(live connection unaffected; credential may not survive a restart)",
+                install.installation_id,
+                exc_info=True,
+            )
 
     # ------------------------------------------------------------------
     # Legacy secret (backward compat)
@@ -256,6 +327,7 @@ class BrowserExtensionBroker:
             last_seen_at=datetime.now(timezone.utc),
         )
         self._install_credentials[installation_id] = install
+        self._persist_credential(install)
         return install
 
     def _cleanup_expired_sessions(self) -> None:
@@ -279,10 +351,17 @@ class BrowserExtensionBroker:
         old = self._connections.get(profile_id)
         if old is not None:
             self._fail_pending(old, "Connection replaced by newer session.")
-            try:
-                old.websocket.close(code=4000, reason="replaced")
-            except Exception:
-                pass
+            # Bug found 2026-07-16 while adding debug logging: WebSocket.close()
+            # is async — calling it unawaited from this sync method silently
+            # created-and-discarded a coroutine, so the OLD connection's
+            # socket was never actually closed at the protocol level on
+            # reconnect/replace. Its handle_ws() task kept running, blocked
+            # on iter_text(), as a zombie — the extension's earlier
+            # connection would just sit there until it independently timed
+            # out or the extension itself dropped it. create_task() is the
+            # correct fire-and-forget from this sync context (this method
+            # is only ever called from within handle_ws()'s running event loop).
+            asyncio.create_task(_safe_close(old.websocket, code=4000, reason="replaced"))
         conn = ConnectionState(
             profile_id=profile_id,
             installation_id=install.installation_id,
@@ -291,6 +370,7 @@ class BrowserExtensionBroker:
         )
         self._connections[profile_id] = conn
         install.last_seen_at = datetime.now(timezone.utc)
+        self._persist_credential(install)
         return conn
 
     def _remove_connection(self, ws: WebSocket) -> ConnectionState | None:
@@ -300,7 +380,15 @@ class BrowserExtensionBroker:
                 del self._connections[profile_id]
                 conn.install.last_seen_at = datetime.now(timezone.utc)
                 self._fail_pending(conn, "Extension disconnected.")
+                logging.getLogger(__name__).warning(
+                    "[bridge] _remove_connection: removed profile_id=%s (registry now has %d connection(s))",
+                    profile_id, len(self._connections),
+                )
                 return conn
+        logging.getLogger(__name__).warning(
+            "[bridge] _remove_connection: no matching entry for this websocket "
+            "(already removed, or was never registered — e.g. auth never succeeded)"
+        )
         return None
 
     @staticmethod
@@ -325,6 +413,7 @@ class BrowserExtensionBroker:
         for iid, inst in list(self._install_credentials.items()):
             if inst.profile_id == profile_id:
                 inst.revoked = True
+                self._persist_credential(inst)
                 break
         return True
 
@@ -333,10 +422,12 @@ class BrowserExtensionBroker:
         conn = self._connections.get(profile_id)
         if conn is not None:
             conn.install.profile_label = new_label
+            self._persist_credential(conn.install)
             return True
         for inst in self._install_credentials.values():
             if inst.profile_id == profile_id:
                 inst.profile_label = new_label
+                self._persist_credential(inst)
                 return True
         return False
 
@@ -359,6 +450,18 @@ class BrowserExtensionBroker:
                 "profile_label": conn.install.profile_label,
                 "extension_version": conn.install.extension_version,
                 "connected": True,
+                # Pre-existing bug (found 2026-07-16): ConnectionEntry
+                # (app/api/browser_bridge.py) requires `revoked` — without
+                # it, ConnectionEntry(**c) raised a pydantic ValidationError
+                # on GET /browser-bridge/status whenever a connection was
+                # actually active (empty list = no validation = no error,
+                # which is why this only broke while genuinely connected).
+                # Electron's handleBrowserBridgeStatus() swallows that error
+                # and returns {connected: false} — the exact "extension
+                # says connected, app says not connected" symptom, even
+                # though tool calls worked fine (they read self._connections
+                # directly, bypassing this broken serialization).
+                "revoked": conn.install.revoked,
                 "connected_at": conn.connected_at.isoformat(),
                 "last_seen_at": conn.install.last_seen_at.isoformat() if conn.install.last_seen_at else None,
             })
@@ -460,6 +563,16 @@ class BrowserExtensionBroker:
     # WebSocket handler
     # ------------------------------------------------------------------
     async def handle_ws(self, websocket: WebSocket) -> None:
+        # DEBUG instrumentation (2026-07-16): connection was repeatedly
+        # dropping mid-session with no visible cause — the bare
+        # `except Exception: pass` below was silently swallowing whatever
+        # actually killed it. conn_tag identifies this specific WS lifetime
+        # across all log lines (a reconnect gets a new tag) so the log can
+        # be read as one connection's timeline even with multiple
+        # connect/disconnect cycles interleaved.
+        conn_tag = uuid4().hex[:8]
+        log = logging.getLogger(__name__)
+        log.warning("[bridge:%s] accept()", conn_tag)
         await websocket.accept()
         authenticated = False
         active_conn: ConnectionState | None = None
@@ -467,6 +580,7 @@ class BrowserExtensionBroker:
         try:
             async for raw in websocket.iter_text():
                 if len(raw) > MAX_MESSAGE_SIZE_BYTES:
+                    log.warning("[bridge:%s] message too large (%d bytes) — closing", conn_tag, len(raw))
                     await websocket.send_text(json.dumps({
                         "type": "auth_failed", "reason": "message too large",
                     }))
@@ -476,6 +590,7 @@ class BrowserExtensionBroker:
                 try:
                     msg = json.loads(raw)
                 except json.JSONDecodeError:
+                    log.warning("[bridge:%s] invalid JSON received: %.200r", conn_tag, raw)
                     await websocket.send_text(json.dumps({
                         "type": "error", "code": "INVALID_JSON",
                         "message": "Could not parse message as JSON.",
@@ -483,6 +598,9 @@ class BrowserExtensionBroker:
                     continue
 
                 msg_type = msg.get("type", "")
+                # Redact credential/secret/code fields before logging.
+                safe_msg = {k: ("<redacted>" if k in ("credential", "secret", "code") else v) for k, v in msg.items()}
+                log.warning("[bridge:%s] recv type=%s %s", conn_tag, msg_type, safe_msg)
 
                 # --- Pairing ---
                 if msg_type == "pair":
@@ -514,6 +632,7 @@ class BrowserExtensionBroker:
 
                     authenticated = True
                     active_conn = self._register_connection(websocket, install)
+                    log.warning("[bridge:%s] paired profile_id=%s", conn_tag, install.profile_id)
                     await websocket.send_text(json.dumps({
                         "type": "paired",
                         "profile_id": install.profile_id,
@@ -540,6 +659,7 @@ class BrowserExtensionBroker:
                                 return
                             authenticated = True
                             active_conn = self._register_connection(websocket, stored)
+                            log.warning("[bridge:%s] auth_ok profile_id=%s", conn_tag, stored.profile_id)
                             await websocket.send_text(json.dumps({
                                 "type": "auth_ok",
                                 "profile_id": stored.profile_id,
@@ -586,11 +706,16 @@ class BrowserExtensionBroker:
                             if future and not future.done():
                                 future.set_result(msg)
 
-        except WebSocketDisconnect:
-            pass
+        except WebSocketDisconnect as exc:
+            log.warning("[bridge:%s] WebSocketDisconnect code=%s reason=%s", conn_tag, getattr(exc, "code", None), getattr(exc, "reason", None))
         except Exception:
-            pass
+            # This used to be a bare `pass` — the single biggest reason the
+            # "connection breaks mid-session, extension still thinks it's
+            # connected" bug was undiagnosable for so long. Whatever tears
+            # this handler down now shows up here with a full traceback.
+            log.warning("[bridge:%s] handle_ws crashed (was_authenticated=%s)", conn_tag, authenticated, exc_info=True)
         finally:
+            log.warning("[bridge:%s] handle_ws exiting, removing connection (was_authenticated=%s)", conn_tag, authenticated)
             self._remove_connection(websocket)
 
     # ------------------------------------------------------------------
@@ -818,6 +943,14 @@ class BrowserExtensionBroker:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+async def _safe_close(websocket: WebSocket, *, code: int, reason: str) -> None:
+    """Await websocket.close(), swallowing errors (socket may already be dead)."""
+    try:
+        await websocket.close(code=code, reason=reason)
+    except Exception:
+        pass
+
+
 def _generate_human_code(existing: dict[str, str]) -> str:
     alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
     for _ in range(20):
@@ -840,8 +973,8 @@ def get_broker() -> BrowserExtensionBroker:
     return _broker
 
 
-def init_broker(data_dir: Path) -> BrowserExtensionBroker:
+def init_broker(data_dir: Path, database_path: Path | None = None) -> BrowserExtensionBroker:
     global _broker
-    _broker = BrowserExtensionBroker(data_dir)
+    _broker = BrowserExtensionBroker(data_dir, database_path)
     _broker._ensure_legacy_secret()
     return _broker
