@@ -1100,6 +1100,38 @@
   background: rgba(80, 200, 80, 0.08);
 }
 
+/* P5: due date badges */
+.pixel-drawer .plan-due-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.pixel-drawer .plan-due-overdue {
+  color: #ff9090;
+  background: rgba(220, 50, 50, 0.12);
+}
+
+.pixel-drawer .plan-due-today {
+  color: #ffc070;
+  background: rgba(200, 140, 40, 0.12);
+}
+
+.pixel-drawer .plan-due-soon {
+  color: #e0c070;
+  background: rgba(200, 170, 80, 0.1);
+}
+
+.pixel-drawer .plan-due-upcoming {
+  color: #9eacbf;
+  background: rgba(120, 140, 170, 0.08);
+}
+
+.pixel-drawer .plans-create-input[type="date"] {
+  color-scheme: dark;
+}
+
 .drawer-placeholder-text {
   color: #8fa0b5;
   margin: 0;

@@ -91,6 +91,27 @@ function statusIcon(status: PlanStatus) {
   return { Icon: IconError, className: "activity-icon-error" };
 }
 
+// P5: parse due date from title pattern "[📅YYYY-MM-DD] Title"
+function parseDueDate(title: string): { date: Date | null; displayTitle: string } {
+  const match = title.match(/^\[📅(\d{4}-\d{2}-\d{2})\]\s*/);
+  if (!match) return { date: null, displayTitle: title };
+  const parsed = new Date(match[1] + "T23:59:59");
+  if (isNaN(parsed.getTime())) return { date: null, displayTitle: title };
+  return { date: parsed, displayTitle: title.slice(match[0].length) };
+}
+
+function dueBadge(date: Date): { label: string; className: string } | null {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const due = new Date(date);
+  due.setHours(0, 0, 0, 0);
+  const diffDays = Math.ceil((due.getTime() - now.getTime()) / 86400000);
+  if (diffDays < 0) return { label: i18n.t("plans.overdue"), className: "plan-due-overdue" };
+  if (diffDays === 0) return { label: i18n.t("plans.dueToday"), className: "plan-due-today" };
+  if (diffDays <= 3) return { label: i18n.t("plans.dueSoon"), className: "plan-due-soon" };
+  return { label: i18n.t("plans.dueUpcoming"), className: "plan-due-upcoming" };
+}
+
 export function PlansPanel({
   visible,
   plans,
@@ -107,12 +128,23 @@ export function PlansPanel({
   // P0: inline creation form
   const [isCreating, setIsCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
+  const [newDueDate, setNewDueDate] = useState("");
 
   if (!visible) {
     return null;
   }
 
-  const filteredPlans = plans.filter((plan) => TAB_STATUSES[tab].includes(plan.status));
+  const filteredPlans = plans
+    .filter((plan) => TAB_STATUSES[tab].includes(plan.status))
+    // P5: sort by due date: overdue first, then soonest, then no deadline
+    .sort((a, b) => {
+      const da = parseDueDate(a.title).date;
+      const db = parseDueDate(b.title).date;
+      if (da && !db) return -1;
+      if (!da && db) return 1;
+      if (da && db) return da.getTime() - db.getTime();
+      return 0;
+    });
 
   // P0: per-tab empty state descriptions (more concrete than generic "empty")
   const emptyDescriptions: Record<PlanTab, string> = {
@@ -124,8 +156,12 @@ export function PlansPanel({
   const handleSubmitNewPlan = () => {
     const trimmed = newTitle.trim();
     if (!trimmed) return;
-    onCreatePlan(trimmed);
+    // P5: encode due date as summary prefix if set
+    const dueDate = newDueDate.trim();
+    const title = dueDate ? `[📅${dueDate}] ${trimmed}` : trimmed;
+    onCreatePlan(title);
     setNewTitle("");
+    setNewDueDate("");
     setIsCreating(false);
   };
 
@@ -165,6 +201,8 @@ export function PlansPanel({
           filteredPlans.map((plan) => {
             const badge = statusBadge(plan.status);
             const { Icon, className } = statusIcon(plan.status);
+            const { date: dueDate, displayTitle } = parseDueDate(plan.title);
+            const due = dueDate ? dueBadge(dueDate) : null;
             return (
               <article key={plan.id} className="plan-card">
                 <header className="plan-card-header">
@@ -172,7 +210,10 @@ export function PlansPanel({
                     <Icon className="activity-icon-svg" />
                   </span>
                   <div className="plan-card-titles">
-                    <strong>{plan.title}</strong>
+                    <strong>{displayTitle}</strong>
+                    {due ? (
+                      <span className={`plan-due-badge ${due.className}`}>{due.label}</span>
+                    ) : null}
                     {plan.summary ? <span className="plan-summary">{plan.summary}</span> : null}
                   </div>
                   {plan.steps.length > 0 ? (
@@ -337,10 +378,18 @@ export function PlansPanel({
             onChange={(e) => setNewTitle(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") handleSubmitNewPlan();
-              if (e.key === "Escape") { setIsCreating(false); setNewTitle(""); }
+              if (e.key === "Escape") { setIsCreating(false); setNewTitle(""); setNewDueDate(""); }
             }}
             placeholder={t("plans.newPlanPlaceholder")}
             autoFocus
+          />
+          <input
+            className="plans-create-input"
+            type="date"
+            value={newDueDate}
+            onChange={(e) => setNewDueDate(e.target.value)}
+            placeholder={t("plans.dueDate")}
+            title={t("plans.dueDateHint")}
           />
           <div className="plans-create-actions">
             <button className="pixel-primary" onClick={handleSubmitNewPlan} disabled={!newTitle.trim()}>

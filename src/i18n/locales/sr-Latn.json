@@ -194,7 +194,13 @@
     "skipped": "preskočeno",
     "failuresLabel": "Neuspjeli koraci",
     "saveReport": "Sačuvaj kao agent report",
-    "reportCopied": "Report kopiran u clipboard."
+    "reportCopied": "Report kopiran u clipboard.",
+    "overdue": "PREKORAČEN",
+    "dueToday": "DANAS",
+    "dueSoon": "USKORO",
+    "dueUpcoming": "BUDUĆI",
+    "dueDate": "Rok",
+    "dueDateHint": "Opciono: datum do kad treba završiti"
   },
   "activity": {
     "empty": "Još nema aktivnosti."

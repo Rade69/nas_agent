@@ -282,6 +282,12 @@
     "failuresLabel": "Failed steps",
     "saveReport": "Save as agent report",
     "reportCopied": "Report copied to clipboard.",
+    "overdue": "OVERDUE",
+    "dueToday": "TODAY",
+    "dueSoon": "SOON",
+    "dueUpcoming": "UPCOMING",
+    "dueDate": "Due date",
+    "dueDateHint": "Optional: deadline date",
     "approve": "Approve"
   }
 }
