@@ -268,6 +268,12 @@
     "planLabel": "Plan",
     "stepLabel": "Schritt",
     "pause": "Pausieren",
+    "done": "erledigt",
+    "failed": "fehlgeschlagen",
+    "skipped": "übersprungen",
+    "failuresLabel": "Fehlgeschlagene Schritte",
+    "saveReport": "Als Agent-Report speichern",
+    "reportCopied": "Report in Zwischenablage kopiert.",
     "approve": "Bestätigen"
   }
 }

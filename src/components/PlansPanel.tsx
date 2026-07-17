@@ -263,6 +263,64 @@ export function PlansPanel({
                     </button>
                   ) : null}
                 </footer>
+
+                {/* P4: receipt for completed plans in Završeni tab */}
+                {tab === "zavrseni" && plan.status === "completed" ? (
+                  <div className="plan-receipt">
+                    <div className="plan-receipt-summary">
+                      <span className="plan-receipt-stat plan-receipt-ok">
+                        ✓ {plan.steps.filter((s) => s.status === "completed").length} {t("plans.done")}
+                      </span>
+                      {plan.steps.filter((s) => s.status === "failed").length > 0 ? (
+                        <span className="plan-receipt-stat plan-receipt-fail">
+                          ✗ {plan.steps.filter((s) => s.status === "failed").length} {t("plans.failed")}
+                        </span>
+                      ) : null}
+                      {plan.steps.filter((s) => s.status === "skipped").length > 0 ? (
+                        <span className="plan-receipt-stat plan-receipt-skip">
+                          — {plan.steps.filter((s) => s.status === "skipped").length} {t("plans.skipped")}
+                        </span>
+                      ) : null}
+                    </div>
+                    {plan.steps.filter((s) => s.status === "failed").length > 0 ? (
+                      <div className="plan-receipt-failures">
+                        <span className="plan-receipt-failures-label">{t("plans.failuresLabel")}:</span>
+                        {plan.steps.filter((s) => s.status === "failed").map((s) => (
+                          <div key={s.id} className="plan-receipt-failure">
+                            <span>{s.step_index + 1}. {s.title}</span>
+                            {s.details?.error ? (
+                              <span className="plan-receipt-failure-reason">{String(s.details.error)}</span>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                    <div className="plan-receipt-actions">
+                      <button
+                        className="plan-action plan-report"
+                        onClick={() => {
+                          // P4: generate agent report draft
+                          const report = [
+                            `# Agent Report — ${plan.title}`,
+                            ``,
+                            `- Plan ID: ${plan.id}`,
+                            `- Status: completed`,
+                            `- Steps: ${plan.steps.filter((s) => s.status === "completed").length}/${plan.steps.length} done`,
+                            ``,
+                            `## Steps`,
+                            ...plan.steps.map((s) =>
+                              `- [${s.status === "completed" ? "x" : " "}] ${s.title}${s.details?.error ? ` — ERROR: ${s.details.error}` : ""}`
+                            ),
+                          ].join("\n");
+                          navigator.clipboard.writeText(report).catch(() => {});
+                          alert(t("plans.reportCopied"));
+                        }}
+                      >
+                        {t("plans.saveReport")}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
               </article>
             );
           })

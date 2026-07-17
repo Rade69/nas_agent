@@ -276,6 +276,12 @@
     "planLabel": "Plan",
     "stepLabel": "Step",
     "pause": "Pause",
+    "done": "done",
+    "failed": "failed",
+    "skipped": "skipped",
+    "failuresLabel": "Failed steps",
+    "saveReport": "Save as agent report",
+    "reportCopied": "Report copied to clipboard.",
     "approve": "Approve"
   }
 }

@@ -1024,6 +1024,82 @@
   background: rgba(200, 170, 80, 0.1);
 }
 
+/* P4: receipt for completed plans */
+.pixel-drawer .plan-receipt {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-top: 1px solid rgba(80, 135, 190, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pixel-drawer .plan-receipt-summary {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.pixel-drawer .plan-receipt-stat {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 5px;
+}
+
+.pixel-drawer .plan-receipt-ok {
+  color: #7ecf7e;
+  background: rgba(80, 200, 80, 0.08);
+}
+
+.pixel-drawer .plan-receipt-fail {
+  color: #e08585;
+  background: rgba(200, 80, 80, 0.08);
+}
+
+.pixel-drawer .plan-receipt-skip {
+  color: #8fa0b5;
+  background: rgba(120, 140, 170, 0.06);
+}
+
+.pixel-drawer .plan-receipt-failures {
+  font-size: 11px;
+  color: #c0a0a0;
+}
+
+.pixel-drawer .plan-receipt-failures-label {
+  font-weight: 600;
+  display: block;
+  margin-bottom: 3px;
+}
+
+.pixel-drawer .plan-receipt-failure {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 3px 0;
+}
+
+.pixel-drawer .plan-receipt-failure-reason {
+  color: #e08585;
+  font-size: 10px;
+  padding-left: 16px;
+}
+
+.pixel-drawer .plan-receipt-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.pixel-drawer .plan-action.plan-report {
+  color: #7ecf7e;
+  border-color: rgba(80, 200, 80, 0.2);
+  font-size: 12px;
+}
+
+.pixel-drawer .plan-action.plan-report:hover {
+  background: rgba(80, 200, 80, 0.08);
+}
+
 .drawer-placeholder-text {
   color: #8fa0b5;
   margin: 0;

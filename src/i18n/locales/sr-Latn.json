@@ -188,7 +188,13 @@
     "reject": "Odbaci",
     "planLabel": "Plan",
     "stepLabel": "Korak",
-    "pause": "Pauziraj"
+    "pause": "Pauziraj",
+    "done": "urađeno",
+    "failed": "neuspjelo",
+    "skipped": "preskočeno",
+    "failuresLabel": "Neuspjeli koraci",
+    "saveReport": "Sačuvaj kao agent report",
+    "reportCopied": "Report kopiran u clipboard."
   },
   "activity": {
     "empty": "Još nema aktivnosti."
