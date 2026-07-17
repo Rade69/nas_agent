@@ -240,12 +240,13 @@ def register_phase13_tools(registry: ToolRegistry, services: dict[str, Any] | No
     registry.register(
         _def(
             "create_plan",
-            "Propose a multi-step plan for the user to review and approve. Use this for tasks with 3+ steps, tasks involving external apps/browsers/files/email, or tasks with high-risk tools. The plan appears in the Predloženi tab — the user must approve it before you execute any action steps. Include a clear title, optional summary, and a list of step titles.",
+            "Propose a multi-step plan for the user to review and approve. Use this for tasks with 3+ steps, tasks involving external apps/browsers/files/email, or tasks with high-risk tools. The plan appears in the Predloženi tab — the user must approve it before you execute any action steps. Include a clear title, optional summary, optional due_at date (YYYY-MM-DD), and a list of step titles.",
             {
                 "type": "object",
                 "properties": {
                     "title": {"type": "string", "description": "Short plan title (e.g. 'Poveži Brave i testiraj tabove')."},
                     "summary": {"type": "string", "description": "Brief description of what the plan will accomplish."},
+                    "due_at": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$", "description": "Optional plan reminder/deadline date in YYYY-MM-DD format."},
                     "steps": {
                         "type": "array",
                         "description": "Ordered list of step titles. Each item may be a string or an object with a title field.",

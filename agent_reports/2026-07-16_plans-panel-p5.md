@@ -28,3 +28,27 @@
 
 ## Provjere
 - tsc čist, build OK
+
+## Dopuna — zatvaranje P5 do 100% (Codex, 2026-07-17)
+
+P5 je dopunjen da rokovi/podsjetnici više ne zavise samo od title prefix-a.
+
+### Pravi storage/API field
+- Dodan `due_at` na `plans` tabelu i idempotentna SQLite migracija.
+- `/plans` create/update/list/get sada prima i vraća `due_at`.
+- `PlanService` i `PlanRepository` čuvaju rok kao zasebno polje.
+- Stari format `[📅YYYY-MM-DD] Naslov` ostaje samo backward-compatible fallback za ranije kreirane planove.
+
+### Agent reminder workflow
+- `create_plan` tool sada prima `due_at` u `YYYY-MM-DD` formatu.
+- Realtime tool spec oglašava `due_at` modelu.
+- System prompt kaže agentu da za “podsjeti me”, “rok”, “danas”, “sutra” ili konkretan datum upiše `due_at` i korisniku kaže da je podsjetnik/rok vidljiv u plan panelu.
+
+### UI
+- PlansPanel koristi `plan.due_at` kao primarni izvor istine.
+- Badge prikazuje status i datum (`PREKORAČEN`, `DANAS`, `USKORO`, `BUDUĆI`).
+- Sortiranje koristi `due_at`, a title-prefix fallback samo za stare planove.
+
+### Regression provjere
+- `python -m pytest -q tests\test_plans.py --basetemp=.tmp-tests\pytest-plans-p5-close` → 9 passed
+- `npm run typecheck` → passed

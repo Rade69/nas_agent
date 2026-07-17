@@ -116,7 +116,7 @@ export function PixelMockupBoard({
   onCloseDrawer: () => void;
   onUpdatePlanStatus: (planId: string, status: string) => Promise<void>;
   onUpdateStepStatus: (planId: string, stepId: string, status: string) => Promise<void>;
-  onCreatePlan: (title: string) => Promise<void>;
+  onCreatePlan: (title: string, dueAt?: string | null) => Promise<void>;
 }) {
   const { t } = useTranslation();
   return (

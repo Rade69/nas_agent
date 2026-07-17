@@ -35,12 +35,14 @@ class PlanStepResponse(BaseModel):
 class PlanCreateRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=300)
     summary: str | None = None
+    due_at: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     steps: list[PlanStepCreateRequest] = Field(default_factory=list)
 
 
 class PlanUpdateRequest(BaseModel):
     title: str | None = None
     summary: str | None = None
+    due_at: str | None = Field(default=None, pattern=r"^\d{4}-\d{2}-\d{2}$")
     status: PlanStatus | None = None
 
 
@@ -51,6 +53,7 @@ class PlanResponse(BaseModel):
     created_at: str
     updated_at: str
     summary: str | None = None
+    due_at: str | None = None
     steps: list[PlanStepResponse] = Field(default_factory=list)
 
 

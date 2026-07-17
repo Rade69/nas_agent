@@ -162,6 +162,7 @@ export type Plan = {
   created_at: string;
   updated_at: string;
   summary?: string | null;
+  due_at?: string | null;
   steps: PlanStep[];
 };
 
@@ -235,12 +236,13 @@ declare global {
       createPlan: (payload: {
         title: string;
         summary?: string | null;
+        due_at?: string | null;
         steps?: { title: string; details?: Record<string, unknown> }[];
       }) => Promise<Plan>;
       getPlan: (planId: string) => Promise<Plan>;
       updatePlan: (
         planId: string,
-        payload: { title?: string; summary?: string | null; status?: PlanStatus },
+        payload: { title?: string; summary?: string | null; due_at?: string | null; status?: PlanStatus },
       ) => Promise<Plan>;
       updatePlanStep: (
         planId: string,

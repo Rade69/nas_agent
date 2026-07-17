@@ -20,7 +20,7 @@ type PlansPanelProps = {
   busyStepId: string | null;
   onUpdatePlanStatus: (planId: string, status: Plan["status"]) => void;
   onUpdateStepStatus: (planId: string, stepId: string, status: PlanStepStatus) => void;
-  onCreatePlan: (title: string) => void;
+  onCreatePlan: (title: string, dueAt?: string | null) => void;
 };
 
 const STEP_STATUS_NEXT: Record<PlanStepStatus, PlanStepStatus | null> = {
@@ -91,13 +91,18 @@ function statusIcon(status: PlanStatus) {
   return { Icon: IconError, className: "activity-icon-error" };
 }
 
-// P5: parse due date from title pattern "[📅YYYY-MM-DD] Title"
-function parseDueDate(title: string): { date: Date | null; displayTitle: string } {
+// P5: use persisted plan.due_at. The title prefix is kept only as a
+// backwards-compatible fallback for plans created by the first P5 pass.
+function parseDueDate(title: string, dueAt?: string | null): { date: Date | null; displayTitle: string; value: string | null } {
+  if (dueAt) {
+    const parsed = new Date(dueAt + "T23:59:59");
+    if (!isNaN(parsed.getTime())) return { date: parsed, displayTitle: title, value: dueAt };
+  }
   const match = title.match(/^\[📅(\d{4}-\d{2}-\d{2})\]\s*/);
-  if (!match) return { date: null, displayTitle: title };
+  if (!match) return { date: null, displayTitle: title, value: null };
   const parsed = new Date(match[1] + "T23:59:59");
-  if (isNaN(parsed.getTime())) return { date: null, displayTitle: title };
-  return { date: parsed, displayTitle: title.slice(match[0].length) };
+  if (isNaN(parsed.getTime())) return { date: null, displayTitle: title, value: null };
+  return { date: parsed, displayTitle: title.slice(match[0].length), value: match[1] };
 }
 
 function dueBadge(date: Date): { label: string; className: string } | null {
@@ -138,8 +143,8 @@ export function PlansPanel({
     .filter((plan) => TAB_STATUSES[tab].includes(plan.status))
     // P5: sort by due date: overdue first, then soonest, then no deadline
     .sort((a, b) => {
-      const da = parseDueDate(a.title).date;
-      const db = parseDueDate(b.title).date;
+      const da = parseDueDate(a.title, a.due_at).date;
+      const db = parseDueDate(b.title, b.due_at).date;
       if (da && !db) return -1;
       if (!da && db) return 1;
       if (da && db) return da.getTime() - db.getTime();
@@ -156,10 +161,8 @@ export function PlansPanel({
   const handleSubmitNewPlan = () => {
     const trimmed = newTitle.trim();
     if (!trimmed) return;
-    // P5: encode due date as summary prefix if set
     const dueDate = newDueDate.trim();
-    const title = dueDate ? `[📅${dueDate}] ${trimmed}` : trimmed;
-    onCreatePlan(title);
+    onCreatePlan(trimmed, dueDate || null);
     setNewTitle("");
     setNewDueDate("");
     setIsCreating(false);
@@ -201,7 +204,7 @@ export function PlansPanel({
           filteredPlans.map((plan) => {
             const badge = statusBadge(plan.status);
             const { Icon, className } = statusIcon(plan.status);
-            const { date: dueDate, displayTitle } = parseDueDate(plan.title);
+            const { date: dueDate, displayTitle, value: dueValue } = parseDueDate(plan.title, plan.due_at);
             const due = dueDate ? dueBadge(dueDate) : null;
             return (
               <article key={plan.id} className="plan-card">
@@ -212,7 +215,9 @@ export function PlansPanel({
                   <div className="plan-card-titles">
                     <strong>{displayTitle}</strong>
                     {due ? (
-                      <span className={`plan-due-badge ${due.className}`}>{due.label}</span>
+                      <span className={`plan-due-badge ${due.className}`} title={dueValue || undefined}>
+                        {due.label}{dueValue ? ` · ${dueValue}` : ""}
+                      </span>
                     ) : null}
                     {plan.summary ? <span className="plan-summary">{plan.summary}</span> : null}
                   </div>

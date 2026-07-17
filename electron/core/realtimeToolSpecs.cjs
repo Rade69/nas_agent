@@ -55,12 +55,13 @@ const toolSpecs = [
     type: "function",
     name: "create_plan",
     risk: "low",
-    description: "Propose a multi-step plan. Use for tasks with 3+ steps, external apps/browsers/files/email, or high-risk tools. The plan appears in Predloženi tab — user must approve before any action. Never execute action steps until the plan is approved.",
+    description: "Propose a multi-step plan. Use for tasks with 3+ steps, external apps/browsers/files/email, or high-risk tools. The plan appears in Predloženi tab — user must approve before any action. Include due_at as YYYY-MM-DD when the user asks for a deadline/reminder. Never execute action steps until the plan is approved.",
     parameters: {
       type: "object",
       properties: {
         title: { type: "string", description: "Short plan title." },
         summary: { type: "string", description: "Brief description." },
+        due_at: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$", description: "Optional reminder/deadline date in YYYY-MM-DD format." },
         steps: {
           type: "array",
           description: "Ordered step titles. Each item may be a string or an object with a title field.",

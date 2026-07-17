@@ -498,9 +498,9 @@ export default function App() {
     }
   }
 
-  async function handleCreatePlan(title: string) {
+  async function handleCreatePlan(title: string, dueAt?: string | null) {
     try {
-      const created = await window.ricky.createPlan({ title });
+      const created = await window.ricky.createPlan({ title, due_at: dueAt || null });
       if (created) setPlans((list) => [created, ...list]);
     } catch {
       /* silent — don't block the UI */

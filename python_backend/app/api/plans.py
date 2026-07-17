@@ -36,6 +36,7 @@ def create_plan(request_body: PlanCreateRequest, request: Request) -> PlanRespon
     data = _service(request).create(
         title=request_body.title,
         summary=request_body.summary,
+        due_at=request_body.due_at,
         steps=steps,
     )
     return PlanResponse(**data)
@@ -62,6 +63,7 @@ def update_plan(
         plan_id,
         title=request_body.title,
         summary=request_body.summary,
+        due_at=request_body.due_at,
         status=request_body.status,
     )
     if data is None:

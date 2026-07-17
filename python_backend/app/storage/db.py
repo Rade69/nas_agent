@@ -92,7 +92,8 @@ SCHEMA_STATEMENTS = [
         status TEXT NOT NULL,
         created_at TEXT NOT NULL,
         updated_at TEXT NOT NULL,
-        summary TEXT
+        summary TEXT,
+        due_at TEXT
     )
     """,
     """
@@ -234,6 +235,7 @@ MIGRATIONS = [
     ("confirmations", "tool_name", "TEXT"),
     ("confirmations", "payload_hash", "TEXT"),
     ("confirmations", "expires_at", "TEXT"),
+    ("plans", "due_at", "TEXT"),
 ]
 
 

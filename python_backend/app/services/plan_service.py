@@ -29,6 +29,7 @@ class PlanService:
         *,
         title: str,
         summary: str | None = None,
+        due_at: str | None = None,
         steps: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         plan_id = f"plan_{uuid4().hex[:12]}"
@@ -36,6 +37,7 @@ class PlanService:
             plan_id=plan_id,
             title=title,
             summary=summary,
+            due_at=due_at,
             steps=steps,
         )
         return self._to_dict(row)
@@ -54,12 +56,14 @@ class PlanService:
         *,
         title: str | None = None,
         summary: str | None = None,
+        due_at: str | None = None,
         status: str | None = None,
     ) -> dict[str, Any] | None:
         row = self._repository.update(
             plan_id,
             title=title,
             summary=summary,
+            due_at=due_at,
             status=status,
         )
         return self._to_dict(row) if row else None
@@ -107,5 +111,6 @@ class PlanService:
             "created_at": row["created_at"],
             "updated_at": row["updated_at"],
             "summary": row["summary"],
+            "due_at": row["due_at"],
             "steps": steps,
         }

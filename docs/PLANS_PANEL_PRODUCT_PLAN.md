@@ -335,7 +335,7 @@ Acceptance:
 - korisnik moze otvoriti povezani report;
 - neuspjeli koraci ostaju vidljivi.
 
-### P5 — podsjetnici
+### P5 — podsjetnici — završeno
 
 - Plan moze imati datum/rok.
 - UI prikazuje overdue/upcoming.
@@ -346,6 +346,12 @@ Acceptance:
 - korisnik napravi podsjetnik;
 - plan se pojavi kao upcoming;
 - kad rok prodje, prikazuje se kao overdue.
+
+Status 2026-07-17:
+
+- `due_at` je zasebno plans storage/API polje, ne skriveni title prefix;
+- UI prikazuje datum i hitnost roka te sortira planove po roku;
+- `create_plan` tool i Realtime prompt podržavaju agentovo kreiranje planova sa rokom/podsjetnikom.
 
 ## Prioriteti
 

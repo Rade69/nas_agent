@@ -30,6 +30,7 @@ class PlanRepository:
         plan_id: str,
         title: str,
         summary: str | None = None,
+        due_at: str | None = None,
         steps: list[dict[str, Any]] | None = None,
     ) -> sqlite3.Row:
         created_at = utc_now_iso()
@@ -37,10 +38,10 @@ class PlanRepository:
         with connect(self._database_path) as connection:
             connection.execute(
                 """
-                INSERT INTO plans (id, title, status, created_at, updated_at, summary)
-                VALUES (?, ?, 'proposed', ?, ?, ?)
+                INSERT INTO plans (id, title, status, created_at, updated_at, summary, due_at)
+                VALUES (?, ?, 'proposed', ?, ?, ?, ?)
                 """,
-                (plan_id, title, created_at, created_at, summary),
+                (plan_id, title, created_at, created_at, summary, due_at),
             )
             for index, step in enumerate(steps):
                 step_id = step.get("id") or f"{plan_id}-step-{index + 1}"
@@ -78,6 +79,7 @@ class PlanRepository:
         *,
         title: str | None = None,
         summary: str | None = None,
+        due_at: str | None = None,
         status: str | None = None,
     ) -> sqlite3.Row | None:
         updated_at = utc_now_iso()
@@ -87,14 +89,15 @@ class PlanRepository:
                 return None
             new_title = title if title is not None else current["title"]
             new_summary = summary if summary is not None else current["summary"]
+            new_due_at = due_at if due_at is not None else current["due_at"]
             new_status = status if status is not None else current["status"]
             connection.execute(
                 """
                 UPDATE plans
-                SET title = ?, summary = ?, status = ?, updated_at = ?
+                SET title = ?, summary = ?, due_at = ?, status = ?, updated_at = ?
                 WHERE id = ?
                 """,
-                (new_title, new_summary, new_status, updated_at, plan_id),
+                (new_title, new_summary, new_due_at, new_status, updated_at, plan_id),
             )
             connection.commit()
             return self._get_with_steps(connection, plan_id)

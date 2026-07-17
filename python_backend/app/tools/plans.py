@@ -23,6 +23,7 @@ def _create_plan(plan_service: PlanService, arguments: dict[str, Any]) -> dict[s
         raise ValueError("title is required.")
 
     summary = str(arguments.get("summary", "")).strip() or None
+    due_at = str(arguments.get("due_at", "")).strip() or None
 
     raw_steps = arguments.get("steps", [])
     if not isinstance(raw_steps, list):
@@ -38,6 +39,7 @@ def _create_plan(plan_service: PlanService, arguments: dict[str, Any]) -> dict[s
     plan = plan_service.create(
         title=title,
         summary=summary,
+        due_at=due_at,
         steps=step_dicts if step_dicts else None,
     )
     return {
@@ -45,6 +47,7 @@ def _create_plan(plan_service: PlanService, arguments: dict[str, Any]) -> dict[s
         "plan_id": plan["id"],
         "title": plan["title"],
         "status": plan["status"],
+        "due_at": plan.get("due_at"),
         "steps_count": len(plan.get("steps", [])),
         "message": (
             f"Plan '{title}' created with {len(step_dicts)} steps. "

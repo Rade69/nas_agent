@@ -21,6 +21,7 @@ def test_create_plan_with_steps(client: TestClient) -> None:
         json={
             "title": "Open app and type",
             "summary": "Open Notepad and type a greeting",
+            "due_at": "2026-07-20",
             "steps": [
                 {"title": "Open Notepad", "details": {"app": "notepad.exe"}},
                 {"title": "Type greeting", "details": {"text": "Hello"}},
@@ -31,6 +32,7 @@ def test_create_plan_with_steps(client: TestClient) -> None:
     body = response.json()
     assert body["id"].startswith("plan_")
     assert body["status"] == "proposed"
+    assert body["due_at"] == "2026-07-20"
     assert len(body["steps"]) == 2
     assert body["steps"][0]["step_index"] == 0
     assert body["steps"][0]["status"] == "pending"
@@ -64,9 +66,10 @@ def test_update_plan_status(client: TestClient) -> None:
     create = client.post("/plans", json={"title": "Demo", "steps": [{"title": "Step 1"}]})
     plan_id = create.json()["id"]
 
-    response = client.patch(f"/plans/{plan_id}", json={"status": "approved"})
+    response = client.patch(f"/plans/{plan_id}", json={"status": "approved", "due_at": "2026-07-21"})
     assert response.status_code == 200
     assert response.json()["status"] == "approved"
+    assert response.json()["due_at"] == "2026-07-21"
 
 
 def test_update_plan_step_status(client: TestClient) -> None:
@@ -114,6 +117,7 @@ def test_create_plan_tool_is_registered(client: TestClient) -> None:
     assert tool["requires_confirmation"] is False
     assert tool["requires_computer_mode"] is False
     assert tool["input_schema"]["required"] == ["title"]
+    assert "due_at" in tool["input_schema"]["properties"]
 
 
 def test_create_plan_tool_creates_proposed_plan(client: TestClient) -> None:
@@ -124,6 +128,7 @@ def test_create_plan_tool_creates_proposed_plan(client: TestClient) -> None:
             "arguments": {
                 "title": "Test browser bridge",
                 "summary": "Verify connected browsers.",
+                "due_at": "2026-07-22",
                 "steps": [
                     {"title": "List connected profiles"},
                     {"title": "Open a test tab"},
@@ -136,12 +141,14 @@ def test_create_plan_tool_creates_proposed_plan(client: TestClient) -> None:
     body = response.json()
     assert body["ok"] is True
     assert body["result"]["status"] == "proposed"
+    assert body["result"]["due_at"] == "2026-07-22"
     assert body["result"]["steps_count"] == 3
 
     plans = client.get("/plans").json()["plans"]
     created = next(plan for plan in plans if plan["id"] == body["result"]["plan_id"])
     assert created["title"] == "Test browser bridge"
     assert created["status"] == "proposed"
+    assert created["due_at"] == "2026-07-22"
     assert [step["title"] for step in created["steps"]] == [
         "List connected profiles",
         "Open a test tab",
