@@ -20,6 +20,7 @@ def register_phase13_tools(registry: ToolRegistry, services: dict[str, Any] | No
     """
     from app.tools.system.computer import make_handlers as make_computer_handlers
     from app.tools.system.browser import make_handler as make_browser_handler
+    from app.tools.system.open_path import make_handler as make_open_path_handler
     from app.tools.system.browser_tabs import make_handler as make_browser_tabs_handler
     from app.tools.system.browser_tabs import make_close_handler as make_browser_tab_close_handler
     from app.tools.system.browser_tabs import make_open_handler as make_browser_tab_open_handler
@@ -69,8 +70,29 @@ def register_phase13_tools(registry: ToolRegistry, services: dict[str, Any] | No
                 },
                 "additionalProperties": False,
             },
+            requires_computer_mode=False,
         ),
         make_browser_handler(),
+    )
+
+    registry.register(
+        _def(
+            "open_path",
+            "Open a folder in File Explorer, or select a file in its containing folder. Use this after filesystem_search returns a path and the user asks to open it — never navigate Explorer by clicking. Folders open directly in Explorer; files are selected (highlighted) in their containing folder. The path must come from a filesystem_search result.",
+            {
+                "type": "object",
+                "properties": {
+                    "path": {"type": "string", "description": "Absolute path to open, typically from a filesystem_search result."},
+                },
+                "required": ["path"],
+                "additionalProperties": False,
+            },
+            risk="medium",
+            requires_confirmation=False,
+            requires_computer_mode=False,
+            requires_active_window_match=False,
+        ),
+        make_open_path_handler(services["data_dir"]),
     )
 
     registry.register(

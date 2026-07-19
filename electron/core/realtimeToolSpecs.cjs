@@ -117,6 +117,20 @@ const toolSpecs = [
       additionalProperties: false,
     },
   },
+  {
+    type: "function",
+    name: "open_path",
+    risk: "medium",
+    description: "Open a folder in File Explorer, or select a file in its containing folder. Use this after filesystem_search returns a path and the user asks to open it — never navigate Explorer by clicking. Folders open directly in Explorer; files are selected (highlighted) in their containing folder. The path should come from a filesystem_search result.",
+    parameters: {
+      type: "object",
+      properties: {
+        path: { type: "string", description: "Absolute path to open, typically from a filesystem_search result." },
+      },
+      required: ["path"],
+      additionalProperties: false,
+    },
+  },
   // email_draft_stage / email_prepare_draft (docs/EMAIL_COMPOSE_TOOL_PLAN_V2_
   // GMAIL.md Faza B) — split so the confirmation persisted for
   // email_prepare_draft is never more than a draft_id, never the actual
@@ -315,7 +329,7 @@ const toolSpecs = [
     type: "function",
     name: "browser_open",
     risk: "medium",
-    description: "Open a web browser precisely. Use this tool instead of computer_open_app for Brave, Chrome, Edge, Firefox, or the Windows default browser. Serbian/Bosnian/Croatian 'Brejv' means Brave; pass brave or brejv. An optional URL must be an absolute http:// or https:// URL. Requires computer mode. Do not claim the browser opened unless the tool returns ok=true.",
+    description: "Open a web browser precisely. Use this tool instead of computer_open_app for Brave, Chrome, Edge, Firefox, or the Windows default browser. Serbian/Bosnian/Croatian 'Brejv' means Brave; pass brave or brejv. An optional URL must be an absolute http:// or https:// URL. Do not claim the browser opened unless the tool returns ok=true.",
     parameters: {
       type: "object",
       properties: {
