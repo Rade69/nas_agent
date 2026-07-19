@@ -208,8 +208,12 @@ def check_permission(
             status_code=403,
         )
 
+    # P1-B (SECURITY_FIX_PLAN_2026-07-19.md): fail-closed on missing payload_hash.
+    # If a confirmation has no payload_hash, it cannot gate any tool arguments,
+    # which is the same pattern as the S-04 tool_name fix. Require it to exist
+    # AND match — never skip the check.
     bound_hash = confirmation.get("payload_hash")
-    if bound_hash and bound_hash != hash_payload(request.arguments):
+    if not bound_hash or bound_hash != hash_payload(request.arguments):
         return AppError(
             "CONFIRMATION_MISMATCH",
             f"Confirmation '{confirmation_id}' does not match the submitted arguments.",

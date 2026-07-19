@@ -90,25 +90,9 @@ class ToolExecutor:
 
         record = self._cancellations.start(execution_id, request.tool_name) if self._cancellations else None
 
-        permission_error: AppError | None = check_permission(tool.definition, request, self._confirmations)
-        if permission_error is not None:
-            if self._cancellations:
-                self._cancellations.set_state(execution_id, "failed")
-            response = self._error_response(
-                request.tool_name,
-                action_log_id,
-                started,
-                permission_error.code,
-                permission_error.message,
-                execution_id=execution_id,
-                tool_state="failed",
-            )
-            self._log(request=request, response=response, tool=tool)
-            return response
-
-        # FAZA 13: active window enforcement (SECURITY_HARDENING_PLAN.md step 10).
-        # Runs after risk/confirmation checks, before the tool handler is invoked.
-        # Uses requires_active_window_match/allowed_apps/blocked_apps from ToolDefinition.
+        # P1-A (SECURITY_FIX_PLAN_2026-07-19.md): active window check runs BEFORE
+        # permission/confirmation check, so a blocked window never consumes a
+        # single-use confirmation token. Both checks run before the commit phase.
         active_window_error = check_active_window(tool.definition)
         if active_window_error is not None:
             if self._cancellations:
@@ -119,6 +103,22 @@ class ToolExecutor:
                 started,
                 active_window_error.code,
                 active_window_error.message,
+                execution_id=execution_id,
+                tool_state="failed",
+            )
+            self._log(request=request, response=response, tool=tool)
+            return response
+
+        permission_error: AppError | None = check_permission(tool.definition, request, self._confirmations)
+        if permission_error is not None:
+            if self._cancellations:
+                self._cancellations.set_state(execution_id, "failed")
+            response = self._error_response(
+                request.tool_name,
+                action_log_id,
+                started,
+                permission_error.code,
+                permission_error.message,
                 execution_id=execution_id,
                 tool_state="failed",
             )

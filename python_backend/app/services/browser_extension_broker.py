@@ -572,7 +572,19 @@ class BrowserExtensionBroker:
         # connect/disconnect cycles interleaved.
         conn_tag = uuid4().hex[:8]
         log = logging.getLogger(__name__)
-        log.warning("[bridge:%s] accept()", conn_tag)
+
+        # P1-C (SECURITY_FIX_PLAN_2026-07-19.md): enforce Origin check before
+        # accept(). Only browser extension origins (chrome-extension://,
+        # moz-extension://) or no Origin (native WS client) are allowed.
+        # Any web page origin is rejected before the handshake completes.
+        origin = websocket.headers.get("origin", "")
+        allowed_prefixes = ("chrome-extension://", "moz-extension://")
+        if origin and not origin.startswith(allowed_prefixes):
+            log.warning("[bridge:%s] rejected origin=%r", conn_tag, origin)
+            await websocket.close(code=4403)
+            return
+
+        log.debug("[bridge:%s] accept()", conn_tag)
         await websocket.accept()
         authenticated = False
         active_conn: ConnectionState | None = None
@@ -598,9 +610,11 @@ class BrowserExtensionBroker:
                     continue
 
                 msg_type = msg.get("type", "")
-                # Redact credential/secret/code fields before logging.
-                safe_msg = {k: ("<redacted>" if k in ("credential", "secret", "code") else v) for k, v in msg.items()}
-                log.warning("[bridge:%s] recv type=%s %s", conn_tag, msg_type, safe_msg)
+                # P2-E (SECURITY_FIX_PLAN_2026-07-19.md): redact url/title (browsing
+                # privacy) and credential/secret/code; log at debug level only.
+                redacted_fields = {"credential", "secret", "code", "url", "title"}
+                safe_msg = {k: ("<redacted>" if k in redacted_fields else v) for k, v in msg.items()}
+                log.debug("[bridge:%s] recv type=%s %s", conn_tag, msg_type, safe_msg)
 
                 # --- Pairing ---
                 if msg_type == "pair":

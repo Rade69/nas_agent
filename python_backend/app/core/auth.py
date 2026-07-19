@@ -6,6 +6,8 @@ if settings.local_token is unset (never in production).
 """
 from __future__ import annotations
 
+import secrets
+
 from fastapi import Header, Request
 
 from app.core.errors import AppError
@@ -37,5 +39,5 @@ async def require_local_token(request: Request, authorization: str | None = Head
         raise AppError("UNAUTHORIZED", "Missing local session token.", status_code=401)
 
     token = authorization.removeprefix("Bearer ").strip()
-    if token != expected:
+    if not secrets.compare_digest(token, expected):
         raise AppError("UNAUTHORIZED", "Invalid local session token.", status_code=401)

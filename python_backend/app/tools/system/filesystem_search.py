@@ -47,6 +47,25 @@ SKIP_DIR_NAMES = {
     ".git",
 }
 
+# P2-F (SECURITY_FIX_PLAN_2026-07-19.md): sensitive system directories that
+# are never useful for a user's "find my file" request and whose contents
+# reveal OS structure, installed software inventory, or other users' profiles.
+# Skipping them avoids leaking path names into the model output.
+SENSITIVE_DIR_NAMES: set[str] = {
+    "windows",
+    "program files",
+    "program files (x86)",
+    "programdata",
+    "config.msi",
+    "recovery",
+    "$windows.~bt",
+    "$windows.~ws",
+    "all users",
+    "default",
+    "default user",
+    "public",
+}
+
 
 def _drive_roots() -> list[Path]:
     if os.name != "nt":
@@ -128,7 +147,7 @@ def _bfs_search(roots: list[Path], query: str, target_type: str, deadline: float
             except OSError:
                 continue
             if is_dir:
-                if name_lower in SKIP_DIR_NAMES:
+                if name_lower in SKIP_DIR_NAMES or name_lower in SENSITIVE_DIR_NAMES:
                     continue
                 if target_type in ("folder", "any") and query in name_lower:
                     results.append({"name": entry.name, "path": entry.path})
