@@ -72,6 +72,20 @@ class ConversationStateService:
             messages=self.history(conversation_id),
         )
 
+    def get_external_content_seen(self, conversation_id: str) -> bool:
+        """P2-K: per-conversation external_content_seen flag.
+
+        Once this returns True, the agent runtime must keep the
+        prompt-injection escalation gate up for the entire conversation,
+        not just this turn (the tainted content persists in history).
+        """
+        return self._repository.get_external_content_seen(conversation_id)
+
+    def set_external_content_seen(self, conversation_id: str, seen: bool) -> None:
+        """P2-K: persist the external_content_seen flag. Once True, never
+        resets — tainted content stays in conversation history."""
+        self._repository.set_external_content_seen(conversation_id, seen)
+
     def _message_to_model(self, row: Any) -> AgentMessageResponse:
         return AgentMessageResponse(
             id=row["id"],

@@ -204,6 +204,9 @@ declare global {
         path: string;
         suggestedName?: string;
       }) => Promise<{ ok: true; cancelled: true } | { ok: true; cancelled: false; path: string }>;
+      // P3-L (SECURITY_FIX_PLAN.md): dedicated IPC channel for UI toggle
+      // (replaces the old source="ui" marker on the generic tools:execute path).
+      setModeFromUI: (mode: "computer" | "display") => Promise<{ ok: boolean; mode: string }>;
       quitApp: () => Promise<void>;
       minimizeApp: () => Promise<void>;
       toggleMaximizeApp: () => Promise<void>;

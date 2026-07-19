@@ -355,21 +355,12 @@ async function handleToolsExecute(_event, toolCall) {
   const name = String(toolCall?.name || "");
   const args = asObject(toolCall?.arguments);
 
-  // set_mode (S-01 follow-up, agent_reports/2026-07-13_computer-mode-voice-reentry.md):
-  // the in-app toggle (App.tsx's switchMode()) and the model's voice/text
-  // function-calling path both land here with the same tool name, and
-  // Electron cannot otherwise tell them apart. The toggle marks its calls
-  // with context.source === "ui" — a direct human click, which is already
-  // stronger consent than a confirmation dialog, so it applies the mode
-  // switch immediately without touching the backend (must keep working even
-  // if the Python backend is down). A model-initiated call has no "ui"
-  // source marker, so it is routed through Python's permission_engine first:
-  // set_mode is registered there as a medium-risk tool with no baseline
-  // confirmation requirement, so a genuine "enter computer mode" request
-  // still executes immediately — but the existing S-2 escalation rule
-  // (external_content_seen + risk >= medium) forces a confirmation if the
-  // model read untrusted content earlier this turn, closing the
-  // prompt-injection path S-01 was written to block.
+  // P3-L (SECURITY_FIX_PLAN.md): model-initiated set_mode always goes through
+  // the Python permission_engine (set_mode is medium-risk with S-2 escalation
+  // for external_content_seen). The UI toggle (App.tsx's switchMode()) uses a
+  // dedicated IPC channel "set_mode:ui-toggle" instead, which bypasses the
+  // backend entirely — a direct human click is stronger consent than any
+  // confirmation dialog, and must keep working even if the backend is down.
   if (name === "set_mode") {
     const applyModeSwitch = () => {
       currentMode = args.mode === "computer" ? "computer" : "display";
@@ -392,10 +383,6 @@ async function handleToolsExecute(_event, toolCall) {
         },
       };
     };
-    const toolContext = toolCall?.context || {};
-    if (toolContext.source === "ui") {
-      return applyModeSwitch();
-    }
     try {
       const response = await executeTool(
         {
@@ -403,8 +390,8 @@ async function handleToolsExecute(_event, toolCall) {
           arguments: args,
           context: {
             computer_mode: currentMode === "computer",
-            ...(toolContext.confirmation_id ? { confirmation_id: String(toolContext.confirmation_id) } : {}),
-            ...(toolContext.external_content_seen === true ? { external_content_seen: true } : {}),
+            ...(toolCall?.context?.confirmation_id ? { confirmation_id: String(toolCall.context.confirmation_id) } : {}),
+            ...(toolCall?.context?.external_content_seen === true ? { external_content_seen: true } : {}),
           },
         },
         { timeoutMs: PYTHON_TOOL_EXECUTE_TIMEOUT_MS },
@@ -413,11 +400,8 @@ async function handleToolsExecute(_event, toolCall) {
       if (!adapted.ok) return adapted;
       return applyModeSwitch();
     } catch (error) {
-      // FAZA S-4 fail-closed precedent (same rationale as LEGACY_FAIL_CLOSED_TOOLS):
-      // without the backend there is no way to check whether this session's
-      // external_content_seen flag should force a confirmation, so a backend
-      // outage must not silently reopen the S-01 gap. Voice/text set_mode
-      // fails closed; the UI toggle above is unaffected.
+      // FAZA S-4 fail-closed: a backend outage must not silently reopen the
+      // S-01 prompt-injection gap. Voice/text set_mode fails closed.
       return {
         ok: false,
         error: `set_mode requires the Python backend to check for a pending confirmation escalation, and it is unavailable: ${error instanceof Error ? error.message : error}`,
@@ -815,6 +799,20 @@ registerIpcHandlers({
   "browser-bridge:pairing-start": handleBrowserPairingStart,
   "browser-bridge:pairing-status": handleBrowserPairingStatus,
   "browser-bridge:pairing-cancel": handleBrowserPairingCancel,
+  // P3-L (SECURITY_FIX_PLAN.md): dedicated IPC channel for UI toggle — bypasses
+  // the generic tools:execute path so the renderer cannot mark an arbitrary
+  // tool call as coming from the UI. The handler body is applyModeSwitch from
+  // handleToolsExecute's set_mode block, extracted here for reuse.
+  "set_mode:ui-toggle": (_event, mode) => {
+    currentMode = mode === "computer" ? "computer" : "display";
+    setWindowMode(currentMode);
+    if (currentMode === "computer") {
+      showCompanion();
+    } else {
+      hideCompanion();
+    }
+    return { ok: true, mode: currentMode };
+  },
 });
 
 // FAZA S-4: global kill-switch hotkey. Ctrl+Alt+K only — F10/F11 were dropped

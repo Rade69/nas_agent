@@ -57,11 +57,13 @@ class LocalDesktopAssistant:
         executed_tool_calls: list[dict[str, Any]] = []
         artifact_ids: list[str] = []
         event_ids: list[str] = []
-        # FAZA S-2: once any untrusted-external-content tool has run this turn,
-        # every later acting tool is forced through confirmation (which the
-        # autonomous runtime cannot supply, so it is blocked) — see
-        # permission_engine.check_permission.
-        external_content_seen = False
+        # P2-K (SECURITY_FIX_PLAN.md): external_content_seen is per-conversation
+        # (not per-turn). Once any untrusted-external-content tool has run in
+        # this conversation, every later acting tool is forced through
+        # confirmation — the tainted content persists in history, so the
+        # escalation gate must stay up for the entire conversation, not just
+        # this turn. See permission_engine.check_permission.
+        external_content_seen = self._conversations.get_external_content_seen(resolved_conversation_id)
 
         for _ in range(MAX_TOOL_ITERATIONS):
             history = self._conversations.raw_history_for_prompt(resolved_conversation_id)
@@ -123,6 +125,7 @@ class LocalDesktopAssistant:
                 reads_external = bool(registered and registered.definition.reads_external_content)
                 if reads_external and tool_response.ok:
                     external_content_seen = True
+                    self._conversations.set_external_content_seen(resolved_conversation_id, True)
 
                 tool_content = json.dumps(tool_response.model_dump(mode="json"), ensure_ascii=False)
                 if reads_external:

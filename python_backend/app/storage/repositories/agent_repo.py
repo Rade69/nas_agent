@@ -45,6 +45,30 @@ class AgentConversationRepository:
             )
             connection.commit()
 
+    def get_external_content_seen(self, conversation_id: str) -> bool:
+        """P2-K: return whether this conversation has seen untrusted external
+        content in any prior turn. Defaults to False if column is NULL (old
+        conversations created before the migration)."""
+        with connect(self._database_path) as connection:
+            row = connection.execute(
+                "SELECT external_content_seen FROM agent_conversations WHERE id = ?",
+                (conversation_id,),
+            ).fetchone()
+            if row is None:
+                return False
+            return bool(row["external_content_seen"])
+
+    def set_external_content_seen(self, conversation_id: str, seen: bool) -> None:
+        """P2-K: persist the external_content_seen flag for this conversation.
+        Once set to True, never resets to False — the tainted content stays in
+        history, so the escalation gate must stay up for the entire conversation."""
+        with connect(self._database_path) as connection:
+            connection.execute(
+                "UPDATE agent_conversations SET external_content_seen = ? WHERE id = ?",
+                (1 if seen else 0, conversation_id),
+            )
+            connection.commit()
+
     def add_message(
         self,
         *,

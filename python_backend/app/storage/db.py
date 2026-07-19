@@ -7,6 +7,7 @@ added in later phases are applied idempotently on startup.
 from __future__ import annotations
 
 import os
+import re
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
@@ -230,7 +231,20 @@ SCHEMA_STATEMENTS = [
 ]
 
 
+# P3-M (SECURITY_FIX_PLAN.md): allowlist for SQL identifiers to prevent
+# injection if a non-constant string ever reaches these helpers.
+_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
+def _validate_identifier(name: str, context: str) -> None:
+    assert _IDENTIFIER_RE.match(name), (
+        f"P3-M: {context} '{name}' does not match allowlist ^[A-Za-z_][A-Za-z0-9_]*$ — "
+        "only developer-controlled constants are permitted here."
+    )
+
+
 def _existing_columns(connection: sqlite3.Connection, table: str) -> set[str]:
+    _validate_identifier(table, "table name")
     rows = connection.execute(f"PRAGMA table_info({table})").fetchall()
     return {row[1] for row in rows}
 
@@ -242,7 +256,17 @@ def _ensure_column(connection: sqlite3.Connection, table: str, column: str, defi
     phases would never appear on an already-created dev database. This helper
     keeps the local dev DB in sync without introducing a full migration framework
     (which is intentionally out of scope for the MVP — see MIGRATION_PLAN.md).
+
+    P3-M (SECURITY_FIX_PLAN.md): all three parameters are validated against an
+    identifier allowlist before being interpolated into SQL.
     """
+    _validate_identifier(table, "table name")
+    _validate_identifier(column, "column name")
+    def_token = definition.split()[0]
+    if def_token != definition:
+        _validate_identifier(def_token, "column type")
+    else:
+        _validate_identifier(definition, "column type")
     if column not in _existing_columns(connection, table):
         connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
@@ -256,6 +280,9 @@ MIGRATIONS = [
     ("confirmations", "payload_hash", "TEXT"),
     ("confirmations", "expires_at", "TEXT"),
     ("plans", "due_at", "TEXT"),
+    # P2-K (SECURITY_FIX_PLAN.md): per-conversation external_content_seen flag
+    # so prompt-injection escalation persists across turns in the same conversation.
+    ("agent_conversations", "external_content_seen", "INTEGER NOT NULL DEFAULT 0"),
 ]
 
 
