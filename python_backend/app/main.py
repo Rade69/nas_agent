@@ -4,6 +4,10 @@ Wires up all routers, services, repositories, and middleware into a
 single FastAPI app instance. Also serves as the PyInstaller entry point
 (for frozen builds — see __main__ block at the bottom).
 """
+from __future__ import annotations
+
+import atexit
+import os
 from fastapi import Depends, FastAPI
 
 from app.agent.cancellation import CancellationRegistry
@@ -112,6 +116,13 @@ def create_app() -> FastAPI:
     # on every GET /screenshots (see ScreenshotService.list()).
     app.state.screenshot_service = ScreenshotService(ScreenshotRepository(settings.database_path))
     app.state.screenshot_service.cleanup_expired()
+    # P3-G (SECURITY_FIX_PLAN_2026-07-19.md): opt-in atexit cleanup. When the
+    # env var DELETE_SCREENSHOTS_ON_EXIT is set to true/1/yes, all screenshots
+    # are deleted when the Python process exits. Default off — single-user
+    # desktop app may want to keep screenshots between sessions.
+    # Recommended: enable BitLocker/FDE for disk-level encryption instead.
+    if os.environ.get("DELETE_SCREENSHOTS_ON_EXIT", "").strip().lower() in ("true", "1", "yes"):
+        atexit.register(app.state.screenshot_service.delete_all)
     # S-03 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md): thumbnail
     # reference images. Electron-only caller (native file picker -> POST
     # /thumbnail-references, and .../resolve when thumbnail_generate/edit

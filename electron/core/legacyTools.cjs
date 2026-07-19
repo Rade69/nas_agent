@@ -1,10 +1,10 @@
 // Context: agent_reports/2026-07-06_faza17-disable-legacy-powershell.md
-// FAZA 17: legacy PowerShell tool feature flag. When FAZA 13/14 add Python
-// computer-use tools, the default flips to 0. Until then, legacy stays on so
-// computer_* tools (open_app/type_text/press_key/click/scroll) keep working.
+// FAZA 17: legacy PowerShell tool feature flag. FAZA 13/14 added Python
+// computer-use tools, so the default is now 0 (OFF). All computer_* and
+// other tools have Python equivalents registered in phase13.py/phase14.py.
 //
-// Set RICKY_USE_LEGACY_POWERSHELL_TOOLS=0 in .env.local or via process env to
-// disable all legacy PowerShell-based tools (computer_*, screen_snapshot,
+// Set RICKY_USE_LEGACY_POWERSHELL_TOOLS=1 in .env.local or via process env to
+// re-enable all legacy PowerShell-based tools (computer_*, screen_snapshot,
 // ui_inspect, note_add, records_*, artifact_*, web_search, image_generate).
 // When disabled, the app relies exclusively on the Python backend for tool
 // execution. Tools that have no Python equivalent yet (computer_open_app,

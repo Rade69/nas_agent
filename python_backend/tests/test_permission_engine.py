@@ -469,3 +469,65 @@ def test_non_outbound_low_risk_tool_still_not_escalated(tmp_path) -> None:
         make_confirmations(tmp_path),
     )
     assert error is None
+
+
+# P3-I (SECURITY_FIX_PLAN_2026-07-19.md): prompt-injection regression tests.
+# The most realistic attack is: web_search returns tainted text -> model ->
+# computer_type_text/computer_click into the active window. These tests prove
+# that external_content_seen escalates each of these tool types to require
+# confirmation, even if the tool definition already requires it (the test
+# confirms the gate is NOT silently bypassed).
+
+
+def test_prompt_injection_escalates_computer_type_text(tmp_path) -> None:
+    """Prompt-injection regression: computer_type_text (high-risk, computer
+    mode) with external_content_seen still requires confirmation."""
+    tool = low_risk_tool(
+        risk="high",
+        requires_computer_mode=True,
+        requires_confirmation=True,
+        reads_external_content=False,
+    )
+    error = check_permission(
+        tool,
+        make_request(external_content_seen=True, computer_mode=True),
+        make_confirmations(tmp_path),
+    )
+    assert isinstance(error, AppError)
+    assert error.code == "CONFIRMATION_REQUIRED"
+
+
+def test_prompt_injection_escalates_computer_click(tmp_path) -> None:
+    """Prompt-injection regression: computer_click (high-risk, computer mode)
+    with external_content_seen still requires confirmation."""
+    tool = low_risk_tool(
+        risk="high",
+        requires_computer_mode=True,
+        requires_confirmation=True,
+        reads_external_content=False,
+    )
+    error = check_permission(
+        tool,
+        make_request(external_content_seen=True, computer_mode=True),
+        make_confirmations(tmp_path),
+    )
+    assert isinstance(error, AppError)
+    assert error.code == "CONFIRMATION_REQUIRED"
+
+
+def test_prompt_injection_escalates_outbound_web_search(tmp_path) -> None:
+    """Prompt-injection regression: web_search (outbound, low-risk) with
+    external_content_seen must be escalated to require confirmation."""
+    tool = low_risk_tool(
+        risk="low",
+        outbound=True,
+        reads_external_content=True,
+        requires_confirmation=False,
+    )
+    error = check_permission(
+        tool,
+        make_request(external_content_seen=True),
+        make_confirmations(tmp_path),
+    )
+    assert isinstance(error, AppError)
+    assert error.code == "CONFIRMATION_REQUIRED"

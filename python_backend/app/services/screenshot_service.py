@@ -3,6 +3,12 @@
 Takes screenshots via ctypes/Win32 API and stores them in the backend's
 data/screenshots directory. Serves captured files through the screenshot
 REST endpoint.
+
+P3-G (SECURITY_FIX_PLAN_2026-07-19.md): screenshots older than
+DEFAULT_RETENTION_DAYS are cleaned up lazily on every list() call and on
+startup. The DELETE_SCREENSHOTS_ON_EXIT env var controls whether all
+screenshots are deleted when the Python process exits (atexit hook in
+app/main.py).
 """
 from __future__ import annotations
 
