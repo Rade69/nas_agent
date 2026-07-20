@@ -15,6 +15,7 @@ def register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) -> 
     """Register FAZA 11 memory/artifact/system tools."""
     from app.tools.artifacts import make_handlers as make_artifact_handlers
     from app.tools.images.generate import make_handlers as make_image_handlers
+    from app.tools.images.thumbnails import make_handlers as make_thumbnail_handlers
     from app.tools.memory.notes import make_handlers as make_notes_handlers
     from app.tools.memory.records import make_handlers as make_records_handlers
     from app.tools.messaging.email import make_handlers as make_email_handlers
@@ -414,4 +415,113 @@ def register_phase11_tools(registry: ToolRegistry, services: dict[str, Any]) -> 
             logs_action_receipt=True,
         ),
         email_handlers["email_prepare_draft"],
+    )
+
+    # --- Thumbnail board tools (QM-6T3, docs/PI_TASK_QM6_THUMBNAIL_PYTHON_DOMAIN.md) ---
+    # These are the Python equivalents of the legacy Electron thumbnail tools.
+    # They delegate to ThumbnailBoardService which manages SQLite-backed board state.
+    # Schema must be compatible with electron/core/realtimeToolSpecs.cjs.
+    thumbnail_handlers = make_thumbnail_handlers(services["thumbnail_board_service"])
+
+    registry.register(
+        _def(
+            "thumbnail_loading_prepare",
+            "Prepare a loading placeholder in the thumbnail board. Call this first "
+            "when generating or editing a thumbnail, so the user sees progress. "
+            "The prompt describes the intended thumbnail. mode is 'generate' or 'edit'.",
+            {
+                "type": "object",
+                "properties": {
+                    "prompt": {"type": "string"},
+                    "mode": {"type": "string", "enum": ["generate", "edit"]},
+                    "number": {"type": "number", "minimum": 1},
+                    "target_id": {"type": "string"},
+                },
+                "required": ["prompt"],
+                "additionalProperties": False,
+            },
+            risk="low",
+            timeout_ms=10000,
+        ),
+        thumbnail_handlers["thumbnail_loading_prepare"],
+    )
+    registry.register(
+        _def(
+            "thumbnail_generate",
+            "Generate exactly one 16:9 YouTube thumbnail into Ricky's persistent "
+            "paginated thumbnail board. Uses Riley reference images if available. "
+            "Assigns a new permanent number that never changes. Never generate "
+            "multiple at once.",
+            {
+                "type": "object",
+                "properties": {
+                    "prompt": {"type": "string"},
+                },
+                "required": ["prompt"],
+                "additionalProperties": False,
+            },
+            risk="low",
+            outbound=True,
+            timeout_ms=120000,
+        ),
+        thumbnail_handlers["thumbnail_generate"],
+    )
+    registry.register(
+        _def(
+            "thumbnail_edit",
+            "Edit one existing thumbnail by permanent thumbnail number, or edit "
+            "the currently selected thumbnail if number is omitted. Use this "
+            "whenever Riley says 'edit number 20' or 'edit this'. The edited "
+            "result gets a new permanent number.",
+            {
+                "type": "object",
+                "properties": {
+                    "prompt": {"type": "string"},
+                    "number": {"type": "number", "minimum": 1},
+                },
+                "required": ["prompt"],
+                "additionalProperties": False,
+            },
+            risk="medium",
+            outbound=True,
+            timeout_ms=120000,
+        ),
+        thumbnail_handlers["thumbnail_edit"],
+    )
+    registry.register(
+        _def(
+            "thumbnail_select",
+            "Select a permanent numbered thumbnail and show it fullscreen. Use "
+            "when Riley says 'pull up number 20', 'show number 20', 'open number "
+            "20', or 'select number 20'.",
+            {
+                "type": "object",
+                "properties": {
+                    "number": {"type": "number", "minimum": 1},
+                },
+                "required": ["number"],
+                "additionalProperties": False,
+            },
+            risk="low",
+            timeout_ms=10000,
+        ),
+        thumbnail_handlers["thumbnail_select"],
+    )
+    registry.register(
+        _def(
+            "thumbnail_grid",
+            "Show one paginated 3x3 page of the persistent thumbnail board and "
+            "return compact board state. Use to refresh state, change pages, or "
+            "when Riley asks what thumbnails exist.",
+            {
+                "type": "object",
+                "properties": {
+                    "page": {"type": "number", "minimum": 1},
+                },
+                "additionalProperties": False,
+            },
+            risk="low",
+            timeout_ms=10000,
+        ),
+        thumbnail_handlers["thumbnail_grid"],
     )

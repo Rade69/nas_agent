@@ -103,6 +103,21 @@ Vidi `docs/PI_CHROMIUM_BROWSER_BRIDGE_COMPLETION_BRIEF.md` za C1-C4 plan.
 
 PR1–PR3 tool logika je završena, ali stvarni browser integration nije kompletan: nedostaju Settings install/pairing tok, multi-browser/multi-profile connection registry, precizni profile routing, nova kartica u odabranom profilu, produkcijska distribucija ekstenzije i live E2E matrix. Završni plan za Chrome, Edge, Brave, Vivaldi, Opera/Opera GX i Chromium nalazi se u `docs/PI_CHROMIUM_BROWSER_BRIDGE_COMPLETION_BRIEF.md`.
 
+### Qt Desktop Migration — QM-6T: Thumbnail domen u Python backend ✅
+
+U okviru Qt Desktop Migration plana (`docs/QT_MIGRATION_PLAN_2026-07-20.md`, QM-6), thumbnail domen je u potpunosti migriran iz Electron legacy sloja (`legacyMedia.cjs`, `thumbnailBoard` JSON DB) u Python backend. Ovo je bio najveći skriveni trošak Qt migracije — Image API pozivi za thumbnail board i board stanje su jedina veća funkcionalnost koja nije bila prebačena u Python. Qt verzija sada može zvati Python thumbnail API bez Electron legacy sloja.
+
+| Paket | Status | Opis |
+|---|---|---|
+| **QM-6T1** — Storage i board servis | ✅ | `thumbnail_images`/`thumbnail_board_state` SQLite tabele, `ThumbnailBoardRepository`, `ThumbnailBoardService` (loading/generate/edit/select/grid/summary/instructions), invarijante (permanentni brojevi, parent_id za edit) |
+| **QM-6T2** — Image API podrška | ✅ | `OpenAIImageClient.edit_with_inputs()`, `thumbnail_image_helper.py` (prompt builderi portovani iz `legacyMedia.cjs`, save helper) |
+| **QM-6T3** — Tool registry | ✅ | 5 model-facing alata (`thumbnail_loading_prepare`, `generate`, `edit`, `select`, `grid`) u Python tool registryju, sa risk/outbound/timeout metapodacima |
+| **QM-6T4** — REST API za UI/Qt | ✅ | 7 endpointa (`GET /thumbnails/board`, `POST /loading`, `/generate`, `/edit`, `/select`, `/grid`, `/clear-loading`), isti servis kao tool handleri |
+| **QM-6T5** — Electron delegacija | ✅ | `thumbnail_*` u `PHASE11_DELEGATED_TOOLS` i `TOOLS_WITH_PYTHON_EQUIVALENT`, legacy dispatch grane uklonjene iz `main.cjs` |
+| **QM-6T6** — Instructions endpoint | ✅ | `GET /thumbnails/instructions` — Markdown instrukcije za Realtime prompt, `getThumbnailBoardInstructions()` u `pythonClient.cjs` |
+
+**Napomena:** `legacyMedia.cjs` nije obrisan — ostaje dok runtime smoke test ne potvrdi paritet. `thumbnail_references` (S-03) i dalje ide kroz legacy JSON DB + Python backend.
+
 ## Security Gates
 
 Izvor: [SECURITY_HARDENING_PLAN.md](./SECURITY_HARDENING_PLAN.md) — autoritativan produkcijski sigurnosni plan. Gates su **cross-cutting kriteriji** koji se ispunjavaju kroz postojeće numerisane faze — ovo nisu nove faze i ne mijenjaju numeraciju iznad. Samo `SECURITY_HARDENING_PLAN.md` opisuje detaljne kontrole; ovdje se samo mapira koja faza nosi koji gate i šta je blokirano dok gate nije zatvoren.

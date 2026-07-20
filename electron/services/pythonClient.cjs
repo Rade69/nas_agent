@@ -223,6 +223,21 @@ async function deleteAllScreenshots(options = {}) {
   });
 }
 
+// QM-6T6: thumbnail board instructions from Python backend.
+// Returns a Markdown string with current board state, or null if backend
+// is unavailable.
+async function getThumbnailBoardInstructions(options = {}) {
+  try {
+    const body = await requestJson("/thumbnails/instructions", options);
+    if (body?.ok && body?.instructions) {
+      return body.instructions;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 // S-03 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md): thumbnail
 // reference images. addThumbnailReference is only ever called right after a
 // native file-picker selection (electron/ipc_handlers/thumbnails.cjs), never
@@ -255,6 +270,7 @@ module.exports = {
   getHealth,
   getPlan,
   getSecuritySelfTest,
+  getThumbnailBoardInstructions,
   listConfirmations,
   listEvents,
   listPlans,

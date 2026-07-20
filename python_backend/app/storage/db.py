@@ -208,6 +208,36 @@ SCHEMA_STATEMENTS = [
         FOREIGN KEY(conversation_id) REFERENCES agent_conversations(id)
     )
     """,
+    # QM-6T1 (docs/PI_TASK_QM6_THUMBNAIL_PYTHON_DOMAIN.md): thumbnail board
+    # storage — migrated from Electron legacy JSON DB (thumbnailBoard) into
+    # SQLite. `number` is permanent and never renumbered. `parent_id` chains
+    # edit operations (edit creates a new record referencing the original).
+    # `run_id` groups loading placeholders with their eventual ready images.
+    """
+    CREATE TABLE IF NOT EXISTS thumbnail_images (
+        id TEXT PRIMARY KEY,
+        number INTEGER NOT NULL UNIQUE,
+        type TEXT NOT NULL,
+        status TEXT NOT NULL,
+        path TEXT,
+        prompt TEXT NOT NULL,
+        size TEXT NOT NULL,
+        parent_id TEXT,
+        run_id TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS thumbnail_board_state (
+        id TEXT PRIMARY KEY,
+        selected_id TEXT,
+        view TEXT NOT NULL DEFAULT 'grid',
+        page INTEGER NOT NULL DEFAULT 1,
+        page_size INTEGER NOT NULL DEFAULT 9,
+        updated_at TEXT NOT NULL
+    )
+    """,
     # Browser Bridge (C0) install credentials — originally in-memory only by
     # design (docs/BROWSER_BRIDGE_PUBLISHING.md), which meant every app
     # restart forced the user through the pairing ritual again. Persisted

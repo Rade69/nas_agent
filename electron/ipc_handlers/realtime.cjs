@@ -1,6 +1,6 @@
 /** FAZA 6 realtime session token IPC handler — verbatim move from electron/main.cjs (R2d).
  *  Includes the RICKY_INSTRUCTIONS system prompt (moved from main.cjs, used only here). */
-const { createRealtimeSession, getSettings } = require("../services/pythonClient.cjs");
+const { createRealtimeSession, getSettings, getThumbnailBoardInstructions } = require("../services/pythonClient.cjs");
 const { buildThumbnailBoardInstructions } = require("../tools_legacy/legacyMedia.cjs");
 const { readDb } = require("../core/legacyDb.cjs");
 const { toolSpecs } = require("../core/realtimeToolSpecs.cjs");
@@ -94,7 +94,21 @@ async function handleRealtimeCreateToken() {
     // name rather than blocking the whole voice session over a settings fetch.
     console.warn("[settings] Could not load user_name/agent_name, using defaults:", error);
   }
-  const instructions = `${buildRickyInstructions(agentName, userName, languageConfig.promptName)}\n\n${buildThumbnailBoardInstructions(db)}`;
+  // QM-6T5: try fetching thumbnail board instructions from Python backend
+  // first. Fall back to legacy JSON DB if backend is unavailable.
+  let boardInstructions = null;
+  try {
+    const pyBoard = await getThumbnailBoardInstructions();
+    if (pyBoard) {
+      boardInstructions = pyBoard;
+    }
+  } catch {
+    // Fall through to legacy fallback below.
+  }
+  if (!boardInstructions) {
+    boardInstructions = buildThumbnailBoardInstructions(db);
+  }
+  const instructions = `${buildRickyInstructions(agentName, userName, languageConfig.promptName)}\n\n${boardInstructions}`;
 
   const session = {
     type: "realtime",

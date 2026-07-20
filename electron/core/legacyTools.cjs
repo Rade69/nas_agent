@@ -43,6 +43,12 @@ const TOOLS_WITH_PYTHON_EQUIVALENT = new Set([
   "computer_click_element",
   "computer_set_text_element",
   "computer_get_element_text",
+  // QM-6T3: thumbnail board tools now have Python equivalents.
+  "thumbnail_loading_prepare",
+  "thumbnail_generate",
+  "thumbnail_edit",
+  "thumbnail_select",
+  "thumbnail_grid",
 ]);
 
 // FAZA 13 added these; FAZA 14 will add more when element targeting lands.

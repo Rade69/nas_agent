@@ -256,6 +256,12 @@ const PHASE11_DELEGATED_TOOLS = new Set([
   // GMAIL.md Faza B) — Gmail draft preparation, never sends.
   "email_draft_stage",
   "email_prepare_draft",
+  // QM-6T3: thumbnail board tools now have Python equivalents.
+  "thumbnail_loading_prepare",
+  "thumbnail_generate",
+  "thumbnail_edit",
+  "thumbnail_select",
+  "thumbnail_grid",
   // FAZA 13: computer-use tools now have Python equivalents (ctypes + Win32 API).
   "browser_open",
   "browser_tabs",
@@ -493,36 +499,14 @@ async function handleToolsExecute(_event, toolCall) {
       return await generateImage(args);
     }
 
-    if (name === "thumbnail_loading_prepare") {
-      return await thumbnailLoadingPrepare(args);
-    }
-
     // S-03 (docs/SECURITY_AND_IMPROVEMENT_AUDIT_2026-07-13.md): no model
     // tool for adding a reference image anymore — thumbnail_reference_add is
     // no longer in realtimeToolSpecs.cjs, so the model can never request it
     // via the Realtime protocol. Registration only happens through the
     // "thumbnails:add-reference" IPC channel below, triggered by a native
     // file picker click.
-
-    if (name === "thumbnail_generate") {
-      return await thumbnailGenerate(args);
-    }
-
-    if (name === "thumbnail_edit") {
-      return await thumbnailEdit(args);
-    }
-
-    if (name === "thumbnail_select") {
-      return await thumbnailSelect(args);
-    }
-
-    if (name === "thumbnail_grid") {
-      const { db } = await updateDb(async (currentDb) => {
-        currentDb.thumbnailBoard.view = "grid";
-        currentDb.thumbnailBoard.page = pageForArgs(args);
-      });
-      return { ok: true, board: thumbnailBoardSummary(db), artifact: await thumbnailBoardArtifact(db, "grid") };
-    }
+    // QM-6T5: thumbnail_* tools are now delegated to Python via
+    // PHASE11_DELEGATED_TOOLS above. No legacy fallback needed.
 
     if (name === "mermaid_render") {
       const diagram = normalizeMermaidDiagram(String(args.diagram || ""), String(args.title || "Mermaid chart"));

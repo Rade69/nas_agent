@@ -46,6 +46,7 @@ from app.services.plan_service import PlanService
 from app.services.records_service import RecordsService
 from app.services.screenshot_service import ScreenshotService
 from app.services.settings_service import SettingsService
+from app.services.thumbnail_board_service import ThumbnailBoardService
 from app.services.thumbnail_reference_service import ThumbnailReferenceService
 from app.storage.db import initialize_database
 from app.storage.repositories.agent_repo import AgentConversationRepository
@@ -57,6 +58,7 @@ from app.storage.repositories.plan_repo import PlanRepository
 from app.storage.repositories.records_repo import RecordsRepository
 from app.storage.repositories.screenshot_repo import ScreenshotRepository
 from app.storage.repositories.settings_repo import SettingsRepository
+from app.storage.repositories.thumbnail_board_repo import ThumbnailBoardRepository
 from app.storage.repositories.thumbnail_reference_repo import ThumbnailReferenceRepository
 from app.storage.repositories.tool_run_repo import ToolRunRepository
 
@@ -131,6 +133,17 @@ def create_app() -> FastAPI:
     app.state.thumbnail_reference_service = ThumbnailReferenceService(
         ThumbnailReferenceRepository(settings.database_path)
     )
+    # QM-6T1 (docs/PI_TASK_QM6_THUMBNAIL_PYTHON_DOMAIN.md): thumbnail board
+    # service — SQLite-backed board state migrated from Electron legacy JSON
+    # DB. Used by both API endpoints and future tool handlers (QM-6T3).
+    # QM-6T2: wired with OpenAIImageClient for real thumbnail generation.
+    app.state.thumbnail_board_service = ThumbnailBoardService(
+        ThumbnailBoardRepository(settings.database_path),
+        image_client=OpenAIImageClient(settings.openai_api_key),
+        thumbnails_dir=settings.data_dir / "thumbnails",
+    )
+    # Clear leftover loading placeholders from any previous session.
+    app.state.thumbnail_board_service.clear_startup_loading()
     phase11_services = {
         "notes": app.state.notes_service,
         "records": app.state.records_service,
@@ -149,6 +162,8 @@ def create_app() -> FastAPI:
         # V2_GMAIL.md Faza B) — process-local, never persisted to disk.
         "email_draft_store": EmailDraftStore(),
         "plan_service": app.state.plan_service,
+        # QM-6T3: thumbnail board service for model-facing tool handlers.
+        "thumbnail_board_service": app.state.thumbnail_board_service,
     }
     app.state.tool_registry = create_default_registry(services=phase11_services)
     # Emit backend.ready so the UI knows the event bridge is live.
