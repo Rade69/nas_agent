@@ -59,24 +59,25 @@ def test_image_generate_tool_definition_carries_low_risk(client: TestClient) -> 
 
 
 def test_web_search_without_api_key_returns_structured_error(client: TestClient) -> None:
-    # No EXA_API_KEY configured in the fixture — the tool surfaces MISSING_API_KEY
-    # as an AppError, which the FastAPI error handler returns as a structured
-    # 500 (server misconfiguration, not a tool execution failure).
+    """ToolExecutor hvata AppError i vraća HTTP 200 sa ok:false, ne HTTP 500."""
     response = client.post(
         "/tools/execute",
         json={"tool_name": "web_search", "arguments": {"query": "test query"}},
     )
-    assert response.status_code == 500
+    assert response.status_code == 200
     body = response.json()
+    assert body["ok"] is False
     assert body["error"]["code"] == "MISSING_API_KEY"
 
 
 def test_image_generate_without_api_key_returns_structured_error(client: TestClient) -> None:
+    """ToolExecutor hvata AppError i vraća HTTP 200 sa ok:false, ne HTTP 500."""
     response = client.post(
         "/tools/execute",
         json={"tool_name": "image_generate", "arguments": {"prompt": "a cat"}},
     )
-    assert response.status_code == 500
+    assert response.status_code == 200
+    assert response.json()["ok"] is False
     assert response.json()["error"]["code"] == "MISSING_API_KEY"
 
 

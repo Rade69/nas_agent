@@ -31,7 +31,10 @@ def test_browser_open_is_listed(client: TestClient) -> None:
     tools = {tool["name"]: tool for tool in client.get("/tools").json()["tools"]}
     tool = tools["browser_open"]
     assert tool["risk"] == "medium"
-    assert tool["requires_computer_mode"] is True
+    # c58d6eb: browser_open je namjerno skinut sa Computer Mode requirement-a.
+    # Otvaranje browsera na validiranom URL-u je benigno kao i web_search,
+    # URL validacija + shell=False + medium risk i dalje štite.
+    assert tool["requires_computer_mode"] is False
     assert tool["implemented_by"] == "python"
 
 
