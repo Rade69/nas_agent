@@ -18,8 +18,12 @@ pnpm-debug.log*
 python_backend/.venv/
 python_backend/.pytest_cache/
 python_backend/.tmp-test-data/
-python_backend/**/*.pyc
-python_backend/**/__pycache__/
+# Actual pytest temp-root name on this setup (pytest-of-<user>/ under here) —
+# .tmp-test-data/ above anticipated a different name and never matched.
+.tmp-tests/
+python_backend/.tmp-tests/
+__pycache__/
+*.pyc
 python_backend/*.egg-info/
 python_backend/data/*.sqlite
 python_backend/data/*.db

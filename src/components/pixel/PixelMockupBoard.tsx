@@ -197,7 +197,7 @@ export function PixelMockupBoard({
                   {activeDrawer === "activity" ? (
                     <ActivityTimeline transcript={transcript} activityEvents={activityEvents} />
                   ) : null}
-                  {activeDrawer === "plans" ? (() => { console.log("[PixelMockupBoard] rendering PlansPanel"); return (
+                  {activeDrawer === "plans" ? (
                     <PlansPanel
                       visible={true}
                       plans={plans}
@@ -209,7 +209,7 @@ export function PixelMockupBoard({
                       onUpdateStepStatus={onUpdateStepStatus}
                       onCreatePlan={onCreatePlan}
                     />
-                  )})() : null}
+                  ) : null}
                   {activeDrawer === "memory" ? <p className="drawer-placeholder-text">{t("dashboard.noMemory")}</p> : null}
                   {activeDrawer === "screens" ? <ScreenshotsGallery /> : null}
                   {activeDrawer === "settings" ? (

@@ -30,7 +30,7 @@ contextBridge.exposeInMainWorld("ricky", {
   saveThumbnailAs: (payload) => ipcRenderer.invoke("thumbnails:save-as", payload),
   // P3-L (SECURITY_FIX_PLAN.md): dedicated IPC channel for UI toggle,
   // replacing the old source="ui" marker on the generic tools:execute path.
-  setModeFromUI: (mode: "computer" | "display") => ipcRenderer.invoke("set_mode:ui-toggle", mode),
+  setModeFromUI: (mode) => ipcRenderer.invoke("set_mode:ui-toggle", mode),
   // App
   quitApp: () => ipcRenderer.invoke("app:quit"),
   minimizeApp: () => ipcRenderer.invoke("app:minimize"),
