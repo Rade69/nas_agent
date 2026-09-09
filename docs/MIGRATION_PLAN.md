@@ -118,6 +118,39 @@ U okviru Qt Desktop Migration plana (`docs/QT_MIGRATION_PLAN_2026-07-20.md`, QM-
 
 **Napomena:** `legacyMedia.cjs` nije obrisan — ostaje dok runtime smoke test ne potvrdi paritet. `thumbnail_references` (S-03) i dalje ide kroz legacy JSON DB + Python backend.
 
+### Qt Desktop Migration — QM-0 baseline + obavezne arhitektonske odluke ✅
+
+**Aktivni plan:** `docs/QT_MIGRATION_PLAN_2026-07-20.md` — potpuno uklanjanje Electron/Chromium sloja; React UI → PySide6; WebRTC glas → WebSocket iz Pythona; cilj Windows + macOS + Linux. Ovaj plan **zamjenjuje** `docs/ELECTRON_MIGRATION_PLAN_REVISED_2026-07-19.md` (superseded) i **ne mijenja** `docs/SECURITY_HARDENING_ROADMAP_REVISED_2026-07-19.md` (R0–R10 nastavlja nezavisno, backend-fokusiran).
+
+**Grana:** `qt-desktop-migration`, forkovana iz `hybrid-python-backend` (ne iz `master`). `python_backend/` ostaje zajednički i nedirnut; periodičan `git merge hybrid-python-backend` povlači backend izmjene. Merge nazad u `hybrid-python-backend` tek nakon QM-9, eksplicitnom korisničkom odlukom.
+
+**Obavezne odluke (zaključene, ne otvorene):**
+
+| Odluka | Zaključak |
+|---|---|
+| **§2.1 — jedan ili dva procesa** | **Dva procesa za v1** (Opcija A): Qt shell pokreće `python_backend/` kao zaseban proces (HTTP na `127.0.0.1`, session token preko env, health check prije prozora) — `python_backend/` se ne mijenja ni jednom linijom, 412 testova ostaje validno bez izmjene. Opcija B (FastAPI + Qt u istom procesu) odložena kao mogući QM-10+ korak. |
+| **§2.2 — UI framework** | **PySide6 6.11.1**, Widgets (ne QML) — bliži JSX mentalnom modelu; korisnik poznaje Qt/PySide6. |
+| **§2.3 — glas** | **WebSocket, ne WebRTC** — dokazano u `spikes/voice_websocket_spike.py` (259–1637ms latencija, tool-calling + confirmation flow preko glasa end-to-end). |
+
+**Baseline (2026-09-09, QM-0):** Python 3.14.1, PySide6 6.11.1, PyInstaller 6.20.0 + Nuitka (oba dostupna), backend `pytest` = **412 passed**. Spike fajlovi (polazna tačka): `spikes/voice_websocket_spike.py`, `spikes/pyside6_orb_spike.py`.
+
+**QM faze — status:**
+
+| Faza | Naziv | Status |
+|---|---|---|
+| QM-0 | Baseline i postavka grane | ✅ urađeno (grana `qt-desktop-migration`, `desktop/` skelet se pokreće, §2.1–2.3 odluke zapisane, baseline 412/412) |
+| QM-1 | Process bridge (Qt ↔ Python backend) | ⬜ sljedeće |
+| QM-2 | Companion orb integracija | ⬜ |
+| QM-3 | Glasovna integracija (WebSocket) | ⬜ |
+| QM-4 | Glavni prozor, navigacija, skelet | ⬜ |
+| QM-5 | Port UI komponenti (5.1–5.8) | ⬜ |
+| QM-6 | Feature parity | ✅ djelimično (QM-6T thumbnail backend urađen; ostaje Qt UI) |
+| QM-7 | Kill-switch i sigurnosni self-test | ⬜ |
+| QM-8 | Packaging (Windows prvo) | ⬜ |
+| QM-9 | Cross-platform i cutover (9a Windows / 9b Linux / 9c macOS) | ⬜ |
+
+**Invarijante (ne smiju se slomiti):** isti permission/confirmation tok glasom i tekstom; nijedan high-risk alat bez `confirmation_id`; kill-switch radi i kad backend ne odgovara; Qt UI nikad ne dobija API ključ direktno; companion orb zadržava vizuelni karakter (avatar + tri prstena); nema brisanja `electron/`/`src/` prije QM-9 cutover potvrde.
+
 ## Security Gates
 
 Izvor: [SECURITY_HARDENING_PLAN.md](./SECURITY_HARDENING_PLAN.md) — autoritativan produkcijski sigurnosni plan. Gates su **cross-cutting kriteriji** koji se ispunjavaju kroz postojeće numerisane faze — ovo nisu nove faze i ne mijenjaju numeraciju iznad. Samo `SECURITY_HARDENING_PLAN.md` opisuje detaljne kontrole; ovdje se samo mapira koja faza nosi koji gate i šta je blokirano dok gate nije zatvoren.
