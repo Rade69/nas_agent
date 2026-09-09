@@ -5,8 +5,13 @@ conftest garantuje importabilnost `desktop` paketa nezavisno od toga kako je
 pytest pokrenut.
 """
 
+import os
 import sys
 from pathlib import Path
+
+# Qt testovi (orb widget) moraju raditi headless — postavi prije nego što se
+# ijedan QApplication kreira.
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:

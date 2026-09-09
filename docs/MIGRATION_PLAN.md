@@ -140,8 +140,8 @@ U okviru Qt Desktop Migration plana (`docs/QT_MIGRATION_PLAN_2026-07-20.md`, QM-
 |---|---|---|
 | QM-0 | Baseline i postavka grane | ✅ urađeno (grana `qt-desktop-migration`, `desktop/` skelet se pokreće, §2.1–2.3 odluke zapisane, baseline 412/412) |
 | QM-1 | Process bridge (Qt ↔ Python backend) | ✅ urađeno (`desktop/core/process_bridge.py` + `desktop/core/win_job_object.py` — spawn frozen-safe (`sys.executable --backend`), Job Object KILL_ON_JOB_CLOSE, Bearer httpx klijent, fail-closed health; 10 testova uklj. stvarni backend lifecycle; vidi agent_reports/2026-09-09_qm1-process-bridge.md) |
-| QM-2 | Companion orb integracija | ⬜ sljedeće |
-| QM-3 | Glasovna integracija (WebSocket) | ⬜ |
+| QM-2 | Companion orb integracija | ✅ urađeno (kod: `desktop/ui/orb.py` RickyOrbWidget portovan iz spike-a, `orb_window.py` kontekst meni lokalizovan + position lock + voice-state polling 1s na `GET /voice/state`, `voice_state.py` VoiceState→orb-state mapiranje; 15 testova. **Čeka:** stvarni VoiceState iz backend-a (QM-3) i multi-monitor uživo potvrdu korisnika) |
+| QM-3 | Glasovna integracija (WebSocket) | ⬜ sljedeće |
 | QM-4 | Glavni prozor, navigacija, skelet | ⬜ |
 | QM-5 | Port UI komponenti (5.1–5.8) | ⬜ |
 | QM-6 | Feature parity | ✅ djelimično (QM-6T thumbnail backend urađen; ostaje Qt UI) |

@@ -32,6 +32,20 @@ def run_qt(argv: list[str] | None = None) -> int:
     return app.exec()
 
 
+def run_orb(argv: list[str] | None = None) -> int:
+    """Pokreće samo companion orb (dev/test ulaz za QM-2 vizuelnu provjeru).
+
+    Bez backend-a — orb prikazuje idle dok QM-3 ne ožiči stvarni VoiceState.
+    """
+    from desktop.ui.orb_window import OrbWindow
+
+    app = QApplication.instance() or QApplication(sys.argv)
+    orb = OrbWindow()
+    orb.set_quit_callback(app.quit)
+    orb.show()
+    return app.exec()
+
+
 def run_backend(argv: list[str] | None = None) -> int:
     """Pokreće FastAPI backend umjesto Qt UI (entry point sa `--backend`).
 
@@ -61,6 +75,8 @@ def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv if argv is None else argv)
     if "--backend" in argv:
         return run_backend(argv)
+    if "--orb" in argv:
+        return run_orb(argv)
     return run_qt(argv)
 
 
