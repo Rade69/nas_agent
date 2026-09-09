@@ -1,13 +1,17 @@
-"""desktop/main.py — composition root Qt shell-a (QM-0 skeleton).
+"""desktop/main.py — composition root Qt shell-a (QM-0/QM-1).
 
-Minimalan PySide6 entry point koji dokazuje da se desktop/ skelet pokreće:
-otvara prazan prozor. Puni layout, navigacija i ožičenje na backend dolaze
-u QM-4/QM-5 (vidi docs/QT_MIGRATION_PLAN_2026-07-20.md).
+Entry point koji grana prema `--backend` flagu:
+- bez flag-a → pokreće Qt UI (QM-0 skelet; puni UI dolazi u QM-4/QM-5);
+- sa `--backend` → pokreće FastAPI backend (python_backend/) umjesto UI — ovako
+  `desktop/core/process_bridge.py` (QM-1) spawn-uje backend kao zaseban proces,
+  frozen-safe (isti exe re-invokovan sa flagom, vidi
+  docs/QT_MIGRATION_PLAN_2026-07-20.md §QM-1).
 """
 
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
 from PySide6.QtWidgets import QApplication, QMainWindow
 
@@ -22,9 +26,42 @@ def create_app(argv: list[str] | None = None) -> tuple[QApplication, QMainWindow
     return app, window
 
 
-def main() -> int:
-    app, _window = create_app()
+def run_qt(argv: list[str] | None = None) -> int:
+    """Pokreće Qt UI (glavni event loop)."""
+    app, _window = create_app(argv)
     return app.exec()
+
+
+def run_backend(argv: list[str] | None = None) -> int:
+    """Pokreće FastAPI backend umjesto Qt UI (entry point sa `--backend`).
+
+    Backend paket živi u sibling direktoriju `python_backend/` i importuje se
+    kao top-level `app` paket (isti obrazac kao `python -m uvicorn app.main:app`).
+    Host/port se čitaju iz env (RICKY_HOST/RICKY_PORT) koje process_bridge
+    postavlja prije spawn-a — ovdje se ne parsira komandna linija.
+    """
+    backend_dir = Path(__file__).resolve().parents[1] / "python_backend"
+    if str(backend_dir) not in sys.path:
+        sys.path.insert(0, str(backend_dir))
+
+    # Import nakon sys.path podešavanja. `app.main` na importu već kreira
+    # FastAPI instancu (`app = create_app()` na module levelu), pa je dovoljno
+    # importovati gotovu instancu i pokrenuti je — ne pozivati create_app() ponovo.
+    from app.main import app as backend_app
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    import uvicorn
+
+    uvicorn.run(backend_app, host=settings.host, port=settings.port)
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = list(sys.argv if argv is None else argv)
+    if "--backend" in argv:
+        return run_backend(argv)
+    return run_qt(argv)
 
 
 if __name__ == "__main__":

@@ -139,8 +139,8 @@ U okviru Qt Desktop Migration plana (`docs/QT_MIGRATION_PLAN_2026-07-20.md`, QM-
 | Faza | Naziv | Status |
 |---|---|---|
 | QM-0 | Baseline i postavka grane | ✅ urađeno (grana `qt-desktop-migration`, `desktop/` skelet se pokreće, §2.1–2.3 odluke zapisane, baseline 412/412) |
-| QM-1 | Process bridge (Qt ↔ Python backend) | ⬜ sljedeće |
-| QM-2 | Companion orb integracija | ⬜ |
+| QM-1 | Process bridge (Qt ↔ Python backend) | ✅ urađeno (`desktop/core/process_bridge.py` + `desktop/core/win_job_object.py` — spawn frozen-safe (`sys.executable --backend`), Job Object KILL_ON_JOB_CLOSE, Bearer httpx klijent, fail-closed health; 10 testova uklj. stvarni backend lifecycle; vidi agent_reports/2026-09-09_qm1-process-bridge.md) |
+| QM-2 | Companion orb integracija | ⬜ sljedeće |
 | QM-3 | Glasovna integracija (WebSocket) | ⬜ |
 | QM-4 | Glavni prozor, navigacija, skelet | ⬜ |
 | QM-5 | Port UI komponenti (5.1–5.8) | ⬜ |
