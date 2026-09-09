@@ -1,19 +1,18 @@
-"""desktop/ui/orb_window.py — OrbWindow menadžer (QM-2).
+"""desktop/ui/orb_window.py — OrbWindow menadžer (QM-2, ažuriran QM-3).
 
-OrbWindow drži RickyOrbWidget i dodaje prozor-nivo logiku koja nije čisto
-vizuelna: kontekst meni (desni klik, lokalizovan), position lock, i voice-state
-polling (1s) preko HttpVoiceStateProvider → GET /voice/state. MENU_LABELS je
-vjeran port iz electron/core/companionWindow.cjs (5 jezika, fail-open na sr-Latn).
+OrbWindow drži RickyOrbWidget i dodaje prozor-nivo logiku: kontekst meni
+(desni klik, lokalizovan), position lock, i pretplatu na VoiceStateBus (lokalni
+signal iz voice.py — NEMA HTTP polling-a kroz backend za lokalno stanje).
+MENU_LABELS je vjeran port iz electron/core/companionWindow.cjs.
 """
 
 from __future__ import annotations
 
-import httpx
-from PySide6.QtCore import QObject, QPoint, Qt, QTimer, Signal
+from PySide6.QtCore import QPoint, Qt
 from PySide6.QtWidgets import QMenu
 
 from desktop.ui.orb import RickyOrbWidget
-from desktop.ui.voice_state import VoiceState, is_valid_voice_state
+from desktop.ui.voice_bus import VoiceStateBus
 
 # Port iz companionWindow.cjs MENU_LABELS (de/es/fr best-effort, ne
 # native-speaker potvrđeno — isti disclaimer kao svaka druga locale u projektu).
@@ -67,61 +66,10 @@ def menu_labels_for(language: str | None) -> dict[str, str]:
     return MENU_LABELS.get(language or "", DEFAULT_MENU_LABELS)
 
 
-class VoiceStateProvider(QObject):
-    """Apstrakcija izvora VoiceState-a (QObject da se može živjeti u Qt niti)."""
-
-
-class HttpVoiceStateProvider(VoiceStateProvider):
-    """Poll-uje GET /voice/state preko BackendClient; fail-close na idle ako
-    endpoint ne postoji (do QM-3) ili backend ne odgovara."""
-
-    def __init__(self, client) -> None:
-        super().__init__()
-        self._client = client
-
-    def fetch_state(self) -> str:
-        try:
-            resp = self._client.request("/voice/state", timeout=1.0)
-            if resp.status_code == 200:
-                state = resp.json().get("state")
-                if state and is_valid_voice_state(state):
-                    return state
-        except (httpx.HTTPError, ValueError):
-            pass
-        return VoiceState.IDLE.value
-
-
-class VoiceStatePoller(QObject):
-    """QTimer-driven polling (1s) → emituje state_changed samo kad se promijeni."""
-
-    state_changed = Signal(str)
-
-    def __init__(self, provider: VoiceStateProvider, interval_ms: int = 1000) -> None:
-        super().__init__()
-        self._provider = provider
-        self._interval_ms = interval_ms
-        self._last: str | None = None
-        self._timer = QTimer(self)
-        self._timer.timeout.connect(self._poll)
-
-    def start(self) -> None:
-        self._poll()  # odmah jednom, ne čekati prvi interval
-        self._timer.start(self._interval_ms)
-
-    def stop(self) -> None:
-        self._timer.stop()
-
-    def _poll(self) -> None:
-        state = self._provider.fetch_state()
-        if state != self._last:
-            self._last = state
-            self.state_changed.emit(state)
-
-
 class OrbWindow:
-    """Menadžer companion orb prozora: widget + kontekst meni + polling + callback-ovi."""
+    """Menadžer companion orb prozora: widget + kontekst meni + voice-state bus."""
 
-    def __init__(self, client=None, language: str | None = None) -> None:
+    def __init__(self, voice_bus: VoiceStateBus | None = None, language: str | None = None) -> None:
         self.widget = RickyOrbWidget()
         self.widget.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.widget.customContextMenuRequested.connect(self._show_context_menu)
@@ -131,10 +79,8 @@ class OrbWindow:
         self._toggle_voice_cb = None
         self._quit_cb = None
 
-        self._poller: VoiceStatePoller | None = None
-        if client is not None:
-            self._poller = VoiceStatePoller(HttpVoiceStateProvider(client))
-            self._poller.state_changed.connect(self.widget.postavi_voice_state)
+        if voice_bus is not None:
+            voice_bus.state_changed.connect(self.widget.postavi_voice_state)
 
     # Lazy-bound callback-ovi (isti obrazac kao companionWindow.cjs) — glavni
     # prozor (QM-4) i glas (QM-3) ih povezuju kasnije.
@@ -148,13 +94,9 @@ class OrbWindow:
         self._quit_cb = cb
 
     def show(self) -> None:
-        if self._poller is not None:
-            self._poller.start()
         self.widget.show()
 
     def hide(self) -> None:
-        if self._poller is not None:
-            self._poller.stop()
         self.widget.hide()
 
     def _show_context_menu(self, pos: QPoint) -> None:

@@ -35,12 +35,14 @@ def run_qt(argv: list[str] | None = None) -> int:
 def run_orb(argv: list[str] | None = None) -> int:
     """Pokreće samo companion orb (dev/test ulaz za QM-2 vizuelnu provjeru).
 
-    Bez backend-a — orb prikazuje idle dok QM-3 ne ožiči stvarni VoiceState.
+    Orb se pretplaćuje na VoiceStateBus; bez glasa (voice.py) prikazuje idle.
     """
     from desktop.ui.orb_window import OrbWindow
+    from desktop.ui.voice_bus import VoiceStateBus
 
     app = QApplication.instance() or QApplication(sys.argv)
-    orb = OrbWindow()
+    bus = VoiceStateBus()
+    orb = OrbWindow(voice_bus=bus)
     orb.set_quit_callback(app.quit)
     orb.show()
     return app.exec()

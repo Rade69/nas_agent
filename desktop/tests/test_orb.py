@@ -1,13 +1,11 @@
-"""Testovi za companion orb (QM-2): widget, provider fail-close, menu labels."""
-
-import httpx
+"""Testovi za companion orb (QM-2/QM-3): widget, voice-state bus, menu labels."""
 
 from desktop.ui.orb import ORB_SIZE, STANJA, RickyOrbWidget
 from desktop.ui.orb_window import (
     DEFAULT_MENU_LABELS,
-    HttpVoiceStateProvider,
     menu_labels_for,
 )
+from desktop.ui.voice_bus import VoiceStateBus
 from desktop.ui.voice_state import ORB_STATES
 
 
@@ -43,47 +41,35 @@ def test_orb_minimize_toggles_size(qapp):
     assert orb.width() == 144
 
 
-# --- provider fail-close ---
+# --- voice-state bus ---
 
-class _FakeResponse:
-    def __init__(self, status_code: int, body):
-        self.status_code = status_code
-        self._body = body
+def test_voice_bus_emits_only_on_change():
+    bus = VoiceStateBus()
+    seen = []
+    bus.state_changed.connect(seen.append)
 
-    def json(self):
-        return self._body
+    bus.set_state("idle")  # isto kao initial → ne emituje
+    assert seen == []
 
+    bus.set_state("listening")
+    bus.set_state("listening")  # duplikat → ne emituje
+    assert seen == ["listening"]
 
-class _FakeClient:
-    def __init__(self, status_code: int = 200, body=None, exc: Exception | None = None):
-        self.status_code = status_code
-        self.body = body
-        self.exc = exc
-
-    def request(self, path, timeout=5.0):
-        if self.exc is not None:
-            raise self.exc
-        return _FakeResponse(self.status_code, self.body)
+    bus.set_state("speaking")
+    assert seen == ["listening", "speaking"]
 
 
-def test_provider_returns_valid_state():
-    p = HttpVoiceStateProvider(_FakeClient(200, {"state": "speaking"}))
-    assert p.fetch_state() == "speaking"
+def test_orb_window_subscribes_to_bus(qapp):
+    from desktop.ui.orb_window import OrbWindow
 
+    bus = VoiceStateBus()
+    orb_window = OrbWindow(voice_bus=bus)
 
-def test_provider_fail_closed_on_404():
-    p = HttpVoiceStateProvider(_FakeClient(404, {}))
-    assert p.fetch_state() == "idle"
+    bus.set_state("speaking")
+    assert orb_window.widget.stanje == "speaking"
 
-
-def test_provider_fail_closed_on_invalid_state():
-    p = HttpVoiceStateProvider(_FakeClient(200, {"state": "garbage"}))
-    assert p.fetch_state() == "idle"
-
-
-def test_provider_fail_closed_on_network_error():
-    p = HttpVoiceStateProvider(_FakeClient(exc=httpx.ConnectError("boom")))
-    assert p.fetch_state() == "idle"
+    bus.set_state("muted")
+    assert orb_window.widget.stanje == "muted"
 
 
 # --- menu labels ---
