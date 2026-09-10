@@ -11,6 +11,7 @@ import httpx
 from fastapi import APIRouter, Request
 
 from app.core.errors import AppError
+from app.core.config import resolve_effective_realtime_model
 from app.schemas.realtime import RealtimeSessionRequest, RealtimeSessionResponse
 
 router = APIRouter(tags=["realtime"])
@@ -34,14 +35,19 @@ def create_realtime_session(
             status_code=500,
         )
 
-    # RTM-3: backend je source of truth za Realtime model. Desktop-ov session
-    # se čuva radi kompatibilnosti, ali model se UVIJEK overrideuje na
-    # settings.openai_realtime_model — konstrukcijski onemogućeno da desktop
-    # otvori WebSocket prema drugom modelu nego što je backend mintao token.
+    # RTM-3 + in-app selector: backend je source of truth za Realtime model.
+    # Effective model = korisnički izbor (UserSettings) > env fallback >
+    # default. Desktop-ov session model se UVIJEK overrideuje na ovu vrijednost.
+    user_service = getattr(request.app.state, "user_settings_service", None)
+    user_choice = user_service.get().realtime_model if user_service else None
+    effective_model = resolve_effective_realtime_model(
+        user_choice, settings.openai_realtime_model
+    )
+
     session = dict(request_body.session or {})
-    session["model"] = settings.openai_realtime_model
+    session["model"] = effective_model
     # A/B dijagnostika: koji model je stvarno aktiviran (bez secrets).
-    log.info("realtime_model=%s", settings.openai_realtime_model)
+    log.info("realtime_model=%s", effective_model)
 
     try:
         response = httpx.post(
@@ -81,5 +87,5 @@ def create_realtime_session(
     return RealtimeSessionResponse(
         value=value,
         expiresAt=expires_at,
-        model=settings.openai_realtime_model,
+        model=effective_model,
     )

@@ -4,6 +4,7 @@ automatically served without changes here (reads model_fields).
 """
 from fastapi import APIRouter, Request
 
+from app.core.config import resolve_effective_realtime_model
 from app.core.errors import AppError
 from app.schemas.settings import UserSettings, UserSettingsUpdateRequest
 from app.services.settings_service import SettingsService
@@ -18,11 +19,24 @@ def _service(request: Request) -> SettingsService:
     return service
 
 
+def _resolve_effective(request: Request, settings: UserSettings) -> UserSettings:
+    # In-app selector: GET vraća efektivni realtime_model (korisnički izbor,
+    # inače env fallback → default) da UI prikaže stvarnu vrijednost nove voice
+    # sesije, a ne None/default koji bi mogao lagati.
+    env_model = request.app.state.settings.openai_realtime_model
+    settings.realtime_model = resolve_effective_realtime_model(
+        settings.realtime_model, env_model
+    )
+    return settings
+
+
 @router.get("/settings", response_model=UserSettings)
 def get_settings(request: Request) -> UserSettings:
-    return _service(request).get()
+    return _resolve_effective(request, _service(request).get())
 
 
 @router.patch("/settings", response_model=UserSettings)
 def update_settings(request_body: UserSettingsUpdateRequest, request: Request) -> UserSettings:
-    return _service(request).update(**request_body.model_dump(exclude_unset=True))
+    return _resolve_effective(
+        request, _service(request).update(**request_body.model_dump(exclude_unset=True))
+    )

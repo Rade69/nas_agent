@@ -30,6 +30,19 @@ def resolve_openai_realtime_model(raw: str) -> str:
     return raw
 
 
+def resolve_effective_realtime_model(user_choice: str | None, env_model: str) -> str:
+    """Jedan centralni resolver za efektivni Realtime model.
+
+    Precedence: validan korisnički izbor > OPENAI_REALTIME_MODEL env fallback
+    > gpt-realtime default. `env_model` je već allowlist-validiran (iz
+    Settings.openai_realtime_model); user_choice prolazi kroz istu allowlist
+    validaciju (fail-closed — invalid persisted value NEMA silent fallback).
+    """
+    if user_choice:
+        return resolve_openai_realtime_model(user_choice)
+    return env_model
+
+
 class Settings(BaseModel):
     app_name: str = "RileyJarvis Python Backend"
     host: str = "127.0.0.1"

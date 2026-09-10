@@ -7,7 +7,9 @@ key/value SQLite table and generic service/API need no changes.
 """
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
+
+from app.core.config import OPENAI_REALTIME_MODELS
 
 # User-facing preferences (name displayed in the prompt, future STT engine
 # choice, etc.) — NOT app.core.config.Settings, which is process/environment
@@ -33,6 +35,11 @@ class UserSettings(BaseModel):
     # built-in defaults already use, not translated (user-authored content).
     # Context: agent_reports/2026-07-12_custom-quick-commands.md
     quick_commands: list[str] = []
+    # OpenAI Realtime (voice) model izbor (in-app selector). None = korisnik
+    # još nije izabrao — effective model se tada resolve-uje prema
+    # OPENAI_REALTIME_MODEL env fallback → gpt-realtime default.
+    # Context: agent_reports/OPENAI_REALTIME_21_MINI_AB_TEST.md
+    realtime_model: str | None = None
 
 
 class UserSettingsUpdateRequest(BaseModel):
@@ -40,3 +47,12 @@ class UserSettingsUpdateRequest(BaseModel):
     agent_name: str | None = None
     interface_language: str | None = None
     quick_commands: list[str] | None = None
+    realtime_model: str | None = None
+
+    @field_validator("realtime_model")
+    @classmethod
+    def _validate_realtime_model(cls, v: str | None) -> str | None:
+        # Allowlist (fail-closed): nema proizvoljnog stringa iz UI-ja.
+        if v is not None and v not in OPENAI_REALTIME_MODELS:
+            raise ValueError(f"realtime_model '{v}' is not allowed")
+        return v

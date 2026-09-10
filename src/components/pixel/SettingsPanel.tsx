@@ -14,6 +14,12 @@ import { SUPPORTED_LANGUAGES } from "../../shared/languages";
 
 type SaveStatus = "loading" | "idle" | "saving" | "saved" | "error";
 
+// OpenAI Realtime voice model — in-app selector. Interni API ID → labela.
+const REALTIME_MODELS = [
+  { value: "gpt-realtime", label: "GPT Realtime" },
+  { value: "gpt-realtime-2.1-mini", label: "GPT Realtime 2.1 Mini" },
+];
+
 export function SettingsPanel({
   onQuickCommandsChange,
   onAgentNameChange,
@@ -34,6 +40,8 @@ export function SettingsPanel({
   const [languageStatus, setLanguageStatus] = useState<SaveStatus>("loading");
   const [commandsInput, setCommandsInput] = useState<string[]>([]);
   const [commandsStatus, setCommandsStatus] = useState<SaveStatus>("loading");
+  const [realtimeModelInput, setRealtimeModelInput] = useState("gpt-realtime");
+  const [realtimeModelStatus, setRealtimeModelStatus] = useState<SaveStatus>("loading");
   // C0: Browser Bridge
   const [bridgeStatus, setBridgeStatus] = useState<BrowserBridgeStatus | null>(null);
   const [pairingCode, setPairingCode] = useState<string | null>(null);
@@ -51,10 +59,12 @@ export function SettingsPanel({
         setAgentNameInput(result.agent_name ?? "Ricky");
         setLanguageInput(result.interface_language ?? "sr-Latn");
         setCommandsInput(result.quick_commands ?? []);
+        setRealtimeModelInput(result.realtime_model ?? "gpt-realtime");
         setNameStatus("idle");
         setAgentNameStatus("idle");
         setLanguageStatus("idle");
         setCommandsStatus("idle");
+        setRealtimeModelStatus("idle");
       })
       .catch(() => {
         if (!cancelled) {
@@ -62,6 +72,7 @@ export function SettingsPanel({
           setAgentNameStatus("error");
           setLanguageStatus("error");
           setCommandsStatus("error");
+          setRealtimeModelStatus("error");
         }
       });
     return () => {
@@ -169,11 +180,25 @@ export function SettingsPanel({
     setCommandsInput((current) => current.filter((_, i) => i !== index));
   }
 
+  async function handleSaveRealtimeModel() {
+    setRealtimeModelStatus("saving");
+    try {
+      const updated = await window.ricky.updateSettings({ realtime_model: realtimeModelInput });
+      setSettings(updated);
+      setRealtimeModelInput(updated.realtime_model ?? "gpt-realtime");
+      setRealtimeModelStatus("saved");
+      window.setTimeout(() => setRealtimeModelStatus((current) => (current === "saved" ? "idle" : current)), 2000);
+    } catch {
+      setRealtimeModelStatus("error");
+    }
+  }
+
   if (
     nameStatus === "loading" ||
     agentNameStatus === "loading" ||
     languageStatus === "loading" ||
-    commandsStatus === "loading"
+    commandsStatus === "loading" ||
+    realtimeModelStatus === "loading"
   ) {
     return <p className="drawer-placeholder-text">{t("settings.loading")}</p>;
   }
@@ -186,6 +211,8 @@ export function SettingsPanel({
     settings !== null &&
     JSON.stringify(commandsInput.map((c) => c.trim()).filter((c) => c.length > 0)) !==
       JSON.stringify(settings.quick_commands ?? []);
+  const realtimeModelDirty =
+    settings !== null && realtimeModelInput !== (settings.realtime_model ?? "gpt-realtime");
 
   return (
     <div className="pixel-settings-panel">
@@ -259,6 +286,41 @@ export function SettingsPanel({
           </button>
           {languageStatus === "saved" ? <span className="pixel-settings-feedback pixel-settings-feedback-ok">{t("settings.saved")}</span> : null}
           {languageStatus === "error" ? (
+            <span className="pixel-settings-feedback pixel-settings-feedback-error">{t("settings.error")}</span>
+          ) : null}
+        </div>
+      </section>
+
+      <section className="pixel-settings-section">
+        <h3>Glas</h3>
+        <label className="pixel-settings-field">
+          <span>AI voice model</span>
+          <select
+            value={realtimeModelInput}
+            onChange={(event) => setRealtimeModelInput(event.target.value)}
+          >
+            {REALTIME_MODELS.map((model) => (
+              <option key={model.value} value={model.value}>
+                {model.label}
+              </option>
+            ))}
+          </select>
+          <span className="pixel-settings-hint">
+            Primjenjuje se pri sljedećoj glasovnoj sesiji.
+          </span>
+        </label>
+        <div className="pixel-settings-actions">
+          <button
+            className="pixel-primary"
+            onClick={() => void handleSaveRealtimeModel()}
+            disabled={!realtimeModelDirty || realtimeModelStatus === "saving"}
+          >
+            {realtimeModelStatus === "saving" ? t("settings.saving") : t("settings.save")}
+          </button>
+          {realtimeModelStatus === "saved" ? (
+            <span className="pixel-settings-feedback pixel-settings-feedback-ok">{t("settings.saved")}</span>
+          ) : null}
+          {realtimeModelStatus === "error" ? (
             <span className="pixel-settings-feedback pixel-settings-feedback-error">{t("settings.error")}</span>
           ) : null}
         </div>

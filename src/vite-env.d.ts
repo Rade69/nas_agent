@@ -120,6 +120,9 @@ export type UserSettings = {
   // Empty = use the built-in localized defaults (idle.cmd* i18n keys).
   // Context: agent_reports/2026-07-12_custom-quick-commands.md
   quick_commands: string[];
+  // OpenAI Realtime voice model — in-app selector. Backend returns the
+  // effective value (user choice > env fallback > default).
+  realtime_model?: string | null;
 };
 
 // Dictation Mode "Doradi" menu — mirrors python_backend/app/schemas/text.py
