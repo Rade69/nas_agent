@@ -17,21 +17,42 @@ class _FakeResponse:
 
 def test_create_realtime_session_returns_client_secret() -> None:
     app.state.settings.openai_api_key = "sk-test-key"
+    app.state.settings.openai_realtime_model = "gpt-realtime"
     client = TestClient(app)
 
     with patch(
         "app.api.realtime.httpx.post",
         return_value=_FakeResponse(200, {"value": "ek-123", "expires_at": 1234567890}),
     ) as mocked_post:
+        # Desktop pokušava poslati drugi model — backend ga mora overrideovati.
         response = client.post("/realtime/session", json={"session": {"model": "gpt-realtime-2"}})
 
     assert response.status_code == 200
     body = response.json()
-    assert body == {"value": "ek-123", "expiresAt": 1234567890}
+    assert body == {"value": "ek-123", "expiresAt": 1234567890, "model": "gpt-realtime"}
 
     _, kwargs = mocked_post.call_args
     assert kwargs["headers"]["Authorization"] == "Bearer sk-test-key"
-    assert kwargs["json"] == {"session": {"model": "gpt-realtime-2"}}
+    assert kwargs["json"] == {"session": {"model": "gpt-realtime"}}  # backend-owned override
+
+
+def test_create_realtime_session_uses_configured_model_and_returns_it() -> None:
+    app.state.settings.openai_api_key = "sk-test-key"
+    app.state.settings.openai_realtime_model = "gpt-realtime-2.1-mini"
+    client = TestClient(app)
+
+    with patch(
+        "app.api.realtime.httpx.post",
+        return_value=_FakeResponse(200, {"value": "ek-456", "expires_at": 999}),
+    ) as mocked_post:
+        response = client.post("/realtime/session", json={"session": {"model": "whatever"}})
+
+    body = response.json()
+    assert body["model"] == "gpt-realtime-2.1-mini"
+    assert body["value"] == "ek-456"
+    assert "api_key" not in body
+    _, kwargs = mocked_post.call_args
+    assert kwargs["json"] == {"session": {"model": "gpt-realtime-2.1-mini"}}
 
 
 def test_create_realtime_session_without_api_key_returns_500() -> None:
