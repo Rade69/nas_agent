@@ -112,7 +112,7 @@ async function handleRealtimeCreateToken() {
 
   const session = {
     type: "realtime",
-    model: "gpt-realtime-2.1",
+    model: "gpt-realtime-2.1-mini",
     instructions,
     output_modalities: ["audio"],
     tool_choice: "auto",

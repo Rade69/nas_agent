@@ -74,7 +74,7 @@ class RealtimeSession:
         client,
         tool_bridge: ToolBridge,
         callbacks: VoiceCallbacks,
-        model: str = "gpt-realtime-2.1",
+        model: str = "gpt-realtime-2.1-mini",
         max_tool_rounds: int = 8,
         input_device: int | None = None,
         output_device: int | None = None,

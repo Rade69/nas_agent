@@ -30,7 +30,7 @@ class RealtimeWorker(QThread):
     input_stream_opened = Signal(str)
     input_warning = Signal(str)
 
-    def __init__(self, backend_client, tool_bridge, model: str = "gpt-realtime-2.1", parent=None,
+    def __init__(self, backend_client, tool_bridge, model: str = "gpt-realtime-2.1-mini", parent=None,
                  input_device: int | None = None, output_device: int | None = None) -> None:
         super().__init__(parent)
         self._client = backend_client

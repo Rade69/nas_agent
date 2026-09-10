@@ -17,7 +17,7 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 # `gpt-realtime-2.1-mini` (distilled, jeftiniji/faster). Fail-closed —
 # nepoznat model je konfiguraciona greška, NIKAD silent fallback.
 OPENAI_REALTIME_MODELS = frozenset({"gpt-realtime-2.1", "gpt-realtime-2.1-mini"})
-OPENAI_REALTIME_MODEL_DEFAULT = "gpt-realtime-2.1"
+OPENAI_REALTIME_MODEL_DEFAULT = "gpt-realtime-2.1-mini"
 
 
 def resolve_openai_realtime_model(raw: str) -> str:
@@ -69,7 +69,7 @@ class Settings(BaseModel):
     # RTM-1 (OPENAI_REALTIME_21_MINI_AB_TEST): the OpenAI Realtime (voice)
     # model. Distinct from `openai_model` (text). Backend-owned source of truth
     # for the Realtime model — the desktop must not choose its own.
-    openai_realtime_model: str = "gpt-realtime-2.1"
+    openai_realtime_model: str = "gpt-realtime-2.1-mini"
 
     @property
     def database_path(self) -> Path:

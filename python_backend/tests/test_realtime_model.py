@@ -10,7 +10,7 @@ from app.core.config import (
 
 
 def test_default_is_gpt_realtime_2_1():
-    assert OPENAI_REALTIME_MODEL_DEFAULT == "gpt-realtime-2.1"
+    assert OPENAI_REALTIME_MODEL_DEFAULT == "gpt-realtime-2.1-mini"
 
 
 def test_resolve_newer():
