@@ -13,11 +13,11 @@ from pydantic import BaseModel
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
-# RTM-2 (OPENAI_REALTIME_21_MINI_AB_TEST): allowlist za OpenAI Realtime modele.
-# Fail-closed — nepoznat model je konfiguraciona greška, NIKAD silent fallback
-# na gpt-realtime (to bi pokvarilo A/B test).
-OPENAI_REALTIME_MODELS = frozenset({"gpt-realtime", "gpt-realtime-2.1-mini"})
-OPENAI_REALTIME_MODEL_DEFAULT = "gpt-realtime"
+# OpenAI Realtime (voice) model allowlist. `gpt-realtime-2.1-mini` NE postoji —
+# trenutni GA modeli su `gpt-realtime-2.1` (noviji) i `gpt-realtime-2` (stariji).
+# Fail-closed — nepoznat model je konfiguraciona greška, NIKAD silent fallback.
+OPENAI_REALTIME_MODELS = frozenset({"gpt-realtime-2.1", "gpt-realtime-2"})
+OPENAI_REALTIME_MODEL_DEFAULT = "gpt-realtime-2.1"
 
 
 def resolve_openai_realtime_model(raw: str) -> str:
@@ -69,7 +69,7 @@ class Settings(BaseModel):
     # RTM-1 (OPENAI_REALTIME_21_MINI_AB_TEST): the OpenAI Realtime (voice)
     # model. Distinct from `openai_model` (text). Backend-owned source of truth
     # for the Realtime model — the desktop must not choose its own.
-    openai_realtime_model: str = "gpt-realtime"
+    openai_realtime_model: str = "gpt-realtime-2.1"
 
     @property
     def database_path(self) -> Path:

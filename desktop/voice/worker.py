@@ -27,7 +27,7 @@ class RealtimeWorker(QThread):
     connected_changed = Signal(bool)
     reconnecting = Signal()
 
-    def __init__(self, backend_client, tool_bridge, model: str = "gpt-realtime", parent=None) -> None:
+    def __init__(self, backend_client, tool_bridge, model: str = "gpt-realtime-2.1", parent=None) -> None:
         super().__init__(parent)
         self._client = backend_client
         self._tool_bridge = tool_bridge

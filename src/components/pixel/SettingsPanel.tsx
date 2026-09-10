@@ -16,8 +16,8 @@ type SaveStatus = "loading" | "idle" | "saving" | "saved" | "error";
 
 // OpenAI Realtime voice model — in-app selector. Interni API ID → labela.
 const REALTIME_MODELS = [
-  { value: "gpt-realtime", label: "GPT Realtime" },
-  { value: "gpt-realtime-2.1-mini", label: "GPT Realtime 2.1 Mini" },
+  { value: "gpt-realtime-2.1", label: "GPT Realtime 2.1" },
+  { value: "gpt-realtime-2", label: "GPT Realtime 2" },
 ];
 
 export function SettingsPanel({
@@ -40,7 +40,7 @@ export function SettingsPanel({
   const [languageStatus, setLanguageStatus] = useState<SaveStatus>("loading");
   const [commandsInput, setCommandsInput] = useState<string[]>([]);
   const [commandsStatus, setCommandsStatus] = useState<SaveStatus>("loading");
-  const [realtimeModelInput, setRealtimeModelInput] = useState("gpt-realtime");
+  const [realtimeModelInput, setRealtimeModelInput] = useState("gpt-realtime-2.1");
   const [realtimeModelStatus, setRealtimeModelStatus] = useState<SaveStatus>("loading");
   // C0: Browser Bridge
   const [bridgeStatus, setBridgeStatus] = useState<BrowserBridgeStatus | null>(null);
@@ -59,7 +59,7 @@ export function SettingsPanel({
         setAgentNameInput(result.agent_name ?? "Ricky");
         setLanguageInput(result.interface_language ?? "sr-Latn");
         setCommandsInput(result.quick_commands ?? []);
-        setRealtimeModelInput(result.realtime_model ?? "gpt-realtime");
+        setRealtimeModelInput(result.realtime_model ?? "gpt-realtime-2.1");
         setNameStatus("idle");
         setAgentNameStatus("idle");
         setLanguageStatus("idle");
@@ -185,7 +185,7 @@ export function SettingsPanel({
     try {
       const updated = await window.ricky.updateSettings({ realtime_model: realtimeModelInput });
       setSettings(updated);
-      setRealtimeModelInput(updated.realtime_model ?? "gpt-realtime");
+      setRealtimeModelInput(updated.realtime_model ?? "gpt-realtime-2.1");
       setRealtimeModelStatus("saved");
       window.setTimeout(() => setRealtimeModelStatus((current) => (current === "saved" ? "idle" : current)), 2000);
     } catch {
@@ -212,7 +212,7 @@ export function SettingsPanel({
     JSON.stringify(commandsInput.map((c) => c.trim()).filter((c) => c.length > 0)) !==
       JSON.stringify(settings.quick_commands ?? []);
   const realtimeModelDirty =
-    settings !== null && realtimeModelInput !== (settings.realtime_model ?? "gpt-realtime");
+    settings !== null && realtimeModelInput !== (settings.realtime_model ?? "gpt-realtime-2.1");
 
   return (
     <div className="pixel-settings-panel">

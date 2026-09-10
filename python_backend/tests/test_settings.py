@@ -209,19 +209,19 @@ def test_patch_settings_can_clear_quick_commands_back_to_empty(_restore_quick_co
 def test_realtime_model_roundtrip(_restore_realtime_model) -> None:
     # T-B7: GET → save → GET mora zadržati istu vrijednost.
     with TestClient(app) as client:
-        response = client.patch("/settings", json={"realtime_model": "gpt-realtime-2.1-mini"})
+        response = client.patch("/settings", json={"realtime_model": "gpt-realtime-2.1"})
         assert response.status_code == 200
-        assert response.json()["realtime_model"] == "gpt-realtime-2.1-mini"
+        assert response.json()["realtime_model"] == "gpt-realtime-2.1"
 
         follow_up = client.get("/settings")
-        assert follow_up.json()["realtime_model"] == "gpt-realtime-2.1-mini"
+        assert follow_up.json()["realtime_model"] == "gpt-realtime-2.1"
 
 
 def test_realtime_model_switch_full_to_mini(_restore_realtime_model) -> None:
     with TestClient(app) as client:
-        client.patch("/settings", json={"realtime_model": "gpt-realtime"})
-        client.patch("/settings", json={"realtime_model": "gpt-realtime-2.1-mini"})
-        assert client.get("/settings").json()["realtime_model"] == "gpt-realtime-2.1-mini"
+        client.patch("/settings", json={"realtime_model": "gpt-realtime-2"})
+        client.patch("/settings", json={"realtime_model": "gpt-realtime-2.1"})
+        assert client.get("/settings").json()["realtime_model"] == "gpt-realtime-2.1"
 
 
 def test_realtime_model_invalid_rejected(_restore_realtime_model) -> None:
@@ -239,4 +239,4 @@ def test_realtime_model_old_payload_is_valid(_restore_realtime_model) -> None:
 
     assert response.status_code == 200
     model = response.json()["realtime_model"]
-    assert model in ("gpt-realtime", "gpt-realtime-2.1-mini")
+    assert model in ("gpt-realtime-2.1", "gpt-realtime-2")
