@@ -151,6 +151,26 @@ U okviru Qt Desktop Migration plana (`docs/QT_MIGRATION_PLAN_2026-07-20.md`, QM-
 
 **Invarijante (ne smiju se slomiti):** isti permission/confirmation tok glasom i tekstom; nijedan high-risk alat bez `confirmation_id`; kill-switch radi i kad backend ne odgovara; Qt UI nikad ne dobija API ključ direktno; companion orb zadržava vizuelni karakter (avatar + tri prstena); nema brisanja `electron/`/`src/` prije QM-9 cutover potvrde.
 
+### Omarchy addendum — OA faze (plan: docs/NAS_AGENT_OMARCHY_LESSONS_IMPLEMENTATION_PLAN.md)
+
+Primjena Omarchy-voice lessons-learned na QM-3 voice runtime. P1 paket (OA-0…OA-4) se ugrađuje direktno u QM-3.
+
+| Faza | Naziv | Status |
+|---|---|---|
+| OA-0 | Baseline + contract freeze | ✅ (`docs/QT_VOICE_RUNTIME_CONTRACT.md` — VoiceState/tool/confirmation kontrakti) |
+| OA-1 | Production Realtime runtime (reconnect, guards, event parsing, audio level) | ✅ (`desktop/voice/` paket: state/guards/events/audio/session/worker; 26 novih testova) |
+| OA-2 | Centralni VoiceSignals contract | ✅ (`VoiceStateBus` proširen — state+audio+transcript+connected+error; orb ne poll-uje) |
+| OA-3 | Audio-reactive orb | ✅ kod (`RickyOrbWidget.postavi_audio_nivo`, amplituda nadjačava sintetički puls) |
+| OA-4 | Confirmation Bridge v2 | 🟡 invarijante zadovoljene (approve→exact retry, sanitizacija confirmation_id); "backend owns pending action" odložen (dira `python_backend/` bez bezbjednosne potrebe) |
+| OA-5 | Desktop Context Snapshot | ⬜ P2 |
+| OA-6 | Capability Manifest Service | ⬜ P2 |
+| OA-7 | Tool Surface Optimization | ⬜ P3 (tek nakon mjerenja) |
+| OA-8 | Deterministički compound tools | ⬜ P3 |
+| OA-9 | Realtime observability | ⬜ P4 |
+| OA-10 | Ricky Doctor / Diagnostics | ⬜ P4 |
+| OA-11 | Echo / duplex hardening | ⬜ P4 |
+| OA-12 | Text/Voice parity test suite | ⬜ P2 |
+
 ## Security Gates
 
 Izvor: [SECURITY_HARDENING_PLAN.md](./SECURITY_HARDENING_PLAN.md) — autoritativan produkcijski sigurnosni plan. Gates su **cross-cutting kriteriji** koji se ispunjavaju kroz postojeće numerisane faze — ovo nisu nove faze i ne mijenjaju numeraciju iznad. Samo `SECURITY_HARDENING_PLAN.md` opisuje detaljne kontrole; ovdje se samo mapira koja faza nosi koji gate i šta je blokirano dok gate nije zatvoren.
