@@ -14,3 +14,7 @@ class RealtimeSessionRequest(BaseModel):
 class RealtimeSessionResponse(BaseModel):
     value: str
     expiresAt: int | None = None
+    # RTM-4: authoritative model koji je backend stvarno odabrao (source of
+    # truth) — desktop ga koristi za WebSocket URL + session.update. Nikad
+    # permanentni API ključ.
+    model: str

@@ -13,6 +13,22 @@ from pydantic import BaseModel
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
+# RTM-2 (OPENAI_REALTIME_21_MINI_AB_TEST): allowlist za OpenAI Realtime modele.
+# Fail-closed — nepoznat model je konfiguraciona greška, NIKAD silent fallback
+# na gpt-realtime (to bi pokvarilo A/B test).
+OPENAI_REALTIME_MODELS = frozenset({"gpt-realtime", "gpt-realtime-2.1-mini"})
+OPENAI_REALTIME_MODEL_DEFAULT = "gpt-realtime"
+
+
+def resolve_openai_realtime_model(raw: str) -> str:
+    """Vrati dozvoljeni model ili raise ValueError (centralna validacija)."""
+    if raw not in OPENAI_REALTIME_MODELS:
+        raise ValueError(
+            f"OPENAI_REALTIME_MODEL '{raw}' is not allowed. "
+            f"Allowed values: {sorted(OPENAI_REALTIME_MODELS)}"
+        )
+    return raw
+
 
 class Settings(BaseModel):
     app_name: str = "RileyJarvis Python Backend"
@@ -37,6 +53,10 @@ class Settings(BaseModel):
     minimax_api_key: str | None = None
     minimax_model: str = "MiniMax-M3"
     openai_model: str = "gpt-4o-mini"
+    # RTM-1 (OPENAI_REALTIME_21_MINI_AB_TEST): the OpenAI Realtime (voice)
+    # model. Distinct from `openai_model` (text). Backend-owned source of truth
+    # for the Realtime model — the desktop must not choose its own.
+    openai_realtime_model: str = "gpt-realtime"
 
     @property
     def database_path(self) -> Path:
@@ -81,6 +101,9 @@ def get_settings() -> Settings:
         minimax_api_key=os.environ.get("MINIMAX_API_KEY") or None,
         minimax_model=os.environ.get("MINIMAX_MODEL") or "MiniMax-M3",
         openai_model=os.environ.get("OPENAI_MODEL") or "gpt-4o-mini",
+        openai_realtime_model=resolve_openai_realtime_model(
+            os.environ.get("OPENAI_REALTIME_MODEL") or OPENAI_REALTIME_MODEL_DEFAULT
+        ),
         data_dir=data_dir,
         # FAZA 19: PyInstaller sidecar receives host/port from Electron's env.
         # Defaults are fine for dev (uvicorn --host/--port CLI args take

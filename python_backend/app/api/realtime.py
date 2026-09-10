@@ -32,6 +32,13 @@ def create_realtime_session(
             status_code=500,
         )
 
+    # RTM-3: backend je source of truth za Realtime model. Desktop-ov session
+    # se čuva radi kompatibilnosti, ali model se UVIJEK overrideuje na
+    # settings.openai_realtime_model — konstrukcijski onemogućeno da desktop
+    # otvori WebSocket prema drugom modelu nego što je backend mintao token.
+    session = dict(request_body.session or {})
+    session["model"] = settings.openai_realtime_model
+
     try:
         response = httpx.post(
             OPENAI_REALTIME_URL,
@@ -40,7 +47,7 @@ def create_realtime_session(
                 "Content-Type": "application/json",
                 "OpenAI-Safety-Identifier": SAFETY_IDENTIFIER,
             },
-            json={"session": request_body.session},
+            json={"session": session},
             timeout=15.0,
         )
     except httpx.HTTPError as exc:
@@ -67,4 +74,8 @@ def create_realtime_session(
         )
 
     expires_at = data.get("expires_at") or (data.get("client_secret") or {}).get("expires_at")
-    return RealtimeSessionResponse(value=value, expiresAt=expires_at)
+    return RealtimeSessionResponse(
+        value=value,
+        expiresAt=expires_at,
+        model=settings.openai_realtime_model,
+    )

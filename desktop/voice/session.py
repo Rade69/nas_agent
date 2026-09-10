@@ -129,7 +129,7 @@ class RealtimeSession:
         import sounddevice as sd
         from websockets.asyncio.client import connect
 
-        token = self._resolve_credential()
+        token, model = self._resolve_credential()
         if token is None:
             self._cb.on_error("Nema OpenAI credential-a.")
             return
@@ -164,14 +164,14 @@ class RealtimeSession:
                 outdata[n:] = b"\x00" * (potrebno - n)
                 del ostatak[:]
 
-        url = f"wss://api.openai.com/v1/realtime?model={self._model}"
+        url = f"wss://api.openai.com/v1/realtime?model={model}"
         async with connect(
             url,
             additional_headers={"Authorization": f"Bearer {token}"},
             max_size=None,
         ) as ws:
             await self._await_session_created(ws)
-            await self._send_session_update(ws, tools)
+            await self._send_session_update(ws, tools, model)
             self.policy.reset()
             self._cb.on_connected(True)
             self._cb.on_state(VoiceState.IDLE.value)
@@ -187,19 +187,27 @@ class RealtimeSession:
                     self._receive(ws, zvucnik_q, ostatak, generation),
                 )
 
-    def _resolve_credential(self) -> str | None:
+    def _resolve_credential(self) -> tuple[str | None, str]:
+        """Traži ephemeral Realtime credential + authoritative model od backend-a.
+
+        RTM-5: model je backend-owned — desktop NE bira model. Vraća
+        (ephemeral_value, model); ako backend ne vrati model, fallback na
+        posljednji poznati (default gpt-realtime).
+        """
         try:
             resp = self._client.request(
                 "/realtime/session",
                 method="POST",
-                json={"session": {"type": "realtime", "model": self._model}},
+                json={"session": {"type": "realtime"}},
                 timeout=15.0,
             )
-            value = resp.json().get("value") or resp.json().get("client_secret", {}).get("value")
-            return value or None
+            body = resp.json()
+            value = body.get("value") or body.get("client_secret", {}).get("value")
+            model = body.get("model") or self._model
+            return (value or None, model)
         except Exception:  # pragma: no cover
             log.warning("ephemeral credential fetch failed", exc_info=True)
-            return None
+            return (None, self._model)
 
     async def _await_session_created(self, ws) -> None:
         while True:
@@ -209,14 +217,14 @@ class RealtimeSession:
             if dog.get("type") == "error":  # pragma: no cover
                 raise RuntimeError(dog.get("error", {}).get("message", "session error"))
 
-    async def _send_session_update(self, ws, tools: list[dict]) -> None:
+    async def _send_session_update(self, ws, tools: list[dict], model: str) -> None:
         await ws.send(
             json.dumps(
                 {
                     "type": "session.update",
                     "session": {
                         "type": "realtime",
-                        "model": self._model,
+                        "model": model,
                         "output_modalities": ["audio"],
                         "instructions": INSTRUCTIONS,
                         "tool_choice": "auto",
