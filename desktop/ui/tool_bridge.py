@@ -1,19 +1,19 @@
-"""desktop/ui/tool_bridge.py — ToolBridge (QM-3).
+"""desktop/ui/tool_bridge.py — ToolBridge (QM-3, pojednostavljen OA-1).
 
-Tanki most između glasovne sesije (voice.py) i Python backend tool sistema.
-Svaki tool call ide kroz stvarni `POST /tools/execute` (permission/cancellation
-gate) — NEMA lokalnog izvršavanja kao u spike-u. Confirmation Bridge je port
-obrasca iz src/lib/realtime.ts: kad tool vrati CONFIRMATION_REQUIRED, bridge
-kreira confirmation i emituje `confirmation_required`; retry sa confirmation_id
-radi pozivalac (voice.py). Idempotency (completed_call_ids) port iz realtime.ts
-R3 — isti call_id se nikad ne izvršava dvaput.
+Tanki most između glasovne sesije i Python backend tool sistema. Svaki tool
+call ide kroz stvarni `POST /tools/execute` (permission/cancellation gate) —
+NEMA lokalnog izvršavanja. Confirmation Bridge je port obrasca iz
+src/lib/realtime.ts: kad tool vrati CONFIRMATION_REQUIRED, bridge kreira
+confirmation i vraća `confirmation_id` u rezultatu (retry radi pozivalac).
+
+Namjerno OBICNA klasa bez Qt signala — poziva se iz asyncio niti (session),
+pa svaka komunikacija sa UI-ju ide kroz return vrijednosti + worker signale,
+ne kroz Qt signal emit iz pozadinske niti.
 """
 
 from __future__ import annotations
 
 from typing import Any
-
-from PySide6.QtCore import QObject, Signal
 
 CONFIRMATION_REQUIRED = "CONFIRMATION_REQUIRED"
 
@@ -29,14 +29,10 @@ def to_realtime_tool(spec: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-class ToolBridge(QObject):
+class ToolBridge:
     """Izvršava tool call-ove preko backend-a, uz confirmation + idempotency."""
 
-    confirmation_required = Signal(dict)  # {tool_name, arguments, risk, confirmation_id}
-    activity = Signal(str)
-
     def __init__(self, client) -> None:
-        super().__init__()
         self._client = client
         self.completed_call_ids: set[str] = set()
 
@@ -127,29 +123,24 @@ class ToolBridge(QObject):
         """Idempotency + execute + auto-create-confirmation on REQUIRED.
 
         Vraća rezultat za model. Za CONFIRMATION_REQUIRED vraća
-        `waiting_confirmation` rezultat i emituje `confirmation_required` —
-        retry (sa confirmation_id) radi pozivalac kroz `retry_with_confirmation`.
+        `waiting_confirmation` + `confirmation_id` (retry radi pozivalac kroz
+        `retry_with_confirmation`).
         """
         if call_id in self.completed_call_ids:
             return {"ok": False, "duplicate": True, "message": "Alat je već izvršen."}
 
-        self.activity.emit(f"Izvršavam {tool_name}")
         result = self.execute_tool(tool_name, arguments)
 
         if result.get("error_code") == CONFIRMATION_REQUIRED:
             risk_level = risk or self.risk_for(tool_name)
             confirmation = self.create_confirmation(tool_name, arguments, risk_level)
-            self.confirmation_required.emit(
-                {
-                    "tool_name": tool_name,
-                    "arguments": arguments,
-                    "risk": risk_level,
-                    "confirmation_id": confirmation.get("id"),
-                }
-            )
             return {
                 "ok": False,
                 "waiting_confirmation": True,
+                "confirmation_id": confirmation.get("id"),
+                "tool_name": tool_name,
+                "arguments": arguments,
+                "risk": risk_level,
                 "message": "Potrebna je tvoja potvrda prije izvršenja. Potvrdi u dijalogu.",
             }
 

@@ -90,7 +90,7 @@ def test_run_tool_call_idempotency():
     assert len(executes) == 1
 
 
-def test_run_tool_call_confirmation_required_creates_confirmation_and_emits():
+def test_run_tool_call_confirmation_required_returns_confirmation_id():
     client = FakeClient()
     client.handlers["/tools/execute"] = lambda j: (
         200,
@@ -98,15 +98,13 @@ def test_run_tool_call_confirmation_required_creates_confirmation_and_emits():
     )
     client.handlers["/confirmations"] = lambda j: (200, {"id": "conf-123", "status": "pending"})
     bridge = ToolBridge(client)
-    emitted = []
-    bridge.confirmation_required.connect(emitted.append)
 
     result = bridge.run_tool_call("call-2", "risky_tool", {"x": 1}, risk="high")
 
     assert result.get("waiting_confirmation") is True
-    assert len(emitted) == 1
-    assert emitted[0]["confirmation_id"] == "conf-123"
-    assert emitted[0]["tool_name"] == "risky_tool"
+    assert result["confirmation_id"] == "conf-123"
+    assert result["tool_name"] == "risky_tool"
+    assert result["risk"] == "high"
     assert "call-2" not in bridge.completed_call_ids
 
 
