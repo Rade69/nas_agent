@@ -22,11 +22,15 @@ def _service(request: Request) -> SettingsService:
 def _resolve_effective(request: Request, settings: UserSettings) -> UserSettings:
     # In-app selector: GET vraća efektivni realtime_model (korisnički izbor,
     # inače env fallback → default) da UI prikaže stvarnu vrijednost nove voice
-    # sesije, a ne None/default koji bi mogao lagati.
+    # sesije. Invalid persisted value (npr. stara zagađena baza) NE smije
+    # srušiti read-only GET /settings — fallback na env/default.
     env_model = request.app.state.settings.openai_realtime_model
-    settings.realtime_model = resolve_effective_realtime_model(
-        settings.realtime_model, env_model
-    )
+    try:
+        settings.realtime_model = resolve_effective_realtime_model(
+            settings.realtime_model, env_model
+        )
+    except ValueError:
+        settings.realtime_model = env_model
     return settings
 
 

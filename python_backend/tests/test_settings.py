@@ -240,3 +240,17 @@ def test_realtime_model_old_payload_is_valid(_restore_realtime_model) -> None:
     assert response.status_code == 200
     model = response.json()["realtime_model"]
     assert model in ("gpt-realtime-2.1", "gpt-realtime-2")
+
+
+def test_realtime_model_invalid_persisted_does_not_break_get(_restore_realtime_model) -> None:
+    # Regresija: invalid persisted value (stara zagađena baza) NE smije srušiti
+    # read-only GET /settings (koji se poziva pri svakom startu). GET vraća
+    # fallback (env/default), ne 500.
+    repo = SettingsRepository(get_settings().database_path)
+    repo.set("realtime_model", "gpt-realtime-2.1-mini")
+    with TestClient(app) as client:
+        response = client.get("/settings")
+
+    assert response.status_code == 200
+    model = response.json()["realtime_model"]
+    assert model in ("gpt-realtime-2.1", "gpt-realtime-2")

@@ -40,9 +40,13 @@ def create_realtime_session(
     # default. Desktop-ov session model se UVIJEK overrideuje na ovu vrijednost.
     user_service = getattr(request.app.state, "user_settings_service", None)
     user_choice = user_service.get().realtime_model if user_service else None
-    effective_model = resolve_effective_realtime_model(
-        user_choice, settings.openai_realtime_model
-    )
+    try:
+        effective_model = resolve_effective_realtime_model(
+            user_choice, settings.openai_realtime_model
+        )
+    except ValueError as exc:
+        # Fail-closed, ali kao strukturirana JSON greška (ne HTML 500).
+        raise AppError("INVALID_REALTIME_MODEL", str(exc), status_code=400) from exc
 
     session = dict(request_body.session or {})
     session["model"] = effective_model

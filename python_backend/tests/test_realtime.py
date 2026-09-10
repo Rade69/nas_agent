@@ -2,7 +2,10 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+from app.core.config import get_settings
 from app.main import app
+from app.storage.db import initialize_database
+from app.storage.repositories.settings_repo import SettingsRepository
 
 
 class _FakeResponse:
@@ -16,16 +19,27 @@ class _FakeResponse:
 
 
 def test_create_realtime_session_returns_client_secret() -> None:
+    # Backend override-uje desktop-ov session model na svoj authoritative model.
+    # Osiguraj da nema user choice (da env model bude effective).
+    settings = get_settings()
+    initialize_database(settings)
+    repo = SettingsRepository(settings.database_path)
+    original = repo.get("realtime_model")
+    repo.set("realtime_model", None)
+
     app.state.settings.openai_api_key = "sk-test-key"
     app.state.settings.openai_realtime_model = "gpt-realtime-2.1"
     client = TestClient(app)
 
-    with patch(
-        "app.api.realtime.httpx.post",
-        return_value=_FakeResponse(200, {"value": "ek-123", "expires_at": 1234567890}),
-    ) as mocked_post:
-        # Desktop pokušava poslati drugi model — backend ga mora overrideovati.
-        response = client.post("/realtime/session", json={"session": {"model": "gpt-realtime-2"}})
+    try:
+        with patch(
+            "app.api.realtime.httpx.post",
+            return_value=_FakeResponse(200, {"value": "ek-123", "expires_at": 1234567890}),
+        ) as mocked_post:
+            # Desktop pokušava poslati drugi model — backend ga mora overrideovati.
+            response = client.post("/realtime/session", json={"session": {"model": "gpt-realtime-2"}})
+    finally:
+        repo.set("realtime_model", original)
 
     assert response.status_code == 200
     body = response.json()
