@@ -81,6 +81,7 @@ class OrbWindow:
 
         if voice_bus is not None:
             voice_bus.state_changed.connect(self.widget.postavi_voice_state)
+            voice_bus.audio_input_level.connect(self.widget.postavi_audio_nivo)
 
     # Lazy-bound callback-ovi (isti obrazac kao companionWindow.cjs) — glavni
     # prozor (QM-4) i glas (QM-3) ih povezuju kasnije.

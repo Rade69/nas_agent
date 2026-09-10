@@ -171,6 +171,7 @@ class RickyOrbWidget(QWidget):
         self._elapsed_ms = 0
 
         self._prati_ekran = None  # postavlja se u showEvent, kad handle postoji
+        self._audio_nivo = 0.0  # stvarna amplituda 0..1 (OA-3, audio-reactive)
 
     def showEvent(self, event) -> None:  # noqa: N802
         super().showEvent(event)
@@ -246,6 +247,12 @@ class RickyOrbWidget(QWidget):
         """Prihvati kanonski VoiceState (9 vrijednosti) i mapiraj u vizuelno stanje."""
         self.postavi_stanje(map_voice_state_to_orb_state(voice_state))
 
+    def postavi_audio_nivo(self, nivo: float) -> None:
+        """Stvarna amplituda 0..1 iz audio streama — orb "čuje" korisnika (OA-3)."""
+        self._audio_nivo = max(0.0, min(1.0, float(nivo)))
+        if self.stanje in ("listening", "speaking"):
+            self.update()
+
     def _otkucaj(self) -> None:
         self._elapsed_ms += 16
         self.update()
@@ -293,7 +300,10 @@ class RickyOrbWidget(QWidget):
                 puls = _puls(proteklo_ms, period, obrni)
         elif konf.get("organski") and period:
             faza_pomak = 0.33 if ime == "middle" else (0.66 if ime == "inner" else 0.0)
-            puls = _puls_organski(self._elapsed_ms, period, faza_pomak)
+            sinteticki = _puls_organski(self._elapsed_ms, period, faza_pomak)
+            # OA-3: stvarna audio amplituda nadjačava sintetički puls — orb
+            # reaguje na pravi glas, a organski puls ostaje bazni "život" u tišini.
+            puls = max(sinteticki, self._audio_nivo)
         else:
             puls = _puls(self._elapsed_ms, period, obrni) if period else 0.5
 

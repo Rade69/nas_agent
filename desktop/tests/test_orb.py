@@ -72,6 +72,26 @@ def test_orb_window_subscribes_to_bus(qapp):
     assert orb_window.widget.stanje == "muted"
 
 
+def test_orb_audio_level_stored_and_clamped(qapp):
+    orb = RickyOrbWidget()
+    orb.postavi_audio_nivo(0.4)
+    assert orb._audio_nivo == 0.4
+    orb.postavi_audio_nivo(1.7)
+    assert orb._audio_nivo == 1.0
+    orb.postavi_audio_nivo(-0.3)
+    assert orb._audio_nivo == 0.0
+
+
+def test_orb_window_subscribes_to_audio_level(qapp):
+    from desktop.ui.orb_window import OrbWindow
+
+    bus = VoiceStateBus()
+    orb_window = OrbWindow(voice_bus=bus)
+
+    bus.set_audio_input_level(0.6)
+    assert orb_window.widget._audio_nivo == 0.6
+
+
 # --- menu labels ---
 
 def test_menu_labels_fail_open_to_sr_latn():
