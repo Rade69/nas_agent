@@ -61,6 +61,9 @@ class VoiceCallbacks:
         self.on_error: callable = lambda _e: None
         self.on_connected: callable = lambda _b: None
         self.on_reconnecting: callable = lambda: None
+        # PC-1 mic health: stream open + frame warning (agregirano, ne per-frame).
+        self.on_input_stream_open: callable = lambda _device_name: None
+        self.on_input_warning: callable = lambda _msg: None
 
 
 class RealtimeSession:
@@ -73,11 +76,15 @@ class RealtimeSession:
         callbacks: VoiceCallbacks,
         model: str = "gpt-realtime-2.1",
         max_tool_rounds: int = 8,
+        input_device: int | None = None,
+        output_device: int | None = None,
     ) -> None:
         self._client = client
         self._tool_bridge = tool_bridge
         self._cb = callbacks
         self._model = model
+        self._input_device = input_device
+        self._output_device = output_device
         self._stop = threading.Event()
         self._inbox: queue.Queue[dict[str, Any]] = queue.Queue()
 
@@ -143,7 +150,8 @@ class RealtimeSession:
 
         def mikrofon_callback(indata, frames, time_info, status) -> None:
             if status:
-                return
+                # PC-1: transient overflow/underflow → warning, ne tihi drop.
+                self._cb.on_input_warning(str(status))
             pcm = bytes(indata)
             mikrofon_q.put(pcm)
             self._cb.on_audio_input_level(self.input_level.update(rms_level(pcm)))
@@ -164,6 +172,14 @@ class RealtimeSession:
                 outdata[n:] = b"\x00" * (potrebno - n)
                 del ostatak[:]
 
+        # PC-1: eksplicitni device izbor (nema tihog default koji se mijenja).
+        from desktop.voice.devices import AudioDeviceService
+
+        _devices = AudioDeviceService()
+        _in = _devices.resolve_input(self._input_device)
+        _out = _devices.resolve_output(self._output_device)
+        self._cb.on_input_stream_open(_in.name if _in else "system default")
+
         url = f"wss://api.openai.com/v1/realtime?model={model}"
         async with connect(
             url,
@@ -177,9 +193,11 @@ class RealtimeSession:
             self._cb.on_state(VoiceState.IDLE.value)
 
             with sd.RawInputStream(
-                samplerate=SAMPLE_RATE, channels=CHANNELS, dtype=DTYPE, blocksize=BLOCK, callback=mikrofon_callback
+                samplerate=SAMPLE_RATE, channels=CHANNELS, dtype=DTYPE, blocksize=BLOCK,
+                device=(_in.index if _in else None), callback=mikrofon_callback,
             ), sd.RawOutputStream(
-                samplerate=SAMPLE_RATE, channels=CHANNELS, dtype=DTYPE, blocksize=BLOCK, callback=zvucnik_callback
+                samplerate=SAMPLE_RATE, channels=CHANNELS, dtype=DTYPE, blocksize=BLOCK,
+                device=(_out.index if _out else None), callback=zvucnik_callback,
             ):
                 await asyncio.gather(
                     self._send_mic(ws, mikrofon_q),

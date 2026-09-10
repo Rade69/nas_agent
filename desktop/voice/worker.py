@@ -26,12 +26,18 @@ class RealtimeWorker(QThread):
     error_occurred = Signal(str)
     connected_changed = Signal(bool)
     reconnecting = Signal()
+    # PC-1 mic health.
+    input_stream_opened = Signal(str)
+    input_warning = Signal(str)
 
-    def __init__(self, backend_client, tool_bridge, model: str = "gpt-realtime-2.1", parent=None) -> None:
+    def __init__(self, backend_client, tool_bridge, model: str = "gpt-realtime-2.1", parent=None,
+                 input_device: int | None = None, output_device: int | None = None) -> None:
         super().__init__(parent)
         self._client = backend_client
         self._tool_bridge = tool_bridge
         self._model = model
+        self._input_device = input_device
+        self._output_device = output_device
         self._session: RealtimeSession | None = None
 
     def run(self) -> None:  # noqa: D401
@@ -45,8 +51,13 @@ class RealtimeWorker(QThread):
         callbacks.on_error = self.error_occurred.emit
         callbacks.on_connected = self.connected_changed.emit
         callbacks.on_reconnecting = self.reconnecting.emit
+        callbacks.on_input_stream_open = self.input_stream_opened.emit
+        callbacks.on_input_warning = self.input_warning.emit
 
-        self._session = RealtimeSession(self._client, self._tool_bridge, callbacks, self._model)
+        self._session = RealtimeSession(
+            self._client, self._tool_bridge, callbacks, self._model,
+            input_device=self._input_device, output_device=self._output_device,
+        )
         try:
             asyncio.run(self._session.run())
         except Exception as exc:  # pragma: no cover - runtime audio/network
