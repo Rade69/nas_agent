@@ -67,6 +67,8 @@ const { uiInspect } = require("./tools_legacy/powershell/uiInspect.cjs");
 
 const dataDir = path.join(process.cwd(), "data");
 const dbPath = path.join(dataDir, "ricky-db.json");
+const { initDebugLog } = require("./core/debugLog.cjs");
+initDebugLog(process.cwd());
 let currentMode = "display";
 
 

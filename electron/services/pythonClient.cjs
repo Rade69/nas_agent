@@ -32,7 +32,15 @@ async function requestJson(path, options = {}) {
     });
 
     const text = await response.text();
-    const body = text ? JSON.parse(text) : null;
+    let body = null;
+    try {
+      body = text ? JSON.parse(text) : null;
+    } catch {
+      // Ne-JSON odgovor (npr. "Internal Server Error" HTML) — sačuvaj sirovi
+      // tekst da se vidi tačan uzrok u debug.log.
+      require("../core/debugLog.cjs").debugLog("[backend:non-json]", path, text.slice(0, 200));
+    }
+    require("../core/debugLog.cjs").debugLog("[backend]", options.method || "GET", path, response.status);
 
     if (!response.ok) {
       const message = body?.error?.message || body?.detail || text || `HTTP ${response.status}`;
