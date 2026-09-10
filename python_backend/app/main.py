@@ -7,6 +7,7 @@ single FastAPI app instance. Also serves as the PyInstaller entry point
 from __future__ import annotations
 
 import atexit
+import logging
 import os
 from fastapi import Depends, FastAPI
 
@@ -76,6 +77,9 @@ def create_app() -> FastAPI:
             settings.minimax_api_key,
         ]
     )
+    # A/B dijagnostika: ispiši aktivni Realtime (voice) model pri startup-u,
+    # da se odmah vidi koji je model aktivan (bez secrets).
+    logging.getLogger("ricky.backend").info("active realtime_model=%s", settings.openai_realtime_model)
     initialize_database(settings)
 
     # Browser extension broker — starts the localhost WebSocket for the
