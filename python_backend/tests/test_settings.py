@@ -219,7 +219,7 @@ def test_realtime_model_roundtrip(_restore_realtime_model) -> None:
 
 def test_realtime_model_switch_full_to_mini(_restore_realtime_model) -> None:
     with TestClient(app) as client:
-        client.patch("/settings", json={"realtime_model": "gpt-realtime-2"})
+        client.patch("/settings", json={"realtime_model": "gpt-realtime-2.1-mini"})
         client.patch("/settings", json={"realtime_model": "gpt-realtime-2.1"})
         assert client.get("/settings").json()["realtime_model"] == "gpt-realtime-2.1"
 
@@ -239,7 +239,7 @@ def test_realtime_model_old_payload_is_valid(_restore_realtime_model) -> None:
 
     assert response.status_code == 200
     model = response.json()["realtime_model"]
-    assert model in ("gpt-realtime-2.1", "gpt-realtime-2")
+    assert model in ("gpt-realtime-2.1", "gpt-realtime-2.1-mini")
 
 
 def test_realtime_model_invalid_persisted_does_not_break_get(_restore_realtime_model) -> None:
@@ -247,10 +247,10 @@ def test_realtime_model_invalid_persisted_does_not_break_get(_restore_realtime_m
     # read-only GET /settings (koji se poziva pri svakom startu). GET vraća
     # fallback (env/default), ne 500.
     repo = SettingsRepository(get_settings().database_path)
-    repo.set("realtime_model", "gpt-realtime-2.1-mini")
+    repo.set("realtime_model", "gpt-realtime-2")
     with TestClient(app) as client:
         response = client.get("/settings")
 
     assert response.status_code == 200
     model = response.json()["realtime_model"]
-    assert model in ("gpt-realtime-2.1", "gpt-realtime-2")
+    assert model in ("gpt-realtime-2.1", "gpt-realtime-2.1-mini")

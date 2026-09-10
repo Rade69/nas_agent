@@ -13,10 +13,10 @@ from pydantic import BaseModel
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 
-# OpenAI Realtime (voice) model allowlist. `gpt-realtime-2.1-mini` NE postoji —
-# trenutni GA modeli su `gpt-realtime-2.1` (noviji) i `gpt-realtime-2` (stariji).
-# Fail-closed — nepoznat model je konfiguraciona greška, NIKAD silent fallback.
-OPENAI_REALTIME_MODELS = frozenset({"gpt-realtime-2.1", "gpt-realtime-2"})
+# OpenAI Realtime (voice) model allowlist. `gpt-realtime-2.1` (standard) i
+# `gpt-realtime-2.1-mini` (distilled, jeftiniji/faster). Fail-closed —
+# nepoznat model je konfiguraciona greška, NIKAD silent fallback.
+OPENAI_REALTIME_MODELS = frozenset({"gpt-realtime-2.1", "gpt-realtime-2.1-mini"})
 OPENAI_REALTIME_MODEL_DEFAULT = "gpt-realtime-2.1"
 
 

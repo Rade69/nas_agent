@@ -37,7 +37,7 @@ def test_create_realtime_session_returns_client_secret() -> None:
             return_value=_FakeResponse(200, {"value": "ek-123", "expires_at": 1234567890}),
         ) as mocked_post:
             # Desktop pokušava poslati drugi model — backend ga mora overrideovati.
-            response = client.post("/realtime/session", json={"session": {"model": "gpt-realtime-2"}})
+            response = client.post("/realtime/session", json={"session": {"model": "gpt-realtime-2.1-mini"}})
     finally:
         repo.set("realtime_model", original)
 
@@ -56,7 +56,7 @@ def test_create_realtime_session_uses_configured_model_and_returns_it() -> None:
     app.state.settings.openai_api_key = "sk-test-key"
     client = TestClient(app)
 
-    client.patch("/settings", json={"realtime_model": "gpt-realtime-2"})
+    client.patch("/settings", json={"realtime_model": "gpt-realtime-2.1-mini"})
     try:
         with patch(
             "app.api.realtime.httpx.post",
@@ -67,11 +67,11 @@ def test_create_realtime_session_uses_configured_model_and_returns_it() -> None:
         client.patch("/settings", json={"realtime_model": "gpt-realtime-2.1"})
 
     body = response.json()
-    assert body["model"] == "gpt-realtime-2"
+    assert body["model"] == "gpt-realtime-2.1-mini"
     assert body["value"] == "ek-456"
     assert "api_key" not in body
     _, kwargs = mocked_post.call_args
-    assert kwargs["json"] == {"session": {"model": "gpt-realtime-2"}}
+    assert kwargs["json"] == {"session": {"model": "gpt-realtime-2.1-mini"}}
 
 
 def test_create_realtime_session_without_api_key_returns_500() -> None:
@@ -115,7 +115,7 @@ def test_realtime_session_uses_saved_user_model() -> None:
         ) as mocked_post:
             response = client.post("/realtime/session", json={"session": {}})
     finally:
-        client.patch("/settings", json={"realtime_model": "gpt-realtime-2"})
+        client.patch("/settings", json={"realtime_model": "gpt-realtime-2.1-mini"})
 
     body = response.json()
     assert body["model"] == "gpt-realtime-2.1"

@@ -31,11 +31,11 @@ def test_resolve_credential_returns_backend_model():
 
 def test_resolve_credential_returns_default_backend_model():
     # backend eksplicitno vraća gpt-realtime — NIJE desktop fallback.
-    client = _FakeClient({"value": "ek-4", "model": "gpt-realtime-2"})
+    client = _FakeClient({"value": "ek-4", "model": "gpt-realtime-2.1-mini"})
     session = RealtimeSession(client, None, VoiceCallbacks())
     value, model = session._resolve_credential()
     assert value == "ek-4"
-    assert model == "gpt-realtime-2"
+    assert model == "gpt-realtime-2.1-mini"
 
 
 def test_resolve_credential_fails_if_backend_model_missing():
@@ -46,7 +46,7 @@ def test_resolve_credential_fails_if_backend_model_missing():
 
 
 def test_resolve_credential_fails_if_credential_missing():
-    client = _FakeClient({"model": "gpt-realtime-2"})
+    client = _FakeClient({"model": "gpt-realtime-2.1-mini"})
     session = RealtimeSession(client, None, VoiceCallbacks())
     assert session._resolve_credential() is None
 

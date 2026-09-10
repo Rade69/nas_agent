@@ -17,7 +17,7 @@ type SaveStatus = "loading" | "idle" | "saving" | "saved" | "error";
 // OpenAI Realtime voice model — in-app selector. Interni API ID → labela.
 const REALTIME_MODELS = [
   { value: "gpt-realtime-2.1", label: "GPT Realtime 2.1" },
-  { value: "gpt-realtime-2", label: "GPT Realtime 2" },
+  { value: "gpt-realtime-2.1-mini", label: "GPT Realtime 2.1 Mini" },
 ];
 
 export function SettingsPanel({
