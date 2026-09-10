@@ -5,6 +5,7 @@ instead of calling OpenAI directly, so the standard API key never leaves
 the Python backend (Security Gate 0).
 """
 import hashlib
+import logging
 
 import httpx
 from fastapi import APIRouter, Request
@@ -13,6 +14,7 @@ from app.core.errors import AppError
 from app.schemas.realtime import RealtimeSessionRequest, RealtimeSessionResponse
 
 router = APIRouter(tags=["realtime"])
+log = logging.getLogger("ricky.realtime")
 
 OPENAI_REALTIME_URL = "https://api.openai.com/v1/realtime/client_secrets"
 # Matches the identifier previously sent from electron/main.cjs's realtime:create-token handler.
@@ -38,6 +40,8 @@ def create_realtime_session(
     # otvori WebSocket prema drugom modelu nego što je backend mintao token.
     session = dict(request_body.session or {})
     session["model"] = settings.openai_realtime_model
+    # A/B dijagnostika: koji model je stvarno aktiviran (bez secrets).
+    log.info("realtime_model=%s", settings.openai_realtime_model)
 
     try:
         response = httpx.post(
