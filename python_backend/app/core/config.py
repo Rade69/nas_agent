@@ -30,6 +30,13 @@ class Settings(BaseModel):
     # FAZA 16: Exa web search API key (env: EXA_API_KEY). Held only on the
     # Python backend side, same pattern as OPENAI_API_KEY.
     exa_api_key: str | None = None
+    # MM-1 (docs/MINIMAX_PROVIDER_FINDING.md): provider selection + MiniMax
+    # credentials. Held only on the backend side (Security Gate 0). Provider
+    # selection is RICKY_AI_PROVIDER (openai|minimax), default openai.
+    ai_provider: str = "openai"
+    minimax_api_key: str | None = None
+    minimax_model: str = "MiniMax-M3"
+    openai_model: str = "gpt-4o-mini"
 
     @property
     def database_path(self) -> Path:
@@ -70,6 +77,10 @@ def get_settings() -> Settings:
         openai_api_key=os.environ.get("OPENAI_API_KEY") or None,
         local_token=_resolve_local_token(data_dir),
         exa_api_key=os.environ.get("EXA_API_KEY") or None,
+        ai_provider=os.environ.get("RICKY_AI_PROVIDER") or "openai",
+        minimax_api_key=os.environ.get("MINIMAX_API_KEY") or None,
+        minimax_model=os.environ.get("MINIMAX_MODEL") or "MiniMax-M3",
+        openai_model=os.environ.get("OPENAI_MODEL") or "gpt-4o-mini",
         data_dir=data_dir,
         # FAZA 19: PyInstaller sidecar receives host/port from Electron's env.
         # Defaults are fine for dev (uvicorn --host/--port CLI args take

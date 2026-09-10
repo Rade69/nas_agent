@@ -12,7 +12,7 @@ from fastapi import Depends, FastAPI
 
 from app.agent.cancellation import CancellationRegistry
 from app.agent.conversation_state import ConversationStateService
-from app.agent.model_client import OpenAIModelClient
+from app.agent.providers import create_model_client
 from app.agent.runtime import LocalDesktopAssistant
 from app.agent.tool_executor import ToolExecutor
 from app.agent.tool_registry import create_default_registry
@@ -68,7 +68,14 @@ def create_app() -> FastAPI:
     # Security Gate 0 (SECURITY_HARDENING_PLAN.md section 14 "Redaction"):
     # configure logging with the real secrets this process holds so they
     # never appear verbatim in log output.
-    configure_logging(secrets=[settings.openai_api_key, settings.local_token, settings.exa_api_key])
+    configure_logging(
+        secrets=[
+            settings.openai_api_key,
+            settings.local_token,
+            settings.exa_api_key,
+            settings.minimax_api_key,
+        ]
+    )
     initialize_database(settings)
 
     # Browser extension broker — starts the localhost WebSocket for the
@@ -183,7 +190,7 @@ def create_app() -> FastAPI:
         cancellations=app.state.cancellation_registry,
     )
     app.state.agent_runtime = LocalDesktopAssistant(
-        model_client=OpenAIModelClient(settings.openai_api_key),
+        model_client=create_model_client(settings),
         tool_executor=agent_tool_executor,
         conversations=app.state.conversation_state_service,
     )
@@ -192,7 +199,7 @@ def create_app() -> FastAPI:
     # agent_runtime above (that path persists conversation state and runs a
     # tool-calling loop, wrong semantics for "rewrite this whole note").
     # Context: agent_reports/2026-07-11_dictation-rewrite-menu.md
-    app.state.text_model_client = OpenAIModelClient(settings.openai_api_key)
+    app.state.text_model_client = create_model_client(settings)
 
     # Browser extension WebSocket endpoint (PR 1: browser_tabs tool).
     # Binds only to 127.0.0.1 — the local extension connects here.
