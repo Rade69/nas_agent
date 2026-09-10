@@ -77,6 +77,14 @@ commit: f3e00fb
 ## 15b. Fail-closed korekcija (C-1/C-3, naknadno)
 - Desktop `_resolve_credential` više NEMA silent fallback na `gpt-realtime`. Ako backend ne vrati authoritative `model` (ili `value`), desktop emituje grešku i session NE počinje. Vraća `(value, model)` samo ako su OBA prisutna. Testovi: `test_resolve_credential_fails_if_backend_model_missing`, `..._credential_missing`, `..._both_missing`.
 
+## 15c. In-app model selector
+- **Lokacija:** Settings panel → sekcija "Glas" → dropdown "AI voice model" (Electron/React — `src/components/pixel/SettingsPanel.tsx`).
+- **Opcije:** `GPT Realtime` → `gpt-realtime`; `GPT Realtime 2.1 Mini` → `gpt-realtime-2.1-mini`.
+- **Persistira:** `UserSettings.realtime_model` (SQLite key/value, `app/schemas/settings.py`), kroz postojeći `PATCH /settings` (bez novog endpointa/storage-a).
+- **Precedence:** korisnički izbor > `OPENAI_REALTIME_MODEL` env fallback > `gpt-realtime` default (`resolve_effective_realtime_model` u `config.py`).
+- **Bez restarta:** promjena važi od sljedeće voice sesije (backend čita effective model na svakom `POST /realtime/session`).
+- **A/B koraci:** Settings → Glas → izaberi model → pokreni voice session; za drugi model ponovi bez restarta aplikacije.
+
 ## 16. Variant A (gpt-realtime)
 1. U `.env.local`: `OPENAI_REALTIME_MODEL=gpt-realtime`
 2. Restartuj Ricky.
