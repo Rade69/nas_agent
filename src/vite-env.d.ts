@@ -185,6 +185,17 @@ declare global {
   interface Window {
     ricky: {
       debugLog: (msg: string) => void;
+      // CR-3: Python voice lifecycle + signali preko QWebChannel-a.
+      startVoice: () => Promise<void>;
+      stopVoice: () => Promise<void>;
+      onVoiceStateChanged: (handler: (state: string) => void) => () => void;
+      onVoiceConnectedChanged: (handler: (connected: boolean) => void) => () => void;
+      onVoiceUserTranscript: (handler: (text: string) => void) => () => void;
+      onVoiceAssistantTranscript: (handler: (text: string) => void) => () => void;
+      onVoiceInputLevel: (handler: (level: number) => void) => () => void;
+      onVoiceOutputLevel: (handler: (level: number) => void) => () => void;
+      onVoiceError: (handler: (message: string) => void) => () => void;
+      onVoiceReconnecting: (handler: () => void) => () => void;
       createRealtimeToken: () => Promise<{ value: string; expiresAt: number | null; sttLanguageHint: string }>;
       executeTool: (toolCall: RickyToolCall) => Promise<RickyToolResult>;
       getToolSpecs: () => Promise<RickyToolSpec[]>;

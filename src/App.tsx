@@ -47,7 +47,6 @@ import rikiAvatar from "../assets/Riki-avatar.png";
 import {
   createActivityEvent,
   newEntry,
-  RickyRealtimeClient,
   type ActivityEvent,
   type MouthShape,
   type RickyConnectionState,
@@ -55,6 +54,7 @@ import {
   type TranscriptEntry,
   type VoiceState,
 } from "./lib/realtime";
+import { RickyVoiceBridge } from "./lib/voiceBridge";
 import { cyrillicToLatin } from "./lib/cyrillicToLatin";
 import i18n from "./i18n";
 import type { BackendEvent, Confirmation, Plan, PlanStepStatus, RickyArtifact, TextRewriteOperation } from "./vite-env";
@@ -150,7 +150,7 @@ export default function App() {
   // Context: agent_reports/2026-07-11_dictation-rewrite-menu.md
   const dictationUndoRef = useRef<string | null>(null);
   const [backendConnected, setBackendConnected] = useState(false);
-  const clientRef = useRef<RickyRealtimeClient | null>(null);
+  const clientRef = useRef<RickyVoiceBridge | null>(null);
 
   const isConnected = connectionState === "connected";
   const isActive =
@@ -250,7 +250,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const client = new RickyRealtimeClient({
+    const client = new RickyVoiceBridge({
       onConnectionState: setConnectionState,
       onVoiceState: setVoiceState,
       onMood: setMood,

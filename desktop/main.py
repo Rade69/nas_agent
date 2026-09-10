@@ -38,9 +38,9 @@ def run_qt(argv: list[str] | None = None) -> int:
 
     app = QApplication.instance() or QApplication(sys.argv)
     controller = AppController()
+    controller.start()  # backend prije bridge-a (client dobija validan port)
     window = MainWebWindow(controller)
     window.show()
-    controller.start()
     return app.exec()
 
 

@@ -97,6 +97,17 @@ function installBridge(bridge: Bridge): void {
     onCompanionToggleVoice: (h: () => void) => subscribe(bridge, "companionToggleVoice", h),
     onConfirmationResult: (h: (v: unknown) => void) => subscribe(bridge, "confirmationResult", h),
     onKillSwitch: (h: () => void) => subscribe(bridge, "killSwitchTriggered", h),
+    // voice signals (CR-3)
+    onVoiceStateChanged: (h: (v: unknown) => void) => subscribe(bridge, "voiceStateChanged", h),
+    onVoiceUserTranscript: (h: (v: unknown) => void) => subscribe(bridge, "voiceUserTranscript", h),
+    onVoiceAssistantTranscript: (h: (v: unknown) => void) => subscribe(bridge, "voiceAssistantTranscript", h),
+    onVoiceConnectedChanged: (h: (v: unknown) => void) => subscribe(bridge, "voiceConnectedChanged", h),
+    onVoiceInputLevel: (h: (v: unknown) => void) => subscribe(bridge, "voiceInputLevelChanged", h),
+    onVoiceOutputLevel: (h: (v: unknown) => void) => subscribe(bridge, "voiceOutputLevelChanged", h),
+    onVoiceError: (h: (v: unknown) => void) => subscribe(bridge, "voiceError", h),
+    onVoiceReconnecting: (h: () => void) => subscribe(bridge, "voiceReconnecting", h),
+    onVoiceInputStreamOpened: (h: (v: unknown) => void) => subscribe(bridge, "voiceInputStreamOpened", h),
+    onVoiceInputWarning: (h: (v: unknown) => void) => subscribe(bridge, "voiceInputWarning", h),
   } as any;
 }
 
