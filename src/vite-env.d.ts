@@ -184,6 +184,7 @@ export type BackendEvent = {
 declare global {
   interface Window {
     ricky: {
+      debugLog: (msg: string) => void;
       createRealtimeToken: () => Promise<{ value: string; expiresAt: number | null; sttLanguageHint: string }>;
       executeTool: (toolCall: RickyToolCall) => Promise<RickyToolResult>;
       getToolSpecs: () => Promise<RickyToolSpec[]>;

@@ -8,6 +8,10 @@ const { debugLog, summarize } = require("./debugLog.cjs");
 // (Security Gate 0 / Security PR-1 "generic IPC zabrana" check — see
 // docs/SECURITY_HARDENING_PLAN.md section 5) instead of scattered across a 1400+ line file.
 function registerIpcHandlers(handlers) {
+  // Debug log from renderer (fire-and-forget, no business logic).
+  ipcMain.on("debug:log", (_event, msg) => {
+    debugLog("[renderer]", msg);
+  });
   for (const [channel, handler] of Object.entries(handlers)) {
     ipcMain.handle(channel, async (_event, payload) => {
       debugLog("[ipc]", channel, summarize(payload));

@@ -4,6 +4,8 @@ const { contextBridge, ipcRenderer } = require("electron");
 // generic ipcRenderer.invoke pass-through (Security Gate 0 / Security PR-1
 // "generic IPC zabrana" check — see docs/SECURITY_HARDENING_PLAN.md section 5).
 contextBridge.exposeInMainWorld("ricky", {
+  // Debug log (renderer → main → data/debug.log). Never logs secrets.
+  debugLog: (msg) => ipcRenderer.send("debug:log", String(msg)),
   // Voice / realtime
   createRealtimeToken: () => ipcRenderer.invoke("realtime:create-token"),
   // Tools

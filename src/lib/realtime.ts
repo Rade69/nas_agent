@@ -452,6 +452,7 @@ export class RickyRealtimeClient {
     pc.onconnectionstatechange = () => {
       if (generation !== this.connectionGeneration) return;
       const state = pc.connectionState;
+      window.ricky.debugLog?.("rtc:" + state);
       if (state === "failed" || state === "disconnected" || state === "closed") {
         this._handleTransportFailure(state);
       }
@@ -479,12 +480,14 @@ export class RickyRealtimeClient {
     this.sttLanguageHint = token.sttLanguageHint ?? "sr";
     this.micStream = micStream;
     pc.addTrack(this.micStream.getAudioTracks()[0], this.micStream);
+    window.ricky.debugLog?.("mic-ok " + (this.micStream.getAudioTracks().length || 0) + " track");
 
     const dc = pc.createDataChannel("oai-events");
     this.dc = dc;
 
     dc.addEventListener("open", () => {
       if (generation !== this.connectionGeneration) return;
+      window.ricky.debugLog?.("dc-open");
       this.reconnectAttempts = 0;
       this.callbacks.onConnectionState("connected");
       this.callbacks.onMood("idle");
@@ -693,17 +696,20 @@ export class RickyRealtimeClient {
     if (routed.activity) this.callbacks.onActivity(routed.activity);
 
     if (event.type === "error") {
+      window.ricky.debugLog?.("rtc-error " + (event.error?.message || ""));
       this.callbacks.onMood("error");
       this.callbacks.onStatus(event.error?.message || "Realtime API returned an error.");
       return;
     }
 
     if (event.type === "input_audio_buffer.speech_started") {
+      window.ricky.debugLog?.("speech-started");
       this.callbacks.onMood("listening");
       return;
     }
 
     if (event.type === "input_audio_buffer.speech_stopped") {
+      window.ricky.debugLog?.("speech-stopped");
       this.callbacks.onMood("thinking");
       return;
     }
