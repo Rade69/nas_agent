@@ -47,6 +47,8 @@ function cspMetaPlugin() {
 }
 
 export default defineConfig({
+  // Relativne putanje za file:// hosting (QWebEngineView loadFile / Electron).
+  base: "./",
   plugins: [react(), svgr(), cspMetaPlugin()],
   server: {
     host: "127.0.0.1",

@@ -27,8 +27,20 @@ def create_app(argv: list[str] | None = None) -> tuple[QApplication, QMainWindow
 
 
 def run_qt(argv: list[str] | None = None) -> int:
-    """Pokreće Qt UI (glavni event loop)."""
-    app, _window = create_app(argv)
+    """Pokreće Qt shell: PySide6 + QWebEngineView (postojeći React GUI).
+
+    CR-1/CR-2: backend + Python voice + React UI preko QWebChannel-a.
+    """
+    from PySide6.QtWidgets import QApplication
+
+    from desktop.app_controller import AppController
+    from desktop.web.main_view import MainWebWindow
+
+    app = QApplication.instance() or QApplication(sys.argv)
+    controller = AppController()
+    window = MainWebWindow(controller)
+    window.show()
+    controller.start()
     return app.exec()
 
 
