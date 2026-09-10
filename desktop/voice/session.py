@@ -129,10 +129,10 @@ class RealtimeSession:
         import sounddevice as sd
         from websockets.asyncio.client import connect
 
-        token, model = self._resolve_credential()
-        if token is None:
-            self._cb.on_error("Nema OpenAI credential-a.")
+        cred = self._resolve_credential()
+        if cred is None:
             return
+        token, model = cred
 
         self._tool_specs = self._tool_bridge.fetch_tool_specs()
         tools = [to_realtime_tool(s) for s in self._tool_specs]
@@ -187,12 +187,13 @@ class RealtimeSession:
                     self._receive(ws, zvucnik_q, ostatak, generation),
                 )
 
-    def _resolve_credential(self) -> tuple[str | None, str]:
+    def _resolve_credential(self) -> tuple[str, str] | None:
         """Traži ephemeral Realtime credential + authoritative model od backend-a.
 
-        RTM-5: model je backend-owned — desktop NE bira model. Vraća
-        (ephemeral_value, model); ako backend ne vrati model, fallback na
-        posljednji poznati (default gpt-realtime).
+        RTM-5 + C-1/C-3: model je backend-owned — desktop NE bira model i NE
+        smije pretpostaviti model ako ga backend nije vratio. Vraća
+        (value, model) samo ako su OBA prisutna; inače fail-closed (None +
+        on_error). Nema fallbacka na `gpt-realtime`.
         """
         try:
             resp = self._client.request(
@@ -201,13 +202,29 @@ class RealtimeSession:
                 json={"session": {"type": "realtime"}},
                 timeout=15.0,
             )
-            body = resp.json()
-            value = body.get("value") or body.get("client_secret", {}).get("value")
-            model = body.get("model") or self._model
-            return (value or None, model)
         except Exception:  # pragma: no cover
             log.warning("ephemeral credential fetch failed", exc_info=True)
-            return (None, self._model)
+            self._cb.on_error("Realtime credential fetch failed.")
+            return None
+
+        try:
+            body = resp.json()
+        except Exception:  # pragma: no cover
+            self._cb.on_error("Realtime session response invalid (no JSON).")
+            return None
+
+        value = body.get("value") or body.get("client_secret", {}).get("value")
+        model = body.get("model")
+
+        if not value:
+            self._cb.on_error("Realtime session response missing credential.")
+            return None
+        if not model:
+            # C-1: fail-closed — bez authoritative modela session ne počinje.
+            self._cb.on_error("Realtime session response missing authoritative model.")
+            return None
+
+        return (value, model)
 
     async def _await_session_created(self, ws) -> None:
         while True:

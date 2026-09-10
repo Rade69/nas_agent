@@ -1,4 +1,4 @@
-"""Testovi za desktop Realtime model (RTM-5): backend-owned model."""
+"""Testovi za desktop Realtime model (RTM-5 + C-1/C-3): backend-owned, fail-closed."""
 
 from desktop.voice.session import RealtimeSession, VoiceCallbacks
 
@@ -29,12 +29,32 @@ def test_resolve_credential_returns_backend_model():
     assert model == "gpt-realtime-2.1-mini"
 
 
-def test_resolve_credential_falls_back_to_default_model():
-    client = _FakeClient({"value": "ek-2"})
+def test_resolve_credential_returns_default_backend_model():
+    # backend eksplicitno vraća gpt-realtime — NIJE desktop fallback.
+    client = _FakeClient({"value": "ek-4", "model": "gpt-realtime"})
     session = RealtimeSession(client, None, VoiceCallbacks())
     value, model = session._resolve_credential()
-    assert value == "ek-2"
+    assert value == "ek-4"
     assert model == "gpt-realtime"
+
+
+def test_resolve_credential_fails_if_backend_model_missing():
+    # C-1/C-3: credential bez modela NIJE validan response — fail-closed.
+    client = _FakeClient({"value": "ek-2"})
+    session = RealtimeSession(client, None, VoiceCallbacks())
+    assert session._resolve_credential() is None
+
+
+def test_resolve_credential_fails_if_credential_missing():
+    client = _FakeClient({"model": "gpt-realtime"})
+    session = RealtimeSession(client, None, VoiceCallbacks())
+    assert session._resolve_credential() is None
+
+
+def test_resolve_credential_fails_if_both_missing():
+    client = _FakeClient({})
+    session = RealtimeSession(client, None, VoiceCallbacks())
+    assert session._resolve_credential() is None
 
 
 def test_resolve_credential_does_not_send_model_in_request():
