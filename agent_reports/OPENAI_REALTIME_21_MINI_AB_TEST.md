@@ -11,11 +11,12 @@ commit: f3e00fb
 - branch: `qt-desktop-migration`
 - start SHA: `20171b4`
 
-## 2. Finalni SHA
-- `f3e00fb`
+## 2. SHA
+- implementation SHA: `f3e00fb` (feat + test + report)
+- final HEAD: `60a0b1c` (nakon fail-closed korekcije)
 
 ## 3. git status
-- Čist (sve commit-ovano). **PAŽNJA:** postoji untracked fajl `docs/openai-api-key.txt` koji izgleda kao da sadrži API ključ — NIJE diran, NIJE commit-ovan. Preporučujem da ga korisnik obriše ili doda u `.gitignore` (potencijalna tajna u repo direktoriju).
+- Čist (sve commit-ovano). `docs/openai-api-key.txt` više NIJE prisutan (korisnik ga je uklonio).
 
 ## 4. Izmijenjeni fajlovi
 - `python_backend/app/core/config.py` — `openai_realtime_model` + allowlist + `resolve_openai_realtime_model`
@@ -72,6 +73,9 @@ commit: f3e00fb
 
 ## 15. Spremno za ručni A/B test
 - DA (env switch + restart; isti `OPENAI_API_KEY`, isti mikrofon/zvučnik/prompt/toolovi).
+
+## 15b. Fail-closed korekcija (C-1/C-3, naknadno)
+- Desktop `_resolve_credential` više NEMA silent fallback na `gpt-realtime`. Ako backend ne vrati authoritative `model` (ili `value`), desktop emituje grešku i session NE počinje. Vraća `(value, model)` samo ako su OBA prisutna. Testovi: `test_resolve_credential_fails_if_backend_model_missing`, `..._credential_missing`, `..._both_missing`.
 
 ## 16. Variant A (gpt-realtime)
 1. U `.env.local`: `OPENAI_REALTIME_MODEL=gpt-realtime`
