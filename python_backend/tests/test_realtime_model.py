@@ -4,6 +4,7 @@ import pytest
 
 from app.core.config import (
     OPENAI_REALTIME_MODEL_DEFAULT,
+    resolve_effective_realtime_model,
     resolve_openai_realtime_model,
 )
 
@@ -32,3 +33,32 @@ def test_invalid_model_no_silent_fallback():
 
     with pytest.raises(ValueError):
         resolve_openai_realtime_model("")
+
+
+# --- resolve_effective_realtime_model (in-app selector precedence) ---
+
+def test_effective_default_when_no_choice_and_default_env():
+    assert resolve_effective_realtime_model(None, "gpt-realtime") == "gpt-realtime"
+
+
+def test_effective_uses_env_fallback_when_no_choice():
+    assert resolve_effective_realtime_model(None, "gpt-realtime-2.1-mini") == "gpt-realtime-2.1-mini"
+
+
+def test_effective_user_choice_overrides_env():
+    # T-B4: env mini, korisnik izabrao full → full.
+    assert resolve_effective_realtime_model("gpt-realtime", "gpt-realtime-2.1-mini") == "gpt-realtime"
+
+
+def test_effective_reverse_override():
+    # T-B5: env full, korisnik izabrao mini → mini.
+    assert (
+        resolve_effective_realtime_model("gpt-realtime-2.1-mini", "gpt-realtime")
+        == "gpt-realtime-2.1-mini"
+    )
+
+
+def test_effective_invalid_user_choice_fails_closed():
+    # T-B6: invalid persisted value — nema silent fallbacka.
+    with pytest.raises(ValueError):
+        resolve_effective_realtime_model("nepostojeci-model", "gpt-realtime")

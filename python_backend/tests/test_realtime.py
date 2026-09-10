@@ -37,15 +37,20 @@ def test_create_realtime_session_returns_client_secret() -> None:
 
 
 def test_create_realtime_session_uses_configured_model_and_returns_it() -> None:
+    # In-app selector: user choice (persisted) je source of truth. Sačuvaj
+    # mini kroz settings endpoint i potvrdi da /realtime/session minta mini.
     app.state.settings.openai_api_key = "sk-test-key"
-    app.state.settings.openai_realtime_model = "gpt-realtime-2.1-mini"
     client = TestClient(app)
 
-    with patch(
-        "app.api.realtime.httpx.post",
-        return_value=_FakeResponse(200, {"value": "ek-456", "expires_at": 999}),
-    ) as mocked_post:
-        response = client.post("/realtime/session", json={"session": {"model": "whatever"}})
+    client.patch("/settings", json={"realtime_model": "gpt-realtime-2.1-mini"})
+    try:
+        with patch(
+            "app.api.realtime.httpx.post",
+            return_value=_FakeResponse(200, {"value": "ek-456", "expires_at": 999}),
+        ) as mocked_post:
+            response = client.post("/realtime/session", json={"session": {"model": "whatever"}})
+    finally:
+        client.patch("/settings", json={"realtime_model": "gpt-realtime"})
 
     body = response.json()
     assert body["model"] == "gpt-realtime-2.1-mini"
@@ -81,3 +86,24 @@ def test_create_realtime_session_propagates_upstream_failure() -> None:
     body = response.json()
     assert body["ok"] is False
     assert body["error"]["code"] == "REALTIME_REQUEST_FAILED"
+
+
+def test_realtime_session_uses_saved_user_model() -> None:
+    # T-B8: sačuvani user choice (mini) → /realtime/session minta mini.
+    app.state.settings.openai_api_key = "sk-test-key"
+    client = TestClient(app)
+
+    client.patch("/settings", json={"realtime_model": "gpt-realtime-2.1-mini"})
+    try:
+        with patch(
+            "app.api.realtime.httpx.post",
+            return_value=_FakeResponse(200, {"value": "ek-789", "expires_at": 111}),
+        ) as mocked_post:
+            response = client.post("/realtime/session", json={"session": {}})
+    finally:
+        client.patch("/settings", json={"realtime_model": "gpt-realtime"})
+
+    body = response.json()
+    assert body["model"] == "gpt-realtime-2.1-mini"
+    _, kwargs = mocked_post.call_args
+    assert kwargs["json"] == {"session": {"model": "gpt-realtime-2.1-mini"}}

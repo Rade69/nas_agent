@@ -61,6 +61,17 @@ def _restore_quick_commands():
     repo.set("quick_commands", original if original is not None else [])
 
 
+@pytest.fixture
+def _restore_realtime_model():
+    # Same reasoning as _restore_user_name — dijeljena prava SQLite baza.
+    settings = get_settings()
+    initialize_database(settings)
+    repo = SettingsRepository(settings.database_path)
+    original = repo.get("realtime_model")
+    yield
+    repo.set("realtime_model", original)
+
+
 def test_get_settings_default_user_name(_restore_user_name) -> None:
     repo = SettingsRepository(get_settings().database_path)
     repo.set("user_name", "Riley")
@@ -121,7 +132,13 @@ def test_unknown_stored_keys_are_ignored(_restore_user_name) -> None:
 
     assert response.status_code == 200
     # Only declared UserSettings fields are ever returned.
-    assert set(response.json().keys()) == {"user_name", "agent_name", "interface_language", "quick_commands"}
+    assert set(response.json().keys()) == {
+        "user_name",
+        "agent_name",
+        "interface_language",
+        "quick_commands",
+        "realtime_model",
+    }
 
 
 def test_get_settings_default_interface_language(_restore_interface_language) -> None:
@@ -187,3 +204,39 @@ def test_patch_settings_can_clear_quick_commands_back_to_empty(_restore_quick_co
 
     assert response.status_code == 200
     assert response.json()["quick_commands"] == []
+
+
+def test_realtime_model_roundtrip(_restore_realtime_model) -> None:
+    # T-B7: GET → save → GET mora zadržati istu vrijednost.
+    with TestClient(app) as client:
+        response = client.patch("/settings", json={"realtime_model": "gpt-realtime-2.1-mini"})
+        assert response.status_code == 200
+        assert response.json()["realtime_model"] == "gpt-realtime-2.1-mini"
+
+        follow_up = client.get("/settings")
+        assert follow_up.json()["realtime_model"] == "gpt-realtime-2.1-mini"
+
+
+def test_realtime_model_switch_full_to_mini(_restore_realtime_model) -> None:
+    with TestClient(app) as client:
+        client.patch("/settings", json={"realtime_model": "gpt-realtime"})
+        client.patch("/settings", json={"realtime_model": "gpt-realtime-2.1-mini"})
+        assert client.get("/settings").json()["realtime_model"] == "gpt-realtime-2.1-mini"
+
+
+def test_realtime_model_invalid_rejected(_restore_realtime_model) -> None:
+    # T-B6: fail-closed — invalid value odbijen na PATCH (422).
+    with TestClient(app) as client:
+        response = client.patch("/settings", json={"realtime_model": "nepostojeci-model"})
+        assert response.status_code == 422
+
+
+def test_realtime_model_old_payload_is_valid(_restore_realtime_model) -> None:
+    # T-B1: payload bez realtime_model (stari settings) mora biti validan —
+    # GET vraća effective model (user choice None → env fallback → default).
+    with TestClient(app) as client:
+        response = client.get("/settings")
+
+    assert response.status_code == 200
+    model = response.json()["realtime_model"]
+    assert model in ("gpt-realtime", "gpt-realtime-2.1-mini")
