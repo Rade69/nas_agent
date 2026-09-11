@@ -161,6 +161,18 @@ class RickyWebBridge(QObject):
     def cancelBrowserPairing(self, payload: Any) -> Any:
         return self._send("/browser-bridge/pairing/cancel", "POST", dict(payload or {}))
 
+    # ── audio devices (PC-3B) ────────────────────────────────────────────────
+
+    @Slot(result="QVariant")
+    def listAudioDevices(self) -> Any:
+        from desktop.voice.devices import AudioDeviceService
+
+        svc = AudioDeviceService()
+        return {
+            "inputs": [{"index": d.index, "name": d.name} for d in svc.list_inputs()],
+            "outputs": [{"index": d.index, "name": d.name} for d in svc.list_outputs()],
+        }
+
     # ── native (window / dialogs) ────────────────────────────────────────────
 
     @Slot()

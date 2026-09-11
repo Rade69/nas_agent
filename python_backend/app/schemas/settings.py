@@ -40,6 +40,9 @@ class UserSettings(BaseModel):
     # OPENAI_REALTIME_MODEL env fallback → gpt-realtime default.
     # Context: agent_reports/OPENAI_REALTIME_21_MINI_AB_TEST.md
     realtime_model: str | None = None
+    # PC-3B: izabrani audio uređaji (sounddevice indeksi). None = system default.
+    input_device: int | None = None
+    output_device: int | None = None
 
 
 class UserSettingsUpdateRequest(BaseModel):
@@ -48,6 +51,8 @@ class UserSettingsUpdateRequest(BaseModel):
     interface_language: str | None = None
     quick_commands: list[str] | None = None
     realtime_model: str | None = None
+    input_device: int | None = None
+    output_device: int | None = None
 
     @field_validator("realtime_model")
     @classmethod

@@ -123,6 +123,9 @@ export type UserSettings = {
   // OpenAI Realtime voice model — in-app selector. Backend returns the
   // effective value (user choice > env fallback > default).
   realtime_model?: string | null;
+  // PC-3B: izabrani audio uređaji (sounddevice indeksi); null = system default.
+  input_device?: number | null;
+  output_device?: number | null;
 };
 
 // Dictation Mode "Doradi" menu — mirrors python_backend/app/schemas/text.py
@@ -188,6 +191,10 @@ declare global {
       // CR-3: Python voice lifecycle + signali preko QWebChannel-a.
       startVoice: () => Promise<void>;
       stopVoice: () => Promise<void>;
+      listAudioDevices: () => Promise<{
+        inputs: Array<{ index: number; name: string }>;
+        outputs: Array<{ index: number; name: string }>;
+      }>;
       onVoiceStateChanged: (handler: (state: string) => void) => () => void;
       onVoiceConnectedChanged: (handler: (connected: boolean) => void) => () => void;
       onVoiceUserTranscript: (handler: (text: string) => void) => () => void;

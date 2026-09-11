@@ -52,10 +52,22 @@ class AppController(QObject):
         if self.tool_bridge is None:
             debugLog("[controller] tool_bridge is None — backend nije spreman")
             return
+        # Ako nije eksplicitno zadat, koristi sačuvani izbor iz backend settings.
+        in_dev = input_device if input_device is not None else self._input_device
+        out_dev = output_device if output_device is not None else self._output_device
+        if in_dev is None or out_dev is None:
+            try:
+                settings = self.backend.client.request("/settings", timeout=5.0).json()
+                if in_dev is None:
+                    in_dev = settings.get("input_device")
+                if out_dev is None:
+                    out_dev = settings.get("output_device")
+            except Exception:
+                pass
         self.worker = RealtimeWorker(
             self.backend.client, self.tool_bridge,
-            input_device=input_device if input_device is not None else self._input_device,
-            output_device=output_device if output_device is not None else self._output_device,
+            input_device=in_dev,
+            output_device=out_dev,
         )
         # Poveži worker signale na bus (orb + UI čitaju bus).
         self.worker.state_changed.connect(self.bus.set_state)

@@ -78,6 +78,8 @@ function installBridge(bridge: Bridge): void {
     getBrowserBridgeStatus: () => call(bridge, "getBrowserBridgeStatus"),
     startBrowserPairing: (browserKind: unknown) => call(bridge, "startBrowserPairing", { browserKind }),
     cancelBrowserPairing: (pairingId: unknown) => call(bridge, "cancelBrowserPairing", { pairingId }),
+    // audio devices (PC-3B)
+    listAudioDevices: () => call(bridge, "listAudioDevices"),
     // native window
     minimizeApp: () => call(bridge, "minimizeApp"),
     toggleMaximizeApp: () => call(bridge, "toggleMaximizeApp"),

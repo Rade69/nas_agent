@@ -138,6 +138,8 @@ def test_unknown_stored_keys_are_ignored(_restore_user_name) -> None:
         "interface_language",
         "quick_commands",
         "realtime_model",
+        "input_device",
+        "output_device",
     }
 
 

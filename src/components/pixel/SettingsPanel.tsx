@@ -42,6 +42,13 @@ export function SettingsPanel({
   const [commandsStatus, setCommandsStatus] = useState<SaveStatus>("loading");
   const [realtimeModelInput, setRealtimeModelInput] = useState("gpt-realtime-2.1");
   const [realtimeModelStatus, setRealtimeModelStatus] = useState<SaveStatus>("loading");
+  const [audioDevices, setAudioDevices] = useState<{
+    inputs: Array<{ index: number; name: string }>;
+    outputs: Array<{ index: number; name: string }>;
+  }>({ inputs: [], outputs: [] });
+  const [inputDeviceInput, setInputDeviceInput] = useState<number | null>(null);
+  const [outputDeviceInput, setOutputDeviceInput] = useState<number | null>(null);
+  const [audioDeviceStatus, setAudioDeviceStatus] = useState<SaveStatus>("idle");
   // C0: Browser Bridge
   const [bridgeStatus, setBridgeStatus] = useState<BrowserBridgeStatus | null>(null);
   const [pairingCode, setPairingCode] = useState<string | null>(null);
@@ -60,6 +67,8 @@ export function SettingsPanel({
         setLanguageInput(result.interface_language ?? "sr-Latn");
         setCommandsInput(result.quick_commands ?? []);
         setRealtimeModelInput(result.realtime_model ?? "gpt-realtime-2.1");
+        setInputDeviceInput(result.input_device ?? null);
+        setOutputDeviceInput(result.output_device ?? null);
         setNameStatus("idle");
         setAgentNameStatus("idle");
         setLanguageStatus("idle");
@@ -75,6 +84,20 @@ export function SettingsPanel({
           setRealtimeModelStatus("error");
         }
       });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // PC-3B: audio uređaji (mic/speaker) — lista iz Python AudioDeviceService.
+  useEffect(() => {
+    let cancelled = false;
+    window.ricky
+      .listAudioDevices?.()
+      .then((devices) => {
+        if (!cancelled && devices) setAudioDevices(devices);
+      })
+      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -190,6 +213,23 @@ export function SettingsPanel({
       window.setTimeout(() => setRealtimeModelStatus((current) => (current === "saved" ? "idle" : current)), 2000);
     } catch {
       setRealtimeModelStatus("error");
+    }
+  }
+
+  async function handleSaveAudioDevices() {
+    setAudioDeviceStatus("saving");
+    try {
+      const updated = await window.ricky.updateSettings({
+        input_device: inputDeviceInput,
+        output_device: outputDeviceInput,
+      });
+      setSettings(updated);
+      setInputDeviceInput(updated.input_device ?? null);
+      setOutputDeviceInput(updated.output_device ?? null);
+      setAudioDeviceStatus("saved");
+      window.setTimeout(() => setAudioDeviceStatus((current) => (current === "saved" ? "idle" : current)), 2000);
+    } catch {
+      setAudioDeviceStatus("error");
     }
   }
 
@@ -321,6 +361,52 @@ export function SettingsPanel({
             <span className="pixel-settings-feedback pixel-settings-feedback-ok">{t("settings.saved")}</span>
           ) : null}
           {realtimeModelStatus === "error" ? (
+            <span className="pixel-settings-feedback pixel-settings-feedback-error">{t("settings.error")}</span>
+          ) : null}
+        </div>
+
+        <label className="pixel-settings-field">
+          <span>Mikrofon</span>
+          <select
+            value={inputDeviceInput ?? ""}
+            onChange={(event) => setInputDeviceInput(event.target.value === "" ? null : Number(event.target.value))}
+          >
+            <option value="">System default</option>
+            {audioDevices.inputs.map((d) => (
+              <option key={d.index} value={d.index}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="pixel-settings-field">
+          <span>Zvučnik</span>
+          <select
+            value={outputDeviceInput ?? ""}
+            onChange={(event) => setOutputDeviceInput(event.target.value === "" ? null : Number(event.target.value))}
+          >
+            <option value="">System default</option>
+            {audioDevices.outputs.map((d) => (
+              <option key={d.index} value={d.index}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+          <span className="pixel-settings-hint">Primjenjuje se pri sljedećoj glasovnoj sesiji.</span>
+        </label>
+        <div className="pixel-settings-actions">
+          <button
+            className="pixel-primary"
+            onClick={() => void handleSaveAudioDevices()}
+            disabled={audioDeviceStatus === "saving"}
+          >
+            {audioDeviceStatus === "saving" ? t("settings.saving") : t("settings.save")}
+          </button>
+          {audioDeviceStatus === "saved" ? (
+            <span className="pixel-settings-feedback pixel-settings-feedback-ok">{t("settings.saved")}</span>
+          ) : null}
+          {audioDeviceStatus === "error" ? (
             <span className="pixel-settings-feedback pixel-settings-feedback-error">{t("settings.error")}</span>
           ) : null}
         </div>
