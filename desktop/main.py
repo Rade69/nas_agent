@@ -37,7 +37,10 @@ def run_qt(argv: list[str] | None = None) -> int:
     from desktop.web.main_view import MainWebWindow
 
     app = QApplication.instance() or QApplication(sys.argv)
-    controller = AppController()
+    controller = AppController(
+        input_device=_flag_int(argv, "--input"),
+        output_device=_flag_int(argv, "--output"),
+    )
     controller.start()  # backend prije bridge-a (client dobija validan port)
     window = MainWebWindow(controller)
     window.show()

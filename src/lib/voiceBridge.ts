@@ -58,6 +58,7 @@ export class RickyVoiceBridge {
       this.cb.onStatus("Native bridge nije dostupan.");
       return;
     }
+    void r.debugLog?.("voiceBridge.connect -> startVoice");
     this.cb.onConnectionState("connecting");
     this.cb.onStatus("Povezujem Python voice...");
 

@@ -97,6 +97,8 @@ class RealtimeSession:
 
         self._tool_specs: list[dict[str, Any]] = []
         self._pending_confirmations: dict[str, dict[str, Any]] = {}
+        self._first_audio_logged = False
+        self._speaker_logged = False
 
     # ── UI → session (thread-safe) ────────────────────────────────────────────
 
@@ -157,6 +159,13 @@ class RealtimeSession:
             self._cb.on_audio_input_level(self.input_level.update(rms_level(pcm)))
 
         def zvucnik_callback(outdata, frames, time_info, status) -> None:
+            if status:
+                self._cb.on_input_warning(f"speaker: {status}")
+            if not self._speaker_logged:
+                self._speaker_logged = True
+                from desktop.core.debug_log import debugLog as _log
+
+                _log("[voice] speaker callback first call")
             potrebno = frames * CHANNELS * 2
             while len(ostatak) < potrebno:
                 try:
@@ -178,6 +187,10 @@ class RealtimeSession:
         _devices = AudioDeviceService()
         _in = _devices.resolve_input(self._input_device)
         _out = _devices.resolve_output(self._output_device)
+        from desktop.core.debug_log import debugLog as _log
+
+        _log("[voice] input device:", _in.name if _in else "default")
+        _log("[voice] output device:", _out.name if _out else "default")
         self._cb.on_input_stream_open(_in.name if _in else "system default")
 
         url = f"wss://api.openai.com/v1/realtime?model={model}"
@@ -199,6 +212,9 @@ class RealtimeSession:
                 samplerate=SAMPLE_RATE, channels=CHANNELS, dtype=DTYPE, blocksize=BLOCK,
                 device=(_out.index if _out else None), callback=zvucnik_callback,
             ):
+                from desktop.core.debug_log import debugLog as _log
+
+                _log("[voice] audio streams open (in+out)")
                 await asyncio.gather(
                     self._send_mic(ws, mikrofon_q),
                     self._handle_inbox(ws, generation),
@@ -348,6 +364,11 @@ class RealtimeSession:
 
             audio = extract_audio_delta(dog)
             if audio is not None:
+                if not self._first_audio_logged:
+                    self._first_audio_logged = True
+                    from desktop.core.debug_log import debugLog as _log
+
+                    _log("[voice] first output audio delta:", len(audio), "bytes")
                 zvucnik_q.put(audio)
                 self._cb.on_audio_output_level(self.output_level.update(rms_level(audio)))
 

@@ -218,10 +218,16 @@ class RickyWebBridge(QObject):
 
     @Slot()
     def startVoice(self) -> None:
+        from desktop.core.debug_log import debugLog
+
+        debugLog("[bridge] startVoice -> controller.start_voice")
         if self._controller is not None:
             self._controller.start_voice()
 
     @Slot()
     def stopVoice(self) -> None:
+        from desktop.core.debug_log import debugLog
+
+        debugLog("[bridge] stopVoice")
         if self._controller is not None:
             self._controller.stop_voice()
