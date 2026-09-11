@@ -81,6 +81,14 @@ class RealtimeWorker(QThread):
         if self._session is not None:
             self._session.reject_by_confirmation_id(confirmation_id)
 
+    def send_text(self, text: str) -> None:
+        if self._session is not None:
+            self._session.send_text(text)
+
+    def set_dictation_mode(self, enabled: bool) -> None:
+        if self._session is not None:
+            self._session.set_dictation_mode(enabled)
+
     def reject_confirmation(self, call_id: str) -> None:
         if self._session is not None:
             self._session.reject_confirmation(call_id)

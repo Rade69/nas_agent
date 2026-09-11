@@ -94,6 +94,8 @@ function installBridge(bridge: Bridge): void {
     createRealtimeToken: () => call(bridge, "createRealtimeToken"),
     startVoice: () => call(bridge, "startVoice"),
     stopVoice: () => call(bridge, "stopVoice"),
+    sendText: (text: unknown) => call(bridge, "sendText", String(text)),
+    setDictationMode: (enabled: unknown) => call(bridge, "setDictationMode", Boolean(enabled)),
     // signals
     onCompanionVoiceState: (h: (v: unknown) => void) => subscribe(bridge, "companionVoiceState", h),
     onCompanionToggleVoice: (h: () => void) => subscribe(bridge, "companionToggleVoice", h),

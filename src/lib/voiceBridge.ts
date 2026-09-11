@@ -104,12 +104,12 @@ export class RickyVoiceBridge {
     this.cb.onConnectionState("idle");
   }
 
-  setDictationMode(_enabled: boolean): void {
-    // CR-3 follow-up: Python session command (session.update). No-op za sada.
+  setDictationMode(enabled: boolean): void {
+    void window.ricky?.setDictationMode?.(enabled);
   }
 
-  sendText(_text: string): void {
-    // CR-3 follow-up: Python session inbox command.
+  sendText(text: string): void {
+    void window.ricky?.sendText?.(text);
   }
 
   notifyConfirmationResult(_toolName: string, _result: unknown): void {

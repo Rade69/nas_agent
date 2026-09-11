@@ -191,6 +191,8 @@ declare global {
       // CR-3: Python voice lifecycle + signali preko QWebChannel-a.
       startVoice: () => Promise<void>;
       stopVoice: () => Promise<void>;
+      sendText: (text: string) => Promise<void>;
+      setDictationMode: (enabled: boolean) => Promise<void>;
       listAudioDevices: () => Promise<{
         inputs: Array<{ index: number; name: string }>;
         outputs: Array<{ index: number; name: string }>;

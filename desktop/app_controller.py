@@ -106,6 +106,14 @@ class AppController(QObject):
         if self.worker is not None:
             self.worker.reject_confirmation_by_id(confirmation_id)
 
+    def send_text(self, text: str) -> None:
+        if self.worker is not None:
+            self.worker.send_text(text)
+
+    def set_dictation_mode(self, enabled: bool) -> None:
+        if self.worker is not None:
+            self.worker.set_dictation_mode(enabled)
+
     def stop_voice(self) -> None:
         if self.worker is not None and self.worker.isRunning():
             self.worker.request_stop()

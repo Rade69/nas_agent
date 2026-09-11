@@ -250,3 +250,13 @@ class RickyWebBridge(QObject):
         debugLog("[bridge] stopVoice")
         if self._controller is not None:
             self._controller.stop_voice()
+
+    @Slot(str)
+    def sendText(self, text: str) -> None:
+        if self._controller is not None:
+            self._controller.send_text(text)
+
+    @Slot(bool)
+    def setDictationMode(self, enabled: bool) -> None:
+        if self._controller is not None:
+            self._controller.set_dictation_mode(enabled)

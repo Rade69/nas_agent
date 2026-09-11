@@ -121,6 +121,12 @@ class RealtimeSession:
                 self.reject_confirmation(call_id)
                 return
 
+    def send_text(self, text: str) -> None:
+        self._inbox.put({"type": "send_text", "text": text})
+
+    def set_dictation_mode(self, enabled: bool) -> None:
+        self._inbox.put({"type": "dictation", "enabled": enabled})
+
     def reject_confirmation(self, call_id: str) -> None:
         self._inbox.put({"type": "reject", "call_id": call_id})
 
@@ -344,6 +350,10 @@ class RealtimeSession:
                 self._stop.set()
             elif cmd.get("type") == "approve":
                 await self._on_approve(ws, cmd)
+            elif cmd.get("type") == "send_text":
+                await self._send_text(ws, cmd.get("text", ""))
+            elif cmd.get("type") == "dictation":
+                await self._set_dictation(ws, bool(cmd.get("enabled")))
             elif cmd.get("type") == "reject":
                 self._pending_confirmations.pop(cmd.get("call_id"), None)
                 self._cb.on_state(VoiceState.IDLE.value)
@@ -361,6 +371,46 @@ class RealtimeSession:
         )
         await self._send_tool_output(ws, call_id, result)
         self._cb.on_state(VoiceState.IDLE.value if not result.get("ok") else VoiceState.THINKING.value)
+
+    async def _send_text(self, ws, text: str) -> None:
+        """Tekstualni prompt kroz aktivnu Realtime sesiju (CR-4)."""
+        if not text.strip():
+            return
+        await ws.send(
+            json.dumps(
+                {
+                    "type": "conversation.item.create",
+                    "item": {
+                        "type": "message",
+                        "role": "user",
+                        "content": [{"type": "input_text", "text": text}],
+                    },
+                }
+            )
+        )
+        await ws.send(json.dumps({"type": "response.create"}))
+
+    async def _set_dictation(self, ws, enabled: bool) -> None:
+        """Diktiranje: isključi auto-response VAD-a dok korisnik diktira (CR-4)."""
+        await ws.send(
+            json.dumps(
+                {
+                    "type": "session.update",
+                    "session": {
+                        "audio": {
+                            "input": {
+                                "turn_detection": {
+                                    "type": "semantic_vad",
+                                    "eagerness": "medium",
+                                    "create_response": not enabled,
+                                    "interrupt_response": True,
+                                }
+                            }
+                        }
+                    },
+                }
+            )
+        )
 
     async def _receive(self, ws, zvucnik_q: queue.Queue, ostatak: bytearray, generation: int) -> None:
         async for poruka in ws:
