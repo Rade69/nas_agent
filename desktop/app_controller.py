@@ -98,6 +98,14 @@ class AppController(QObject):
         if self.worker is not None:
             self.worker.reject_confirmation(call_id)
 
+    def approve_voice_confirmation(self, confirmation_id: str) -> None:
+        if self.worker is not None:
+            self.worker.approve_confirmation_by_id(confirmation_id)
+
+    def reject_voice_confirmation(self, confirmation_id: str) -> None:
+        if self.worker is not None:
+            self.worker.reject_confirmation_by_id(confirmation_id)
+
     def stop_voice(self) -> None:
         if self.worker is not None and self.worker.isRunning():
             self.worker.request_stop()

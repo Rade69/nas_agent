@@ -108,6 +108,19 @@ class RealtimeSession:
     def approve_confirmation(self, call_id: str, confirmation_id: str) -> None:
         self._inbox.put({"type": "approve", "call_id": call_id, "confirmation_id": confirmation_id})
 
+    def approve_by_confirmation_id(self, confirmation_id: str) -> None:
+        """React dialog zna samo confirmation_id; nađi call_id i retry."""
+        for call_id, pending in list(self._pending_confirmations.items()):
+            if pending.get("confirmation_id") == confirmation_id:
+                self.approve_confirmation(call_id, confirmation_id)
+                return
+
+    def reject_by_confirmation_id(self, confirmation_id: str) -> None:
+        for call_id, pending in list(self._pending_confirmations.items()):
+            if pending.get("confirmation_id") == confirmation_id:
+                self.reject_confirmation(call_id)
+                return
+
     def reject_confirmation(self, call_id: str) -> None:
         self._inbox.put({"type": "reject", "call_id": call_id})
 

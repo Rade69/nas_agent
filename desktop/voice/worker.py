@@ -73,6 +73,14 @@ class RealtimeWorker(QThread):
         if self._session is not None:
             self._session.approve_confirmation(call_id, confirmation_id)
 
+    def approve_confirmation_by_id(self, confirmation_id: str) -> None:
+        if self._session is not None:
+            self._session.approve_by_confirmation_id(confirmation_id)
+
+    def reject_confirmation_by_id(self, confirmation_id: str) -> None:
+        if self._session is not None:
+            self._session.reject_by_confirmation_id(confirmation_id)
+
     def reject_confirmation(self, call_id: str) -> None:
         if self._session is not None:
             self._session.reject_confirmation(call_id)

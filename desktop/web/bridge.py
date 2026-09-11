@@ -104,11 +104,18 @@ class RickyWebBridge(QObject):
 
     @Slot(str, result="QVariant")
     def approveConfirmation(self, confirmation_id: str) -> Any:
-        return self._send(f"/confirmations/{confirmation_id}/approve", "POST")
+        result = self._send(f"/confirmations/{confirmation_id}/approve", "POST")
+        # CR-4: voice retry originalnog tool call-a sa odobrenim confirmation_id.
+        if self._controller is not None:
+            self._controller.approve_voice_confirmation(confirmation_id)
+        return result
 
     @Slot(str, result="QVariant")
     def rejectConfirmation(self, confirmation_id: str) -> Any:
-        return self._send(f"/confirmations/{confirmation_id}/reject", "POST")
+        result = self._send(f"/confirmations/{confirmation_id}/reject", "POST")
+        if self._controller is not None:
+            self._controller.reject_voice_confirmation(confirmation_id)
+        return result
 
     @Slot(str, result="QVariant")
     def cancelConfirmation(self, confirmation_id: str) -> Any:
