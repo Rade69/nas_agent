@@ -68,3 +68,15 @@ def test_is_valid_input_and_output():
     assert svc.is_valid_input(0) is True
     assert svc.is_valid_input(1) is False  # output-only
     assert svc.is_valid_output(1) is True
+
+
+def test_virtual_mapper_devices_filtered():
+    devices = [
+        {"name": "Microsoft Sound Mapper - Output", "max_input_channels": 0, "max_output_channels": 2, "default_samplerate": 48000},
+        {"name": "Primary Sound Driver", "max_input_channels": 0, "max_output_channels": 2, "default_samplerate": 48000},
+        {"name": "Speakers (Realtek)", "max_input_channels": 0, "max_output_channels": 2, "default_samplerate": 48000},
+    ]
+    sd = _FakeSD(devices, {"output": devices[2]})
+    svc = AudioDeviceService(sd_module=sd)
+    outputs = svc.list_outputs()
+    assert [d.name for d in outputs] == ["Speakers (Realtek)"]

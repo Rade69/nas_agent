@@ -41,10 +41,14 @@ class AudioDeviceService:
         devices = self._sd.query_devices()
         result = []
         for index, d in enumerate(devices):
+            name = str(d.get("name", f"device-{index}"))
+            # Izbaci virtualne "mapper" uređaje (ne sviraju sami po sebi).
+            if "Sound Mapper" in name or name.startswith("Primary Sound"):
+                continue
             result.append(
                 AudioDevice(
                     index=index,
-                    name=str(d.get("name", f"device-{index}")),
+                    name=name,
                     max_input_channels=int(d.get("max_input_channels", 0) or 0),
                     max_output_channels=int(d.get("max_output_channels", 0) or 0),
                     default_samplerate=float(d.get("default_samplerate", 0) or 0),
